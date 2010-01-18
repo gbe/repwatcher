@@ -1,0 +1,11 @@
+configuration.cmo: parser_conf.cmi lexer_conf.cmo 
+configuration.cmx: parser_conf.cmx lexer_conf.cmx 
+file_list.cmo: ast_conf.cmi ast.cmi 
+file_list.cmx: ast_conf.cmi ast.cmi 
+lexer_conf.cmo: parser_conf.cmi 
+lexer_conf.cmx: parser_conf.cmx 
+main.cmo: ssl_server.cmo file_list.cmo configuration.cmo ast_conf.cmi ast.cmi 
+main.cmx: ssl_server.cmx file_list.cmx configuration.cmx ast_conf.cmi ast.cmi 
+parser_conf.cmo: ast_conf.cmi parser_conf.cmi 
+parser_conf.cmx: ast_conf.cmi parser_conf.cmi 
+parser_conf.cmi: ast_conf.cmi 
