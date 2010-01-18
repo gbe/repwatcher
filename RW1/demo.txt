@@ -1,0 +1,4 @@
+sftp-serv 16010  christophe    5r      REG        9,2 366940160   13369356 /home/ftp/vacances_a_la_mer.avi
+scp 16016  julie    5r      REG        9,2 368285696   17776641 /home/ftp/photos01.JPG
+proftpd 16358       gygyr    5r      REG        9,2 183154688   38650237 /home/ftp/vmlinuz-2.6.24.2.img
+smbd 16358       michel    5r      REG        9,2 183154688   38650237 /home/ftp/debian_etch.iso

@@ -1,0 +1,15 @@
+configuration.cmo: parser_conf.cmi lexer_conf.cmo 
+configuration.cmx: parser_conf.cmx lexer_conf.cmx 
+gen_liste_fichiers.cmo: ast_conf.cmi ast.cmi 
+gen_liste_fichiers.cmx: ast_conf.cmi ast.cmi 
+lexer_conf.cmo: parser_conf.cmi 
+lexer_conf.cmx: parser_conf.cmx 
+main.cmo: sql.cmo gen_liste_fichiers.cmo configuration.cmo ast_conf.cmi \
+    ast.cmi 
+main.cmx: sql.cmx gen_liste_fichiers.cmx configuration.cmx ast_conf.cmi \
+    ast.cmi 
+parser_conf.cmo: ast_conf.cmi parser_conf.cmi 
+parser_conf.cmx: ast_conf.cmi parser_conf.cmi 
+sql.cmo: ast_conf.cmi ast.cmi 
+sql.cmx: ast_conf.cmi ast.cmi 
+parser_conf.cmi: ast_conf.cmi 
