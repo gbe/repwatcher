@@ -1,0 +1,13 @@
+2009-11-1 19:39:24	*** conf/repwatcher.conf is now watched, wd = 1
+
+2009-11-1 19:39:24	*** /home/dest/Bureau is now watched, wd = 2
+
+2009-11-1 19:39:24	*** /home/dest/Bureau/ocaml_inotify-0.9 is now watched, wd = 3
+
+2009-11-1 19:39:24	Repwatcher is watching youuu ! :)
+2009-11-1 19:40:5	*** /home/dest/Bureau/greg is now watched, wd = 4
+
+2009-11-1 19:40:13	4 n'est plus enfant de 2
+
+2009-11-1 19:40:13	*** /home/dest/Bureau/greg, wd = 4 is not watched anymore
+
