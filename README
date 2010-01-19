@@ -1,14 +1,12 @@
 This is the master file.
 
-At this time, the repo has 2 branches:
+At this time, the repo has 3 branches:
+	- Master
 	- RW1 (stable)
 	- RW2 (under dev)
 
-I agree with you, these are 2 original names.
-
 To check them out, please proceed like this:
-git checkout <branch>
+git checkout --track origin/<branch>
 
-For example : git checkout RW1
-
+For example : git checkout --track origin/RW1
 
