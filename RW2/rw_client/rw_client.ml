@@ -79,7 +79,13 @@ let _ =
 	       let msg = String.sub buf 0 data_recv in
 		 
 		 if msg <> "rw_server_exit" then
-		   ignore (Unix.system ("notify-send -i /usr/share/pixmaps/nobody.png Repwatcher '"^msg^"'"))
+		   begin
+		     Printf.printf "Recu '%s'" msg;
+		     Pervasives.flush Pervasives.stdout;
+		     ignore (Unix.system (
+			       "notify-send -i /usr/share/pixmaps/nobody.png Repwatcher '"^msg^"'")
+			    );
+		   end
 		 else
 		   loop := false
 	     else
