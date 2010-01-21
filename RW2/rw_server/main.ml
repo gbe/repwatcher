@@ -89,7 +89,10 @@ let get_key path_target =
 let get_winfo wd =
   try
     Hashtbl.find ht_iwatched wd
-  with Not_found -> failwith "Error in main - Hashtbl.find -> impossible to find the key"
+  with Not_found ->
+    let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
+    notify err ;
+    failwith err
 ;;
 
 
@@ -176,7 +179,7 @@ let add_watch_children l_children =
 
 let del_watch wd =
 
-  printf "CONNARD\n";
+  printf "CONNARD à supprimer: %d\n" (int_of_wd wd);
   Pervasives.flush Pervasives.stdout;
 
   (* Check if the wd is still in the hashtable *)
@@ -268,6 +271,7 @@ let init () =
     
     let dirs = List.map (
       fun dir ->
+	(* If the directory name ends with a '/' then it is deleted *)
 	if String.get dir ((String.length dir) -1) = '/' then
 	  String.sub dir 0 ((String.length dir)-1)
 	else dir)
@@ -298,21 +302,17 @@ let init () =
 
 
 
-
-
-(* Clear the hashtable
- * Reload the config file
- * Reset the watch
- *)
-let reinit () =
+ (* Clear the hashtable
+  * Reload the config file
+  * Reset the watch
+  *)
+let reinit() =
   Hashtbl.iter (fun wd _ -> del_watch wd ) ht_iwatched;
   Hashtbl.clear ht_iwatched;
   init ()
 
 
-
- 
-    
+   
 let what_to_do event conf =
   let (wd, tel, _, str_opt) = event in
 
@@ -355,6 +355,7 @@ let what_to_do event conf =
 					       
 					       List.iter (
 						 fun file ->
+						   (* À vérifier pourquoi il y a ce test *)
 						   if not (List.mem (wd,file) !f_accessed) then
 						     begin
 						       printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
@@ -372,7 +373,7 @@ let what_to_do event conf =
 						 * this event is triggered and the conf file loses its watch *)
 		                                 if is_config_file wd then
 						   begin
-						     reinit ();
+						     reinit();
 						     Printf.printf "Configuration file modified and REwatch it\n"
 						   end
 
