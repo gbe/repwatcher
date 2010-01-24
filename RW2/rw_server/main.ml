@@ -3,6 +3,7 @@
 - Ajouter le SQL
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
+- Revoir tout ce qui concerne le init et reinit
 
 *)
 
@@ -46,9 +47,37 @@ let fd = Inotify.init()
 
 let (tor,tow) = Unix.pipe()
 
+(* FUNCTIONS *)
 
-let notify txt =
+let rec get_key path_target =
+  let key = ref None in 
+    Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
 
+    match !key with
+      | None -> let err = ("error get_key with "^path_target^" not found") in log err ; failwith err
+      | Some k -> k
+and
+
+
+get_winfo wd =
+  try
+    Hashtbl.find ht_iwatched wd
+  with Not_found ->
+    let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
+    log err ;
+    failwith err
+and
+
+
+(* Check if the watch is for a config file *)
+is_config_file wd =
+  let info = get_winfo wd in
+    info.conf
+and
+
+
+
+date () =
   let date = (localtime(time())) in
 
   (* Starts in 1900 *)
@@ -61,63 +90,27 @@ let notify txt =
   let second = string_of_int date.tm_sec in
   
   (* 2008-01-19 16:21:00 *)
-  let f_date = Printf.sprintf "%s-%s-%s %s:%s:%s" year month day hour minute second in
+  Printf.sprintf "%s-%s-%s %s:%s:%s" year month day hour minute second
+and
 
-  Printf.printf "Notify: %s\n" txt;
 
-  let to_log = Printf.sprintf "%s\t%s" f_date txt in
 
-  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) (*;  
-    
+log txt =
+  let to_log = Printf.sprintf "%s\t%s" (date()) txt in
+  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
+and
+
+
+
+notify txt =
+  Printf.printf "Notify: %s\n" txt;  
   (* Send in the pipe for the server to send to the clients *)
   ignore (Unix.write tow txt 0 (String.length txt))
-*)
 ;;
 
 	
       
-let get_key path_target =
-  let key = ref None in 
-    Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
 
-    match !key with
-      | None -> let err = ("error get_key with "^path_target^" not found") in notify err ; failwith err
-      | Some k -> k
-;;
-
-
-let get_winfo wd =
-  try
-    Hashtbl.find ht_iwatched wd
-  with Not_found ->
-    let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
-    notify err ;
-    failwith err
-;;
-
-
-(* Check if the watch is for a config file *)
-let is_config_file wd =
-  let info = get_winfo wd in
-    info.conf
-;;
-
-
-(* Add one child in the father's list *)
-let add_child wd_father wd_child =
-  let f_father_info = get_winfo wd_father in
-  let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
-    Hashtbl.replace ht_iwatched wd_father new_f_f_info
-;;
-
-
-(* Delete one child from the father's list *)
-let del_child wd_father wd_child =
-  let f_father_info = get_winfo wd_father in
-  let l_new_children = List.filter (fun wd_c -> if wd_c = wd_child then false else true) f_father_info.wd_children in
-  let new_f_f_info = { f_father_info with wd_children = l_new_children } in
-    Hashtbl.replace ht_iwatched wd_father new_f_f_info
-;;
 
 
 let add_watch path2watch wd_father_opt is_config_file =
@@ -130,7 +123,7 @@ let add_watch path2watch wd_father_opt is_config_file =
       begin
 	let error = "Error: "^path2watch^" is already watched" in
 	prerr_endline error;
-	notify error
+	log error
       end
 (* the folder is not alreay watched therefore we can start watching it *)
     else
@@ -153,16 +146,23 @@ let add_watch path2watch wd_father_opt is_config_file =
 
 	    | Some wd_father ->
 		Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
-		add_child wd_father wd	  
+
+		(* Update a father's wd list with the new child *)
+		let add_child wd_father wd_child =
+		  let f_father_info = get_winfo wd_father in
+		  let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
+		    Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		in
+		  add_child wd_father wd	  
 	  )
 	  ;
 	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	    notify txt
+	    log txt
   
       with Failure err ->
 	(let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
 	prerr_endline error;
-	notify error
+	log error
 	)
 ;;
 
@@ -185,16 +185,17 @@ let del_watch wd =
   (* Check if the wd is still in the hashtable *)
   if Hashtbl.mem ht_iwatched wd then
     begin 
-      let target = (get_winfo wd).path in
 	
       (* Get wd's father so we can delete wd from its father's children list *)
       let wd_father_opt = (get_winfo wd).wd_father in
 	  
+      (* Leave it here because it used in the try and the with *)
+      let wd_path = (get_winfo wd).path in
+
 	try
-	Hashtbl.iter (fun key _ -> printf "Wd: %d\n" (int_of_wd key)) ht_iwatched;
+(*	Hashtbl.iter (fun key _ -> printf "Wd: %d\n" (int_of_wd key)) ht_iwatched;
 	  Pervasives.flush Pervasives.stdout;
-	  
-	  ignore (Inotify.rm_watch fd wd);
+*)  
 	  Hashtbl.remove ht_iwatched wd;
 	  
 	  (* Match on wd_father_opt to know if this wd has a father *)
@@ -202,19 +203,28 @@ let del_watch wd =
 	  begin
 	    match wd_father_opt with
 	      | None -> printf "NULL\n"
-	      | Some wd_father -> printf "blaaaa\n" ; Pervasives.flush Pervasives.stdout ; del_child wd_father wd;
+	      | Some wd_father ->
+
+		  (* Delete one child from the father's list *)
+		  let del_child wd_father wd_child =
+		    let f_father_info = get_winfo wd_father in
+		    let l_new_children = List.filter (fun wd_c -> if wd_c = wd_child then false else true) f_father_info.wd_children in
+		    let new_f_f_info = { f_father_info with wd_children = l_new_children } in
+		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		  in
+		    del_child wd_father wd;
 		  let txt = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		    notify txt
+		    log txt
 	  end;
-	  
-	  let txt = sprintf "*** %s, wd = %d is not watched anymore\n" target (int_of_wd wd) in
-	    notify txt ;
+
+	  let txt = sprintf "*** %s, wd = %d is not watched anymore\n" wd_path (int_of_wd wd) in
+	    log txt ;
 
 	with Failure err ->
 	  begin
-	    let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the target concerned: '%s' et wd=%d\n" err target (int_of_wd wd) in
+	    let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the target concerned: '%s' et wd=%d\n" err wd_path (int_of_wd wd) in
 	    (*  prerr_endline error; *)
-	      notify error
+	      log error
 	  end
     end
 ;;
@@ -289,11 +299,11 @@ let init () =
 	  begin
 	    let error = "Error '"^dir^"' is NOT a directory" in
 	    prerr_endline error;
-	    notify error
+	    log error
 	  end
 	with Sys_error e -> (let error = "Error: "^e in 
 			       prerr_endline error;
-			       notify error
+			       log error
 			    )
     ) dirs 
   in
@@ -450,12 +460,12 @@ let what_to_do event conf =
 					     
 					     (* Remove the watch on the children and descendants *)
 					     List.iter (fun wd_child ->
-							      notify ("move_from du child : "^(get_winfo wd_child).path) ;
+							      log ("move_from du child : "^(get_winfo wd_child).path) ;
 							      del_watch wd_child
 						       ) children_and_descendants;
 					     (* and then on the father which is the root folder moved *)
 					     
-					     notify ("move_from de "^nom);
+					     log ("move_from de "^nom);
 					     del_watch wd_key
 					
 	(*	| Move_self, _          -> if Hashtbl.mem ht_iwatched wd then
@@ -476,38 +486,38 @@ let what_to_do event conf =
 					       List.iter (fun wd_child ->
 							    if Hashtbl.mem ht_iwatched wd_child then
 							      begin
-								notify ("move_self du child : "^(get_winfo wd_child).path) ;
+								log ("move_self du child : "^(get_winfo wd_child).path) ;
 								del_watch wd_child
 							      end
 							 ) children_and_descendants;
 					   
 					       (* and then on the father which is the root folder moved *)
-					       notify ("move_self de "^nom);
+					       log ("move_self de "^nom);
 					       del_watch wd
 					   end
 	
 		| Delete_self, false    ->   print_endline "DELETE SELF !!!!";
 	*)	                             
 
-		| Ignored, _            -> if Hashtbl.mem ht_iwatched wd then
+		| Ignored, _            -> () (* if Hashtbl.mem ht_iwatched wd then *)
 
 		                                (* To avoid an error when updating the configuration file.
 						 * It's kind of a hack.
 						 * Sometimes when you change several times the configuration file,
 						 * this event is triggered and the conf file loses its watch *)
-		                                 if is_config_file wd then
+		                                 (* if is_config_file wd then
 						   begin
 						     reinit ();
 						     let reinit = sprintf "Configuration file modified and REwatch it\n" in
-						       notify reinit
-						   end
+						       log reinit
+						   end *)
 						     (*	 else
 							 begin
-							 notify ("Ignored : "^(get_winfo wd).path) ;
+							 log ("Ignored : "^(get_winfo wd).path) ;
 							 del_watch_confirmed wd
 							 end
 						     *)
-
+					   
 		| _ -> failwith ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet.")
 	  end
   
@@ -540,7 +550,7 @@ let _ =
 
 
   (* Load the configuration file and then watch the directories given in it *)
-  init ();
+  (* init (); *)
 
 
   match Unix.fork() with
@@ -560,7 +570,8 @@ let _ =
 	    Pervasives.flush Pervasives.stdout;
 	    
 	    notify "Repwatcher is watching youuu ! :)";
-	    
+	    log "Repwatcher is watching youuu ! :)";	    
+
 	    let i = ref 0 in
 	      
 	      while true do
