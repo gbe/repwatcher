@@ -1,4 +1,4 @@
-CMX= lexer_conf.cmx parser_conf.cmx configuration.cmx file_list.cmx ssl_server.cmx main.cmx
+CMX= lexer_conf.cmx parser_conf.cmx configuration.cmx file_list.cmx ssl_server.cmx core.cmx main.cmx
 GENERATED = lexer_conf.ml parser_conf.ml parser_conf.mli
 BIN=ino
 FLAGS=-dtypes -linkpkg -package mysql,ssl,inotify
@@ -26,7 +26,7 @@ $(BIN):$(CMX)
 	ocamlyacc -v $<
 
 clean:
-	rm -f main.cmi *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED) parser_conf.output .depend log.txt
+	rm -f *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED) parser_conf.output .depend log.txt
 
 .depend depend:$(GENERATED)
 	rm -f .depend
