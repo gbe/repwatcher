@@ -4,6 +4,7 @@
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
 - Revoir tout ce qui concerne le init et reinit
+- L'appel à log n'est pas supposé se faire depuis Core mais depuis main. Il faut donc enlever les failwith et capturer autrement les exceptions
 
 *)
 
@@ -73,12 +74,12 @@ let init () =
 	else (* is not *)
 	  begin
 	    let error = "Error '"^dir^"' is NOT a directory" in
-	    prerr_endline error(*;
-	    log error*)
+	    prerr_endline error ;
+	    Go.log error
 	  end
 	with Sys_error e -> (let error = "Error: "^e in 
-			       prerr_endline error(*;
-			       log error*)
+			       prerr_endline error ;
+			       Go.log error
 			    )
     ) dirs 
   in
@@ -101,7 +102,7 @@ let _ =
 
 
   (* Load the configuration file and then watch the directories given in it *)
-  (* init (); *)
+  init ();
 
 
   match Unix.fork() with
@@ -130,8 +131,12 @@ let _ =
 				  print_endline ("---------\n");
 			       *)
 			       
-			       ignore (Core.what_to_do event conf)
-		
+			       let txt_l_2_Log_Notify = Core.what_to_do event conf in
+				List.iter (fun txt -> 
+					    match txt with
+					    | Notify t -> Go.notify t
+					    | Log    t -> ()
+				) txt_l_2_Log_Notify;
 
 			    ) event_l;
 	      done;

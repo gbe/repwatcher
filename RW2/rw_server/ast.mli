@@ -27,3 +27,6 @@ type f_fichier = {
 }
 
 type fichiers = f_fichier list
+
+type toGo   = Notify of string | Log of string
+type toGo_l = toGo list
