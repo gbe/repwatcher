@@ -39,15 +39,7 @@ let ht_iwatched = Hashtbl.create 4001
 let f_accessed  = ref []
 
 
-let print_ht () =
-    Hashtbl.iter (fun key value -> 
-		    printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
-		    List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
-		  ) ht_iwatched 
-;;
-
 (* FUNCTIONS *)
-
 let get_key path_target =
   let key = ref None in 
     Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
@@ -56,6 +48,7 @@ let get_key path_target =
       | None -> let err = ("error get_key with "^path_target^" not found") in Go.log err ; failwith err
       | Some k -> k
 ;;
+
 
 
 let get_winfo wd =
@@ -68,6 +61,7 @@ let get_winfo wd =
 ;;
 
 
+
 (* Check if the watch is for a config file *)
 let is_config_file wd =
   let info = get_winfo wd in
@@ -75,73 +69,6 @@ let is_config_file wd =
 ;;
 
 	
-      
-
-
-
-let add_watch path2watch wd_father_opt is_config_file =
-
-  (* Check if the folder is not already watched *)  
-  let already_exist = ref false in
-  Hashtbl.iter (fun _ value -> if value.path = path2watch then already_exist := true else ()) ht_iwatched;
-		  
-    if !already_exist then
-      begin
-	let error = "Error: "^path2watch^" is already watched" in
-	prerr_endline error ;
-	Go.log error
-      end
-(* the folder is not alreay watched therefore we can start watching it *)
-    else
-      try
-	(* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
-	let wd =
-	  if is_config_file then
-	    Inotify.add_watch fd path2watch [S_Close_write]
-	  else
-	    Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
-	in 
-
-	  (* if the wd has a father, the entry in the hashtable is different *)
-	  (match wd_father_opt with
-	      None ->
-		if is_config_file then
-		  Hashtbl.add ht_iwatched wd {conf = true ; path = path2watch; wd_father = None; wd_children = []}
-		else
-		  Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
-
-	    | Some wd_father ->
-		Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
-
-		(* Update a father's wd list with the new child *)
-		let add_child wd_father wd_child =
-		  let f_father_info = get_winfo wd_father in
-		  let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
-		    Hashtbl.replace ht_iwatched wd_father new_f_f_info
-		in
-		  add_child wd_father wd	  
-	  )
-	  ;
-	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	    print_string txt
-  
-      with Failure err ->
-	(let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
-	prerr_endline error (*;
-	log error*)
-	)
-;;
-
-     
-let add_watch_children l_children =
-
-  List.iter (fun f ->
-	       let folder_path = Filename.dirname f in
-	       let wd_father = get_key folder_path in
-	       add_watch f (Some wd_father) false
-	    ) l_children
-;;
-
 
 let del_watch wd =
 
@@ -202,6 +129,93 @@ let del_watch wd =
 
 
 
+
+
+
+
+
+ (* Clear the hashtable
+  * Reload the config file
+  * Reset the watch
+  *)
+(*let reinit fd =
+  Hashtbl.iter (fun wd _ -> del_watch wd ) ht_iwatched;
+  Hashtbl.clear ht_iwatched;
+  init fd
+*)
+
+module Core =
+struct
+
+(* fd is now viewable from the outside *)
+let fd = fd ;;
+
+let add_watch path2watch wd_father_opt is_config_file =
+
+  (* Check if the folder is not already watched *)  
+  let already_exist = ref false in
+  Hashtbl.iter (fun _ value -> if value.path = path2watch then already_exist := true else ()) ht_iwatched;
+		  
+    if !already_exist then
+      begin
+	let error = "Error: "^path2watch^" is already watched" in
+	prerr_endline error ;
+	Go.log error
+      end
+(* the folder is not alreay watched therefore we can start watching it *)
+    else
+      try
+	(* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
+	let wd =
+	  if is_config_file then
+	    Inotify.add_watch fd path2watch [S_Close_write]
+	  else
+	    Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
+	in 
+
+	  (* if the wd has a father, the entry in the hashtable is different *)
+	  (match wd_father_opt with
+	      None ->
+		if is_config_file then
+		  Hashtbl.add ht_iwatched wd {conf = true ; path = path2watch; wd_father = None; wd_children = []}
+		else
+		  Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
+
+	    | Some wd_father ->
+		Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
+
+		(* Update a father's wd list with the new child *)
+		let add_child wd_father wd_child =
+		  let f_father_info = get_winfo wd_father in
+		  let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
+		    Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		in
+		  add_child wd_father wd	  
+	  )
+	  ;
+	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
+	    print_string txt
+  
+      with Failure err ->
+	(let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
+	prerr_endline error (*;
+	log error*)
+	)
+;;
+
+     
+
+let add_watch_children l_children =
+
+  List.iter (fun f ->
+	       let folder_path = Filename.dirname f in
+	       let wd_father = get_key folder_path in
+	       add_watch f (Some wd_father) false
+	    ) l_children
+;;
+
+
+
 (* List the subfolders of a folder *)
 let ls_children path_folder =
   let ic = Unix.open_process_in ("ls -1 -R "^(Filename.quote path_folder)^" | grep :$") in
@@ -223,25 +237,15 @@ let ls_children path_folder =
 
 
 
+let print_ht () =
+    Hashtbl.iter (fun key value -> 
+		    printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
+		    List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
+		  ) ht_iwatched 
+;;
+  
+ 
 
-
-
-   
-
-
-
-
- (* Clear the hashtable
-  * Reload the config file
-  * Reset the watch
-  *)
-(*let reinit fd =
-  Hashtbl.iter (fun wd _ -> del_watch wd ) ht_iwatched;
-  Hashtbl.clear ht_iwatched;
-  init fd
-*)
-
-   
 let what_to_do event conf =
   let (wd, tel, _, str_opt) = event in
 
@@ -441,8 +445,11 @@ let what_to_do event conf =
 	  end
   
   in
-    action tel false
-    
+    action tel false;
+    printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
+    Pervasives.flush Pervasives.stdout
+
+end;;    
 
 
 
