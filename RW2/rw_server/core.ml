@@ -1,3 +1,23 @@
+(*
+    This file is part of Repwatcher.
+
+    Repwatcher is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    Repwatcher is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Repwatcher; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+*)
+
+
 
 open Printf
 open Inotify
@@ -5,58 +25,51 @@ open Inotify
 open Ast
 open Ast_conf
 
-
-(* Attention, en double avec le main *)
-let conf = ref {
-  c_directories = [] ;
-  c_mode = Unwanted_programs ;
-  c_specified_programs = [] ; 
-  c_unwanted_programs = [] ;
-  c_sql = {
-    dbhost = None ;
-    dbname = None ;
-    dbport = None ;
-    dbpwd  = None ;
-    dbuser = None ;
-  }
+type w_info = {
+  conf         : bool;
+  path         : string;
+  wd_father    : Inotify.wd option;
+  wd_children  : Inotify.wd list
 }
 
 
 
-
-let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
-
-(* Attention, en double avec le main *)
+let fd = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
-
 let f_accessed  = ref []
 
 
+let print_ht () =
+    Hashtbl.iter (fun key value -> 
+		    printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
+		    List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
+		  ) ht_iwatched 
+;;
 
 (* FUNCTIONS *)
 
-let rec get_key path_target =
+let get_key path_target =
   let key = ref None in 
     Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
 
     match !key with
-      | None -> let err = ("error get_key with "^path_target^" not found") in (* log err ;*) failwith err
+      | None -> let err = ("error get_key with "^path_target^" not found") in Go.log err ; failwith err
       | Some k -> k
-and
+;;
 
 
-get_winfo wd =
+let get_winfo wd =
   try
     Hashtbl.find ht_iwatched wd
   with Not_found ->
     let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
-    (* log err ;*)
+    Go.log err ;
     failwith err
-and
+;;
 
 
 (* Check if the watch is for a config file *)
-is_config_file wd =
+let is_config_file wd =
   let info = get_winfo wd in
     info.conf
 ;;
@@ -66,7 +79,7 @@ is_config_file wd =
 
 
 
-let add_watch path2watch wd_father_opt is_config_file fd =
+let add_watch path2watch wd_father_opt is_config_file =
 
   (* Check if the folder is not already watched *)  
   let already_exist = ref false in
@@ -75,8 +88,8 @@ let add_watch path2watch wd_father_opt is_config_file fd =
     if !already_exist then
       begin
 	let error = "Error: "^path2watch^" is already watched" in
-	prerr_endline error(*;
-	log error*)
+	prerr_endline error ;
+	Go.log error
       end
 (* the folder is not alreay watched therefore we can start watching it *)
     else
@@ -120,12 +133,12 @@ let add_watch path2watch wd_father_opt is_config_file fd =
 ;;
 
      
-let add_watch_children l_children fd =
+let add_watch_children l_children =
 
   List.iter (fun f ->
 	       let folder_path = Filename.dirname f in
 	       let wd_father = get_key folder_path in
-	       add_watch f (Some wd_father) false fd
+	       add_watch f (Some wd_father) false
 	    ) l_children
 ;;
 
@@ -167,17 +180,19 @@ let del_watch wd =
 		  in
 		    del_child wd_father wd;
 		  let txt = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		    (* log txt *) print_string txt
+		    Go.log txt ;
+		    print_string txt
 	  end;
 
 	  let txt = sprintf "*** %s, wd = %d is not watched anymore\n" wd_path (int_of_wd wd) in
-	    (* log txt ; *) print_string txt ;
+	    Go.log txt ;
+	    print_string txt ;
 
 	with Failure err ->
 	  begin
 	    let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the target concerned: '%s' et wd=%d\n" err wd_path (int_of_wd wd) in
-	      prerr_endline error(*; 
-	      log error *)
+	      prerr_endline error ; 
+	      Go.log error
 	  end
     end
 ;;
@@ -212,56 +227,7 @@ let ls_children path_folder =
 
 
    
-(* Check if the config exists and then
- * - Parse it
- * - Put a watch on it
- *
- * Then watch the directories
- *)
-let init fd =
 
-  let load_config () =
-    if Sys.file_exists config_file then
-      begin
-	(* Get the configuration file *)
-	conf := Configuration.parse_config config_file;
-	add_watch config_file None true fd
-      end
-  in
-
-  (* Set the watch on the directories *) 
-  let set_watches () =   
-    
-    let dirs = List.map (
-      fun dir ->
-	(* If the directory name ends with a '/' then it is deleted *)
-	if String.get dir ((String.length dir) -1) = '/' then
-	  String.sub dir 0 ((String.length dir)-1)
-	else dir)
-      !conf.c_directories
-    in
-      
-    List.iter (
-      fun dir ->
-	try
-	  if Sys.is_directory dir then
-	    let _ = add_watch dir None false in
-	    let l = ls_children dir in
-	      add_watch_children l fd  
-	else (* is not *)
-	  begin
-	    let error = "Error '"^dir^"' is NOT a directory" in
-	    prerr_endline error(*;
-	    log error*)
-	  end
-	with Sys_error e -> (let error = "Error: "^e in 
-			       prerr_endline error(*;
-			       log error*)
-			    )
-    ) dirs 
-  in
-    load_config ();
-    set_watches ()
 
 
 
@@ -269,14 +235,14 @@ let init fd =
   * Reload the config file
   * Reset the watch
   *)
-let reinit fd =
+(*let reinit fd =
   Hashtbl.iter (fun wd _ -> del_watch wd ) ht_iwatched;
   Hashtbl.clear ht_iwatched;
   init fd
-
+*)
 
    
-let what_to_do event conf fd =
+let what_to_do event conf =
   let (wd, tel, _, str_opt) = event in
 
   let nom =
@@ -336,7 +302,7 @@ let what_to_do event conf fd =
 						 * this event is triggered and the conf file loses its watch *)
 		                                 if is_config_file wd then
 						   begin
-						     reinit fd;
+						     (* reinit fd; *)
 						     Printf.printf "Configuration file modified and REwatch it\n"
 						   end
 
@@ -378,15 +344,15 @@ let what_to_do event conf fd =
 
 		| Create, false         -> ()
 		| Create, true          -> let folder = (get_winfo wd).path in
-		                           add_watch (folder^"/"^nom) (Some wd) false fd
+		                           add_watch (folder^"/"^nom) (Some wd) false
 
 
 		| Moved_to, true        -> let folder = ((get_winfo wd).path)^"/"^nom in
 		                           let children = ls_children folder in
 					     (* Watch the new folder *)
-                               		    add_watch folder (Some wd) false fd;
+                               		    add_watch folder (Some wd) false ;
 					     (* Then the folder's children *)
-					     add_watch_children children fd
+					     add_watch_children children
 
 		| Moved_to, false       -> () (* Probablement les mêmes conditions que moved_from, false *)
 
@@ -413,12 +379,12 @@ let what_to_do event conf fd =
 					     
 					     (* Remove the watch on the children and descendants *)
 					     List.iter (fun wd_child ->
-							     (* log ("move_from du child : "^(get_winfo wd_child).path) ; *)
+							     Go.log ("move_from du child : "^(get_winfo wd_child).path) ;
 							      del_watch wd_child
 						       ) children_and_descendants;
 					     (* and then on the father which is the root folder moved *)
 					     
-					     (* log ("move_from de "^nom); *)
+					     Go.log ("move_from de "^nom);
 					     del_watch wd_key
 					
 	(*	| Move_self, _          -> if Hashtbl.mem ht_iwatched wd then

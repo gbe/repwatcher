@@ -10,18 +10,12 @@
 
 
 open Unix
-open Inotify
 open Printf
 
 open Ast
 open Ast_conf
 
-(* Attention en double avec core *)
-let ht_iwatched = Hashtbl.create 4001
-let fd = Inotify.init()
-let (tor,tow) = Unix.pipe()
 
-(* Attention en double avec core *)
 let conf = ref {
   c_directories = [] ;
   c_mode = Unwanted_programs ;
@@ -36,37 +30,62 @@ let conf = ref {
   }
 }
 
-
-
-let date () =
-  let date = (localtime(time())) in
-
-  (* Starts in 1900 *)
-  let year = string_of_int (1900 + date.tm_year) in
-    (* month = 0..11 *)
-  let month = string_of_int (1 + date.tm_mon) in
-  let day = string_of_int date.tm_mday in
-  let hour = string_of_int date.tm_hour in
-  let minute = string_of_int date.tm_min in
-  let second = string_of_int date.tm_sec in
-  
-  (* 2008-01-19 16:21:00 *)
-  sprintf "%s-%s-%s %s:%s:%s" year month day hour minute second
-;;
-
-
-let log txt =
-  let to_log = Printf.sprintf "%s\t%s" (date()) txt in
-  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
-;;
+let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
 
 
 
-let notify txt =
-  printf "Notify: %s\n" txt;  
-  (* Send in the pipe for the server to send to the clients *)
-  ignore (Unix.write tow txt 0 (String.length txt))
-;;
+(* Check if the config exists and then
+ * - Parse it
+ * - Put a watch on it
+ *
+ * Then watch the directories
+ *)
+let init () =
+
+  let load_config () =
+    if Sys.file_exists config_file then
+      begin
+	(* Get the configuration file *)
+	conf := Configuration.parse_config config_file;
+	Core.add_watch config_file None true
+      end
+  in
+
+  (* Set the watch on the directories *) 
+  let set_watches () =   
+    
+    let dirs = List.map (
+      fun dir ->
+	(* If the directory name ends with a '/' then it is deleted *)
+	if String.get dir ((String.length dir) -1) = '/' then
+	  String.sub dir 0 ((String.length dir)-1)
+	else dir)
+      !conf.c_directories
+    in
+      
+    List.iter (
+      fun dir ->
+	try
+	  if Sys.is_directory dir then
+	    let _ = Core.add_watch dir None false in
+	    let l = Core.ls_children dir in
+	      Core.add_watch_children l
+	else (* is not *)
+	  begin
+	    let error = "Error '"^dir^"' is NOT a directory" in
+	    prerr_endline error(*;
+	    log error*)
+	  end
+	with Sys_error e -> (let error = "Error: "^e in 
+			       prerr_endline error(*;
+			       log error*)
+			    )
+    ) dirs 
+  in
+    load_config ();
+    set_watches ()
+
+
 
 
 (* Fonction main *)
@@ -86,28 +105,21 @@ let _ =
 
 
   match Unix.fork() with
-    | 0 -> Ssl_server.run tor
+    | 0 -> Ssl_server.run Go.tor
     | _ ->
 	begin
-	  
-	  let print_ht () =
-	    Hashtbl.iter (fun key value -> 
-			    printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
-			    List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
-			 ) ht_iwatched 
-	  in
-	    
-	    print_ht ();
+	      
+	    Core.print_ht ();
 	    
 	    Pervasives.flush Pervasives.stdout;
 	    
-	    notify "Repwatcher is watching youuu ! :)";
-	    log "Repwatcher is watching youuu ! :)";	    
+	    Go.notify "Repwatcher is watching youuu ! :)";
+	    Go.log "Repwatcher is watching youuu ! :)";	    
      
 	      while true do
 		
-		let _,_,_ = Unix.select [ fd ] [] [] (-1.) in
-		let event_l = Inotify.read fd in
+		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+		let event_l = Inotify.read Core.fd in
 		  
 		  List.iter (fun event ->
 			       
@@ -118,12 +130,12 @@ let _ =
 				  print_endline ("---------\n");
 			       *)
 			       
-			       let _ = Core.what_to_do event conf fd in
+			       let _ = Core.what_to_do event conf in
 		
-				 printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
+				 printf "Hashtable :%d\n" (Hashtbl.length Core.ht_iwatched);
 				 Pervasives.flush Pervasives.stdout
 			    ) event_l;
 	      done;
 	      
-	      Unix.close fd
+	      Unix.close Core.fd
 	end

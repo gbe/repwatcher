@@ -18,8 +18,6 @@
 *)
 
 
-open Inotify
-
 type f_fichier = {
   f_name: string;
   f_path: string;
@@ -29,10 +27,3 @@ type f_fichier = {
 }
 
 type fichiers = f_fichier list
-
-type w_info = {
-  conf         : bool;
-  path         : string;
-  wd_father    : wd option;
-  wd_children  : wd list
-}
