@@ -32,8 +32,7 @@ type w_info = {
   wd_children  : Inotify.wd list
 }
 
-
-
+let toGol = ref []
 let fd = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
 let f_accessed  = ref []
@@ -146,6 +145,9 @@ let del_watch wd =
 
 module Core =
 struct
+
+(*type toGo = toGo2
+type toGo_l = toGo_l2*)
 
 (* fd is now viewable from the outside *)
 let fd = fd ;;
@@ -292,7 +294,7 @@ let what_to_do event conf =
 						   if not (List.mem (wd,file) !f_accessed) then
 						     begin
 						       printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
-						       (* notify (file.f_login^": "^nom); *)							 
+						       toGol := Notify (file.f_login^": "^nom) :: !toGol ;							 
 						       f_accessed := (wd,file)::(!f_accessed)
 						     end
 							     
@@ -340,7 +342,7 @@ let what_to_do event conf =
 			
 			f_accessed := l_still_in_progr;
 			List.iter (fun (_, f_file) -> 
-				    ()(* notify ( f_file.f_login^": "^f_file.f_name^" finished") *)
+				    toGol := Notify (f_file.f_login^": "^f_file.f_name^" finished") :: !toGol ;
 				  ) l_stop_access
 		    
 
@@ -447,7 +449,16 @@ let what_to_do event conf =
   in
     action tel false;
     printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
-    Pervasives.flush Pervasives.stdout
+    Pervasives.flush Pervasives.stdout;
+    
+    (* Store toGol inside a temporary var so as to cleanly wipe toGol and still
+    be able to return what it contained *)
+    let ret_toGol = !toGol in
+    toGol := [];
+    ret_toGol
+;;
+
+
 
 end;;    
 
