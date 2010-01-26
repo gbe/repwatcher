@@ -14,7 +14,7 @@ open Printf
 
 open Ast
 open Ast_conf
-
+open Core
 
 let conf = ref {
   c_directories = [] ;
@@ -130,10 +130,9 @@ let _ =
 				  print_endline ("---------\n");
 			       *)
 			       
-			       let _ = Core.what_to_do event conf in
+			       ignore (Core.what_to_do event conf)
 		
-				 printf "Hashtable :%d\n" (Hashtbl.length Core.ht_iwatched);
-				 Pervasives.flush Pervasives.stdout
+
 			    ) event_l;
 	      done;
 	      
