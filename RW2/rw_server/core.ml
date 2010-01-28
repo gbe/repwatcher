@@ -32,13 +32,18 @@ type w_info = {
   wd_children  : Inotify.wd list
 }
 
-let toGol = ref []
+let report_l = ref []
 let fd = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
 let f_accessed  = ref []
 
 
 (* FUNCTIONS *)
+
+let add_report report =
+  report_l := !report_l @ [report]
+;;
+
 let get_key path_target =
   let key = ref None in 
     Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
@@ -106,19 +111,19 @@ let del_watch wd =
 		  in
 		    del_child wd_father wd;
 		  let txt = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		    Go.log txt ;
+		    add_report (Log txt) ;
 		    print_string txt
 	  end;
 
 	  let txt = sprintf "*** %s, wd = %d is not watched anymore\n" wd_path (int_of_wd wd) in
-	    Go.log txt ;
+	    add_report (Log txt) ;
 	    print_string txt ;
 
 	with Failure err ->
 	  begin
 	    let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the target concerned: '%s' et wd=%d\n" err wd_path (int_of_wd wd) in
 	      prerr_endline error ; 
-	      Go.log error
+	      add_report (Log error) ;
 	  end
     end
 ;;
@@ -146,9 +151,6 @@ let del_watch wd =
 module Core =
 struct
 
-(*type toGo = toGo2
-type toGo_l = toGo_l2*)
-
 (* fd is now viewable from the outside *)
 let fd = fd ;;
 
@@ -162,7 +164,7 @@ let add_watch path2watch wd_father_opt is_config_file =
       begin
 	let error = "Error: "^path2watch^" is already watched" in
 	prerr_endline error ;
-	Go.log error
+	add_report (Log error) ;
       end
 (* the folder is not alreay watched therefore we can start watching it *)
     else
@@ -196,7 +198,8 @@ let add_watch path2watch wd_father_opt is_config_file =
 	  )
 	  ;
 	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	    print_string txt
+	  add_report (Log txt) ;
+	  print_string txt
   
       with Failure err ->
 	(let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
@@ -294,7 +297,7 @@ let what_to_do event conf =
 						   if not (List.mem (wd,file) !f_accessed) then
 						     begin
 						       printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
-						       toGol := Notify (file.f_login^": "^nom) :: !toGol ;							 
+						       add_report ( Notify (file.f_login^": "^nom) ) ;
 						       f_accessed := (wd,file)::(!f_accessed)
 						     end
 							     
@@ -342,7 +345,7 @@ let what_to_do event conf =
 			
 			f_accessed := l_still_in_progr;
 			List.iter (fun (_, f_file) -> 
-				    toGol := Notify (f_file.f_login^": "^f_file.f_name^" finished") :: !toGol ;
+				    add_report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") ) ;
 				  ) l_stop_access
 		    
 
@@ -385,12 +388,12 @@ let what_to_do event conf =
 					     
 					     (* Remove the watch on the children and descendants *)
 					     List.iter (fun wd_child ->
-							     Go.log ("move_from du child : "^(get_winfo wd_child).path) ;
+							      add_report ( Log ("move_from du child : "^(get_winfo wd_child).path) ) ;
 							      del_watch wd_child
 						       ) children_and_descendants;
 					     (* and then on the father which is the root folder moved *)
 					     
-					     Go.log ("move_from de "^nom);
+					     add_report ( Log ("move_from de "^nom) ) ;
 					     del_watch wd_key
 					
 	(*	| Move_self, _          -> if Hashtbl.mem ht_iwatched wd then
@@ -443,7 +446,7 @@ let what_to_do event conf =
 							 end
 						     *)
 					   
-		| _ -> failwith ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet.")
+		| _ -> add_report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet."))
 	  end
   
   in
@@ -451,11 +454,11 @@ let what_to_do event conf =
     printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
     Pervasives.flush Pervasives.stdout;
     
-    (* Store toGol inside a temporary var so as to cleanly wipe toGol and still
+    (* Store report_l inside a temporary var so as to cleanly wipe report_l and still
     be able to return what it contained *)
-    let ret_toGol = !toGol in
-    toGol := [];
-    ret_toGol
+    let ret_report_l = !report_l in
+    report_l := [];
+    ret_report_l
 ;;
 
 
