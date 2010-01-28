@@ -123,19 +123,12 @@ let _ =
 		let event_l = Inotify.read Core.fd in
 		  
 		  List.iter (fun event ->
-			       
-			       (* let (_,tel,_,_) = event in
-				  
-				  print_endline ("\n-------");
-				  List.iter (fun type_event -> print_endline (string_of_event type_event) ) tel;
-				  print_endline ("---------\n");
-			       *)
-			       
+			            
 			       let txt_l_2_Log_Notify = Core.what_to_do event conf in
 				List.iter (fun txt -> 
 					    match txt with
 					    | Notify t -> Go.notify t
-					    | Log    t -> ()
+					    | Log    t -> Go.log t
 				) txt_l_2_Log_Notify;
 
 			    ) event_l;

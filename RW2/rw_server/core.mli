@@ -1,8 +1,5 @@
 module Core :
 sig
-	(*type toGo
-	type toGo_l*)
-
 	val fd : Unix.file_descr
 
 	val add_watch : string -> Inotify.wd option -> bool -> unit
