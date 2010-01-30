@@ -6,6 +6,6 @@ sig
 	val add_watch_children : string list -> unit
 	val ls_children : string -> string list
 	val print_ht : unit -> unit
-	val what_to_do : Inotify.event -> Ast_conf.configuration ref -> Ast.toGo_l
+	val what_to_do : Inotify.event -> Ast_conf.configuration -> Ast.toGo_l
 end
 
