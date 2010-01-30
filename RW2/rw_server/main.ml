@@ -3,7 +3,7 @@
 - Ajouter le SQL
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
-- Revoir tout ce qui concerne le init et reinit
+- Revoir tout ce qui concerne le reinit
 - L'appel à log n'est pas supposé se faire depuis Core mais depuis main. Il faut donc enlever les failwith et capturer autrement les exceptions
 - Revoir tout le système d'erreur pour toutes les fonctions qui pourraient en provoquer et créer un nouveau type pour tester des codes de retour
 *)
