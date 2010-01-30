@@ -5,7 +5,7 @@
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
 - Revoir tout ce qui concerne le init et reinit
 - L'appel à log n'est pas supposé se faire depuis Core mais depuis main. Il faut donc enlever les failwith et capturer autrement les exceptions
-
+- Revoir tout le système d'erreur pour toutes les fonctions qui pourraient en provoquer et créer un nouveau type pour tester des codes de retour
 *)
 
 
@@ -17,6 +17,7 @@ open Ast
 open Ast_conf
 open Core
 
+(*
 let conf = ref {
   c_directories = [] ;
   c_mode = Unwanted_programs ;
@@ -30,6 +31,7 @@ let conf = ref {
     dbuser = None ;
   }
 }
+*)
 
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
 
@@ -44,16 +46,20 @@ let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *
 let init () =
 
   let load_config () =
-    if Sys.file_exists config_file then
-      begin
-	(* Get the configuration file *)
-	conf := Configuration.parse_config config_file;
-	Core.add_watch config_file None true
-      end
-  in
+
+      if Sys.file_exists config_file then
+	begin
+	  (* Get the configuration file *)
+	  let conf = Configuration.parse_config config_file in
+	  Core.add_watch config_file None true;
+	  conf
+	end
+      else
+	failwith "Config file doesn't exist"
+    in
 
   (* Set the watch on the directories *) 
-  let set_watches () =   
+  let set_watches conf =   
     
     let dirs = List.map (
       fun dir ->
@@ -61,7 +67,7 @@ let init () =
 	if String.get dir ((String.length dir) -1) = '/' then
 	  String.sub dir 0 ((String.length dir)-1)
 	else dir)
-      !conf.c_directories
+      conf.c_directories
     in
       
     List.iter (
@@ -83,9 +89,10 @@ let init () =
 			    )
     ) dirs 
   in
-    load_config ();
-    set_watches ()
-
+  
+  let conf = load_config () in
+  set_watches conf ;
+  conf
 
 
 
@@ -102,7 +109,7 @@ let _ =
 
 
   (* Load the configuration file and then watch the directories given in it *)
-  init ();
+  let conf = init () in
 
 
   match Unix.fork() with
@@ -136,3 +143,4 @@ let _ =
 	      
 	      Unix.close Core.fd
 	end
+;;

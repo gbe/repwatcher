@@ -51,10 +51,10 @@ let filter conf unfiltred_l =
   
   (* Check wether we're in specified mode or unwanted mode  *)      
   (* Remove all the files which the program is not in the specified_programs list *)
-  match !conf.c_mode with
+  match conf.c_mode with
     | Specified_programs ->
 	
-	let l_prog_filtered = List.filter (fun file -> List.mem file.f_prog_source !conf.c_specified_programs) unfiltred_l in
+	let l_prog_filtered = List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltred_l in
 	  
 	  (* Filtre les répertoires et retourne la liste des files à insérer *)
 	  List.filter (
@@ -63,7 +63,7 @@ let filter conf unfiltred_l =
 	      List.exists (fun directory ->
 			     let rexp = Str.regexp directory in
 			       Str.string_match rexp file.f_path 0
-			  ) !conf.c_directories			   
+			  ) conf.c_directories			   
 	  ) l_prog_filtered		    			   
 	    
 	    
@@ -72,7 +72,7 @@ let filter conf unfiltred_l =
     | Unwanted_programs ->
 	
 	(* Enlève les programmes que l'on ne veut pas *)
-	let l_prog_filtered = List.filter (fun file -> if List.mem file.f_prog_source !conf.c_unwanted_programs then false else true) unfiltred_l in
+	let l_prog_filtered = List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltred_l in
 	  
 	  (* Filtre les répertoires et retourne la liste des files à insérer *)
 	  List.filter (
@@ -81,6 +81,6 @@ let filter conf unfiltred_l =
 	      List.exists (fun directory ->
 			     let rexp = Str.regexp directory in
 			       Str.string_match rexp file.f_path 0
-			  ) !conf.c_directories
+			  ) conf.c_directories
 	  ) l_prog_filtered	
 	    
