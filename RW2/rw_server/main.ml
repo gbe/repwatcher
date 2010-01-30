@@ -17,21 +17,7 @@ open Ast
 open Ast_conf
 open Core
 
-(*
-let conf = ref {
-  c_directories = [] ;
-  c_mode = Unwanted_programs ;
-  c_specified_programs = [] ; 
-  c_unwanted_programs = [] ;
-  c_sql = {
-    dbhost = None ;
-    dbname = None ;
-    dbport = None ;
-    dbpwd  = None ;
-    dbuser = None ;
-  }
-}
-*)
+
 
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
 
@@ -83,10 +69,10 @@ let init () =
 	    prerr_endline error ;
 	    Go.log error
 	  end
-	with Sys_error e -> (let error = "Error: "^e in 
+	(* No such file or directory *)
+	with Sys_error e -> let error = "Error: "^e in 
 			       prerr_endline error ;
 			       Go.log error
-			    )
     ) dirs 
   in
   
