@@ -36,7 +36,7 @@ let init () =
       if Sys.file_exists config_file then
 	begin
 	  (* Get the configuration file *)
-	  let conf = Configuration.parse_config config_file in
+	  let conf = Parse_conf.parse_config config_file in
 	  Core.add_watch config_file None true;
 	  conf
 	end

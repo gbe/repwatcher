@@ -35,11 +35,11 @@ let parse_config config_file =
   let c = open_in config_file in
   let lb = Lexing.from_channel c in
     try
-      let conf = Parser_conf.deb Lexer_conf.nexttoken lb in
+      let conf = Parser.deb Lexer.nexttoken lb in
 	close_in c;
 	conf    
     with
-      | Lexer_conf.Lexing_error s -> 
+      | Lexer.Lexing_error s -> 
 	  localisation (lexeme_start_p lb, lexeme_end_p lb) config_file;
 	  eprintf "lexical error in the configuration file repwatcher.conf: %s\n@." s;
 	  exit 1
