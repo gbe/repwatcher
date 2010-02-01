@@ -111,13 +111,11 @@ let del_watch wd =
 		  in
 		    del_child wd_father wd;
 		  let txt = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		    add_report (Log txt) ;
-		    print_string txt
+		    add_report (Log txt)
 	  end;
 
 	  let txt = sprintf "*** %s, wd = %d is not watched anymore\n" wd_path (int_of_wd wd) in
-	    add_report (Log txt) ;
-	    print_string txt ;
+	    add_report (Log txt)
 
 	with Failure err ->
 	  begin
@@ -166,46 +164,51 @@ let add_watch path2watch wd_father_opt is_config_file =
 	prerr_endline error ;
 	add_report (Log error) ;
       end
-(* the folder is not alreay watched therefore we can start watching it *)
+    (* the folder is not alreay watched therefore we can start watching it *)
     else
-      try
-	(* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
-	let wd =
-	  if is_config_file then
-	    Inotify.add_watch fd path2watch [S_Close_write]
-	  else
-	    Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
-	in 
+      if Sys.file_exists path2watch then
+	try
+	  (* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
+	  let wd =
+	    if is_config_file then
+	      Inotify.add_watch fd path2watch [S_Close_write] (* 2 cases : Close_write and Ignored. it depends on the editor used to modidy it *)
+	    else
+	      Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
+	  in 
 
-	  (* if the wd has a father, the entry in the hashtable is different *)
-	  (match wd_father_opt with
-	      None ->
-		if is_config_file then
-		  Hashtbl.add ht_iwatched wd {conf = true ; path = path2watch; wd_father = None; wd_children = []}
-		else
-		  Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
-
-	    | Some wd_father ->
-		Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
-
-		(* Update a father's wd list with the new child *)
-		let add_child wd_father wd_child =
-		  let f_father_info = get_winfo wd_father in
-		  let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
-		    Hashtbl.replace ht_iwatched wd_father new_f_f_info
-		in
-		  add_child wd_father wd	  
-	  )
-	  ;
-	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	  add_report (Log txt) ;
-	  print_string txt
+	    (* if the wd has a father, the entry in the hashtable is different *)
+	    (match wd_father_opt with
+		None ->
+		  if is_config_file then
+		    Hashtbl.add ht_iwatched wd {conf = true ; path = path2watch; wd_father = None; wd_children = []}
+		  else
+		    Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
   
-      with Failure err ->
-	(let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
-	prerr_endline error (*;
-	log error*)
-	)
+	      | Some wd_father ->
+		  Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
+  
+		  (* Update a father's wd list with the new child *)
+		  let add_child wd_father wd_child =
+		    let f_father_info = get_winfo wd_father in
+		    let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
+		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		  in
+		    add_child wd_father wd	  
+	    )
+	    ;
+	    let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
+	    add_report (Log txt)
+  
+	with Failure err ->
+	  (let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n" in
+	  prerr_endline error ;
+	  add_report (Log error)
+	  )
+      else
+	begin
+	  let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
+	  add_report (Log error)
+	end
 ;;
 
      
@@ -312,7 +315,7 @@ let what_to_do event conf =
 		                                 if is_config_file wd then
 						   begin
 						     (* reinit fd; *)
-						     Printf.printf "Configuration file modified and REwatch it\n"
+						     add_report (Log "Configuration file modified and REwatch it")
 						   end
 
 
@@ -427,24 +430,17 @@ let what_to_do event conf =
 		| Delete_self, false    ->   print_endline "DELETE SELF !!!!";
 	*)	                             
 
-		| Ignored, _            -> () (* if Hashtbl.mem ht_iwatched wd then *)
+		| Ignored, _            -> if Hashtbl.mem ht_iwatched wd then
 
 		                                (* To avoid an error when updating the configuration file.
 						 * It's kind of a hack.
 						 * Sometimes when you change several times the configuration file,
 						 * this event is triggered and the conf file loses its watch *)
-		                                 (* if is_config_file wd then
+		                                 if is_config_file wd then
 						   begin
-						     reinit ();
-						     let reinit = sprintf "Configuration file modified and REwatch it\n" in
-						      (* log reinit *)
-						   end *)
-						     (*	 else
-							 begin
-							 (* log ("Ignored : "^(get_winfo wd).path) ; *)
-							 del_watch_confirmed wd
-							 end
-						     *)
+						    (* reinit (); *)
+						     add_report (Log "Configuration file modified and REwatch it")
+						   end
 					   
 		| _ -> add_report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet."))
 	  end
