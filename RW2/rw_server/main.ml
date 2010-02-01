@@ -37,6 +37,7 @@ let init () =
 	begin
 	  (* Get the configuration file *)
 	  let conf = Parse_conf.parse_config config_file in
+	  (* Watch it *)
 	  Core.add_watch config_file None true;
 	  conf
 	end

@@ -21,6 +21,8 @@ let date () =
 
 let log txt =
   let to_log = Printf.sprintf "%s\t%s" (date()) txt in
+  Printf.printf "LOG: %s\n" to_log   ;
+  Pervasives.flush Pervasives.stdout ;
   ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
 ;;
 
