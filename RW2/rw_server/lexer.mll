@@ -21,7 +21,7 @@
 
 {
   open Lexing
-  open Parser_conf
+  open Parser
    
   exception Lexing_error of string
   let newline lexbuf =

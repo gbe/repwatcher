@@ -41,7 +41,7 @@ let get channel =
       with _ -> close_in channel
     end;
     !l
-
+;;
 
 
 
@@ -83,4 +83,4 @@ let filter conf unfiltred_l =
 			       Str.string_match rexp file.f_path 0
 			  ) conf.c_directories
 	  ) l_prog_filtered	
-	    
+;;	    
