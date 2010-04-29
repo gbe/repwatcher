@@ -24,6 +24,8 @@ open Inotify
 
 open Ast
 open Ast_conf
+open Report
+
 
 type w_info = {
   conf         : bool;
@@ -34,7 +36,6 @@ type w_info = {
 
 exception No_Result;;
 
-let report_l    = ref []
 let fd          = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
 let f_accessed  = ref []
@@ -42,16 +43,12 @@ let f_accessed  = ref []
 
 (* FUNCTIONS *)
 
-let add_report report =
-  report_l := !report_l @ [report]
-;;
-
 let get_key path_target =
   let key = ref None in 
     Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
     
     match !key with
-      | None -> let err = ("error get_key with "^path_target^" not found") in Report.log err ; raise No_Result
+      | None -> let err = ("error get_key with "^path_target^" not found") in Report.report (Log err) ; raise No_Result
       | Some k -> k
 ;;
 
@@ -62,7 +59,7 @@ let get_winfo wd =
     Hashtbl.find ht_iwatched wd
   with Not_found ->
     let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
-      Report.log err ;
+      Report.report (Log err) ;
       raise No_Result
 ;;
 
@@ -113,18 +110,18 @@ let del_watch wd =
 		    del_child wd_father wd;
 		    
 		    let report = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		      add_report (Log report)
+		      Report.report (Log report)
 	  end;
 	  
 	  let report = sprintf "*** %s, wd = %d is not watched anymore\n" wd_path (int_of_wd wd) in
-	    add_report (Log report) 
+	    Report.report (Log report) 
       with 
 	| Failure err ->
 	    let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the wd_target concerned: %d\n" err (int_of_wd wd) in
 	      prerr_endline error ; 
-	      add_report (Log error)
+	      Report.report (Log error)
 		
-	| No_Result -> add_report (Log "Oops. Can't delete a wd because I can't retrieve data on it although it is in the hashtable")
+	| No_Result -> Report.report (Log "Oops. Can't delete a wd because I can't retrieve data on it although it is in the hashtable")
 
 	    
     end
@@ -152,7 +149,7 @@ let add_watch path2watch wd_father_opt is_config_file =
       begin
 	let error = "Error: "^path2watch^" is already watched" in
 	  prerr_endline error ;
-	  add_report (Log error) ;
+	  Report.report (Log error) ;
       end
 	(* the folder is not alreay watched therefore we can start watching it *)
     else
@@ -183,13 +180,13 @@ let add_watch path2watch wd_father_opt is_config_file =
 		       let f_father_info = get_winfo wd_father in
 		       let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
 		       	 Hashtbl.replace ht_iwatched wd_father new_f_f_info
-		     with No_Result -> add_report (Log "Exception triggered: addwatch")
+		     with No_Result -> Report.report (Log "Exception triggered: addwatch")
 		   in
 		     add_child wd_father wd	  
 	    )
 	    ;
 	    let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	      add_report (Log txt)
+	      Report.report (Log txt)
 		
 	with Failure err ->
 	  begin
@@ -197,12 +194,12 @@ let add_watch path2watch wd_father_opt is_config_file =
 	  					Here is the directory concerned: '"^path2watch^"'\n"
 	    in
 	      prerr_endline error ;
-	      add_report (Log error)
+	      Report.report (Log error)
 	  end
       else
 	begin
 	  let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
-	    add_report (Log error)
+	    Report.report (Log error)
 	end
 ;;
 
@@ -215,7 +212,7 @@ let add_watch_children l_children =
 		 try
 		   let wd_father = get_key folder_path in
 		     add_watch f (Some wd_father) false
-		 with No_Result -> add_report (Log "Oops. Can't start watching a children list because I can't find their wd's father based on his path")
+		 with No_Result -> Report.report (Log "Oops. Can't start watching a children list because I can't find their wd's father based on his path")
 	    ) l_children
 ;;
 
@@ -299,12 +296,12 @@ let what_to_do event conf =
 						       if not (List.mem (wd,file) !f_accessed) then
 						  	 begin
 						    	   printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
-						    	   add_report ( Notify (file.f_login^": "^name) ) ;
+						    	   Report.report ( Notify (file.f_login^": "^name) ) ;
 						    	   f_accessed := (wd,file)::(!f_accessed)
 						  	 end
 					    	   ) l_filtered
 					   with No_Result -> let report = sprintf "%s was opened but its wd could not be found\n" name in
-					                     add_report (Log report)
+					                     Report.report (Log report)
 					 end
 					      
 	      | Close_write, false    ->
@@ -318,8 +315,8 @@ let what_to_do event conf =
 					     try
 		                               if is_config_file wd then
 					      	 (* reinit fd; *)
-					       	 add_report (Log "Configuration file modified and REwatch it")
-					     with No_Result -> add_report (Log "Oops. This error was not supposed to happen.")
+					       	 Report.report (Log "Configuration file modified and REwatch it")
+					     with No_Result -> Report.report (Log "Oops. This error was not supposed to happen.")
 					   end
 
 	      | Close_nowrite, true   -> ()
@@ -350,9 +347,9 @@ let what_to_do event conf =
 					  	in
 						  
 					    	f_accessed := l_still_in_progr;
-					    	  List.iter (fun (_, f_file) -> add_report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") ) ) l_stop_access
+					    	  List.iter (fun (_, f_file) -> Report.report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") ) ) l_stop_access
 		    			  with No_Result -> let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
-					                    add_report (Log report)
+					                    Report.report (Log report)
 		    			end
 
 	      | Create, false         -> ()
@@ -363,7 +360,7 @@ let what_to_do event conf =
 	      				     let folder = (get_winfo wd).path in
 		                               add_watch (folder^"/"^name) (Some wd) false
 		                           with No_Result -> let report = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
-					                     add_report (Log report)
+					                     Report.report (Log report)
 					 end
 					   
 	      | Moved_to, true        ->
@@ -376,7 +373,7 @@ let what_to_do event conf =
 					       (* Then the folder's children *)
 					       add_watch_children children
 					   with No_Result -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
-					                     add_report (Log report)
+					                     Report.report (Log report)
 
 					 end
 											
@@ -389,7 +386,7 @@ let what_to_do event conf =
                                              let wd_key = get_key (folder^"/"^name) in
 		                               del_watch wd_key
 					   with No_Result -> let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
-					                     add_report (Log report)
+					                     Report.report (Log report)
 		                         end
 
 	      | Moved_from, false     -> () (* Declenché quand on modifie un fichier existant et quand on renomme un fichier *)
@@ -414,14 +411,14 @@ let what_to_do event conf =
 					       
 					       (* Remove the watch on the children and descendants *)
 					       List.iter (fun wd_child ->
-							    add_report ( Log ("move_from du child : "^(get_winfo wd_child).path) ) ;
+							    Report.report ( Log ("move_from du child : "^(get_winfo wd_child).path) ) ;
 							    del_watch wd_child
 							 ) children_and_descendants;
 					       
-					       add_report ( Log ("move_from de "^name) ) ;
+					       Report.report ( Log ("move_from de "^name) ) ;
 					       del_watch wd_key
 					   with No_Result -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
-					                     add_report (Log report)
+					                     Report.report (Log report)
 					 end
 					   
 	(*	| Move_self, _          -> if Hashtbl.mem ht_iwatched wd then
@@ -465,11 +462,11 @@ let what_to_do event conf =
 						 	try
 		                                 if is_config_file wd then
 						    (* reinit (); *)
-						     add_report (Log "Configuration file modified and REwatch it")
+						     Report.report (Log "Configuration file modified and REwatch it")
 						     with No_Result -> () (* I don't care about this part for the moment *)
 						   end
 					   
-		| _ -> add_report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet."))
+		| _ -> Report.report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet."))
 	  end
   
   in
@@ -477,11 +474,6 @@ let what_to_do event conf =
     printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
     Pervasives.flush Pervasives.stdout;
     
-    (* Store report_l inside a temporary var so as to cleanly wipe report_l and still
-    be able to return what it contained *)
-    let ret_report_l = !report_l in
-    report_l := [];
-    ret_report_l
 ;;
 
 
