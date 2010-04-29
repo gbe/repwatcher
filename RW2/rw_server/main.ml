@@ -15,7 +15,7 @@ open Printf
 open Ast
 open Ast_conf
 open Core
-
+open Report
 
 
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
@@ -67,12 +67,12 @@ let init () =
 	  begin
 	    let error = "Error '"^dir^"' is NOT a directory" in
 	    prerr_endline error ;
-	    Report.log error
+	    Report.report (Log error)
 	  end
 	(* No such file or directory *)
 	with Sys_error e -> let error = "Error: "^e in 
 			       prerr_endline error ;
-			       Report.log error
+			       Report.report (Log error)
     ) dirs 
   in
   
@@ -107,24 +107,15 @@ let _ =
 	    
 	    Pervasives.flush Pervasives.stdout;
 	    
-	    Report.notify "Repwatcher is watching youuu ! :)";
-	    Report.log "Repwatcher is watching youuu ! :)";	    
+	    Report.report (Notify "Repwatcher is watching youuu ! :)") ;
+	    Report.report (Log "Repwatcher is watching youuu ! :)") ;	    
      
 	      while true do
 		
 		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
 		let event_l = Inotify.read Core.fd in
 		  
-		  List.iter (fun event ->
-			            
-			       let txt_l_2_Log_Notify = Core.what_to_do event conf in
-				List.iter (fun txt -> 
-					    match txt with
-					    | Notify t -> Report.notify t
-					    | Log    t -> Report.log t
-				) txt_l_2_Log_Notify;
-
-			    ) event_l;
+		  List.iter (fun event -> Core.what_to_do event conf) event_l;
 	      done;
 	      
 	      Unix.close Core.fd

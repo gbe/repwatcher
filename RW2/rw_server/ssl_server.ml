@@ -1,4 +1,6 @@
 open Unix
+open Ast
+open Report
 
 
 let certfile = ref "cert/rw_serv.crt"
@@ -48,7 +50,7 @@ let run tor =
 	try 
 	  Ssl.output_string sock txt;
 	  Printf.printf "Sent '%s'\n" txt;
-	  Report.log ("Sent '"^txt^"'");
+	  Report.report (Log ("Sent '"^txt^"'"));
 	  Pervasives.flush Pervasives.stdout
 	    
 	with Ssl.Write_error _ ->
