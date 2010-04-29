@@ -6,16 +6,10 @@ let date () =
   let date = (localtime(time())) in
 
   (* Starts in 1900 *)
-  let year = string_of_int (1900 + date.tm_year) in
-    (* month = 0..11 *)
-  let month = string_of_int (1 + date.tm_mon) in
-  let day = string_of_int date.tm_mday in
-  let hour = string_of_int date.tm_hour in
-  let minute = string_of_int date.tm_min in
-  let second = string_of_int date.tm_sec in
-  
+  (* month = 0..11 *)
+
   (* 2008-01-19 16:21:00 *)
-  Printf.sprintf "%s-%s-%s %s:%s:%s" year month day hour minute second
+  Printf.sprintf "%d-%d-%d %d:%d:%d" (1900 + date.tm_year) (1 + date.tm_mon) date.tm_mday date.tm_hour date.tm_min date.tm_sec
 ;;
 
 
