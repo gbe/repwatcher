@@ -48,7 +48,7 @@ let run tor =
 	try 
 	  Ssl.output_string sock txt;
 	  Printf.printf "Sent '%s'\n" txt;
-	  Go.log ("Sent '"^txt^"'");
+	  Report.log ("Sent '"^txt^"'");
 	  Pervasives.flush Pervasives.stdout
 	    
 	with Ssl.Write_error _ ->
