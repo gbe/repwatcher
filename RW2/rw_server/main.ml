@@ -3,7 +3,6 @@
 - Ajouter le SQL
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
-- L'appel à log n'est pas supposé se faire depuis Core mais depuis main.
 - Dans report.ml, revoir le système des erreurs. Mettre des numéros d'erreur et appeler directement dans Report les erreurs. Enlever les add_report depuis Core.ml
 *)
 
