@@ -3,9 +3,8 @@
 - Ajouter le SQL
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
-- Revoir tout ce qui concerne le reinit
 - L'appel à log n'est pas supposé se faire depuis Core mais depuis main.
-- Poursuivre le boulot commencé sur les exceptions dans le core
+- Dans report.ml, revoir le système des erreurs. Mettre des numéros d'erreur et appeler directement dans Report les erreurs. Enlever les add_report depuis Core.ml
 *)
 
 
@@ -68,12 +67,12 @@ let init () =
 	  begin
 	    let error = "Error '"^dir^"' is NOT a directory" in
 	    prerr_endline error ;
-	    Go.log error
+	    Report.log error
 	  end
 	(* No such file or directory *)
 	with Sys_error e -> let error = "Error: "^e in 
 			       prerr_endline error ;
-			       Go.log error
+			       Report.log error
     ) dirs 
   in
   
@@ -100,7 +99,7 @@ let _ =
 
 
   match Unix.fork() with
-    | 0 -> Ssl_server.run Go.tor
+    | 0 -> Ssl_server.run Report.tor
     | _ ->
 	begin
 	      
@@ -108,8 +107,8 @@ let _ =
 	    
 	    Pervasives.flush Pervasives.stdout;
 	    
-	    Go.notify "Repwatcher is watching youuu ! :)";
-	    Go.log "Repwatcher is watching youuu ! :)";	    
+	    Report.notify "Repwatcher is watching youuu ! :)";
+	    Report.log "Repwatcher is watching youuu ! :)";	    
      
 	      while true do
 		
@@ -121,8 +120,8 @@ let _ =
 			       let txt_l_2_Log_Notify = Core.what_to_do event conf in
 				List.iter (fun txt -> 
 					    match txt with
-					    | Notify t -> Go.notify t
-					    | Log    t -> Go.log t
+					    | Notify t -> Report.notify t
+					    | Log    t -> Report.log t
 				) txt_l_2_Log_Notify;
 
 			    ) event_l;
