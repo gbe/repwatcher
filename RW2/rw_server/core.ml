@@ -315,7 +315,8 @@ let what_to_do event conf =
 					     try
 		                               if is_config_file wd then
 					      	 (* reinit fd; *)
-					       	 Report.report (Log "Configuration file modified and REwatch it")
+					       	 Report.report (Log "Configuration file modified and REwatch it");
+						print_ht ();
 					     with No_Result -> Report.report (Log "Oops. This error was not supposed to happen.")
 					   end
 
@@ -452,19 +453,21 @@ let what_to_do event conf =
 		| Delete_self, false    ->   print_endline "DELETE SELF !!!!";
 	*)	                             
 
-		| Ignored, _            -> if Hashtbl.mem ht_iwatched wd then
+		| Ignored, _            -> (* When IGNORED is triggered it means the wd is not watched anymore. Therefore, we need to take this wd out of the Hashtbl *)
+		                           if Hashtbl.mem ht_iwatched wd then
 
 		                                (* To avoid an error when updating the configuration file.
 						 * It's kind of a hack.
 						 * Sometimes when you change several times the configuration file,
 						 * this event is triggered and the conf file loses its watch *)
-						 	begin
-						 	try
-		                                 if is_config_file wd then
-						    (* reinit (); *)
-						     Report.report (Log "Configuration file modified and REwatch it")
-						     with No_Result -> () (* I don't care about this part for the moment *)
-						   end
+		                            begin
+					      try
+		                                if is_config_file wd then
+						  (* reinit (); *)
+						  Report.report (Log "Configuration file modified and REwatch it");
+						print_ht ();
+					      with No_Result -> () (* I don't care about this part for the moment *)
+					    end
 					   
 		| _ -> Report.report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet."))
 	  end

@@ -29,7 +29,7 @@ let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *
  *)
 let init () =
 
-  let load_config () =
+  let load_and_watch_config () =
 
       if Sys.file_exists config_file then
 	begin
@@ -44,15 +44,15 @@ let init () =
     in
 
   (* Set the watch on the directories *) 
-  let set_watches conf =   
+  let watch_dirs directories =   
     
-    let dirs = List.map (
+    let ldirs = List.map (
       fun dir ->
 	(* If the directory name ends with a '/' then it is deleted *)
 	if String.get dir ((String.length dir) -1) = '/' then
 	  String.sub dir 0 ((String.length dir)-1)
 	else dir)
-      conf.c_directories
+      directories
     in
       
     List.iter (
@@ -72,11 +72,11 @@ let init () =
 	with Sys_error e -> let error = "Error: "^e in 
 			       prerr_endline error ;
 			       Report.report (Log error)
-    ) dirs 
+    ) ldirs 
   in
   
-  let conf = load_config () in
-  set_watches conf ;
+  let conf = load_and_watch_config () in
+  watch_dirs conf.c_directories ;
   conf
 
 
