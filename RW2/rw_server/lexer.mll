@@ -65,6 +65,10 @@ rule nexttoken = parse
   | "sql_host"            { SQL_HOST } 
   | "sql_port"            { SQL_PORT }
   | "sql_dbname"          { SQL_DBNAME }
+  | "notify_locally"      { NOTIFY_LOCALLY }
+  | "notify_remotely"     { NOTIFY_REMOTELY }
+  | "Y"                   { YES }
+  | "N"                   { NO }
   | eof                   { EOF }
   | '\n'                  { newline lexbuf; nexttoken lexbuf }
   | space+                { nexttoken lexbuf }

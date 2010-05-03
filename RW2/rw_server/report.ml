@@ -15,6 +15,8 @@ let log txt =
 
 let notify txt =
   Printf.printf "Notify: %s\n" txt;  
+
+  
   (* Send in the pipe for the server to send to the clients *)
   ignore (Unix.write tow txt 0 (String.length txt))
 ;;

@@ -33,5 +33,7 @@ type configuration={
   c_mode : mode;
   c_specified_programs : string list;
   c_unwanted_programs : string list;
-  c_sql : sql_db
+  c_sql : sql_db;
+  c_notify_loc : bool;
+  c_notify_rem : bool;
 }
