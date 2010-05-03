@@ -4,6 +4,8 @@
 - Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
 - Dans report.ml, revoir le système des erreurs. Mettre des numéros d'erreur et appeler directement dans Report les erreurs. Enlever les add_report depuis Core.ml
+- Ajouter deux options : pour notifier localement et/ou activer le serveur
+- Déplacer l'initalisation de la configuration afin de pouvoir la récupérer dans report et ajouter un test pour les notifications
 *)
 
 
@@ -96,9 +98,14 @@ let _ =
   (* Load the configuration file and then watch the directories given in it *)
   let conf = init () in
 
+  let fd = match conf.c_notify_rem with
+  | true  -> Report.report (Log "Start server for remote notifications") ; Unix.fork()
+  | false -> -1
+  in
 
-  match Unix.fork() with
-    | 0 -> Ssl_server.run Report.tor
+
+  match fd with
+    | 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor else ()
     | _ ->
 	begin
 	      

@@ -37,6 +37,10 @@
 %token SQL_HOST
 %token SQL_PORT
 %token SQL_DBNAME
+%token NOTIFY_LOCALLY
+%token NOTIFY_REMOTELY
+%token YES
+%token NO
 %token <string>TXT
 %token <string>DIGITS
 %token EOF 
@@ -61,6 +65,8 @@
  SQL_HOST EQUAL txt
  SQL_PORT EQUAL digits_int_option
  SQL_DBNAME EQUAL txt_or_digits
+ NOTIFY_LOCALLY EQUAL yes_or_no
+ NOTIFY_REMOTELY EQUAL yes_or_no
  EOF { 
       {
 	c_directories = $3;
@@ -74,6 +80,8 @@
 	  dbpwd  = Some $18;
 	  dbuser = Some $15;
 	};
+       c_notify_loc = $30;
+       c_notify_rem = $33
       }
     }
   ;
@@ -115,3 +123,9 @@ txt_digits_list_star:
 txt_digits_list:
 | txt_or_digits { [$1] }
 | txt_digits_list PVIRGULE txt_or_digits { $3::$1 }
+;
+
+yes_or_no:
+| DQUOTE YES DQUOTE { true  }
+| DQUOTE NO DQUOTE  { false }
+;
