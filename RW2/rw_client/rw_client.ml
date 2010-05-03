@@ -80,7 +80,7 @@ let _ =
 		 
 		 if msg <> "rw_server_exit" then
 		   begin
-		     Printf.printf "Recu '%s'" msg;
+		     Printf.printf "Recu '%s'\n" msg;
 		     Pervasives.flush Pervasives.stdout;
 		     ignore (Unix.system (
 			       "notify-send -i /usr/share/pixmaps/nobody.png Repwatcher '"^msg^"'")
