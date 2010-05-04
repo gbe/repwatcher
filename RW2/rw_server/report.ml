@@ -1,6 +1,6 @@
 open Unix
 open Ast
-
+open Ast_conf
 
 let (tor,tow) = Unix.pipe()
 
@@ -15,10 +15,15 @@ let log txt =
 
 let notify txt =
   Printf.printf "Notify: %s\n" txt;  
-
   
-  (* Send in the pipe for the server to send to the clients *)
-  ignore (Unix.write tow txt 0 (String.length txt))
+  let conf = Config.get() in
+    
+    if conf.c_notify_loc then
+      ignore (system ("notify-send -i /usr/share/pixmaps/nobody.png Repwatcher '"^txt^"'"))     
+    ;
+    if conf.c_notify_rem then
+      (* Send in the pipe for the server to send to the clients *)
+      ignore (Unix.write tow txt 0 (String.length txt))
 ;;
 
 module Report =

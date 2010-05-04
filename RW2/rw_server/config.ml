@@ -21,6 +21,8 @@
 open Lexing
 open Format
 
+let conf = ref None
+
 (* localise l'erreur en indiquant la ligne
  et la colonne *)
 let localisation (pos,e) config_file =
@@ -29,15 +31,18 @@ let localisation (pos,e) config_file =
   let lc = e.pos_cnum - pos.pos_bol + 1 in
   eprintf "Fichier \"%s\", ligne %d, caractère %d-%d:\n" config_file l c lc
 
+let get () =
+  match !conf with
+    | None -> failwith "Failed to retrieve the configuration file"
+    | Some c -> c
 
-
-let parse_config config_file =
+let parse config_file =
   let c = open_in config_file in
   let lb = Lexing.from_channel c in
     try
-      let conf = Parser.deb Lexer.nexttoken lb in
-	close_in c;
-	conf    
+      conf := Some (Parser.deb Lexer.nexttoken lb) ;
+      close_in c;
+      get()
     with
       | Lexer.Lexing_error s -> 
 	  localisation (lexeme_start_p lb, lexeme_end_p lb) config_file;
@@ -47,3 +52,5 @@ let parse_config config_file =
 	  localisation (lexeme_start_p lb, lexeme_end_p lb) config_file;
 	  eprintf "syntax error in the configuration file repwatcher.conf\n@.";
 	  exit 1
+ 
+		  

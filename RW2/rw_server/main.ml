@@ -36,7 +36,7 @@ let init () =
       if Sys.file_exists config_file then
 	begin
 	  (* Get the configuration file *)
-	  let conf = Parse_conf.parse_config config_file in
+	  let conf = Config.parse config_file in
 	  (* Watch it *)
 	  Core.add_watch config_file None true;
 	  conf
@@ -105,7 +105,7 @@ let _ =
 
 
   match fd with
-    | 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor else ()
+    | 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor
     | _ ->
 	begin
 	      
@@ -121,7 +121,7 @@ let _ =
 		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
 		let event_l = Inotify.read Core.fd in
 		  
-		  List.iter (fun event -> Core.what_to_do event conf) event_l;
+		  List.iter (fun event -> Core.what_to_do event) event_l;
 	      done;
 	      
 	      Unix.close Core.fd
