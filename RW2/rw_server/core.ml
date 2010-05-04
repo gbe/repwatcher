@@ -45,7 +45,7 @@ let f_accessed  = ref []
 
 let get_key path_target =
   let key = ref None in 
-    Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd) else ()) ht_iwatched;
+    Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd)) ht_iwatched;
     
     match !key with
       | None -> let err = ("error get_key with "^path_target^" not found") in Report.report (Log err) ; raise No_Result
@@ -248,7 +248,7 @@ let print_ht () =
 
 
 
-let what_to_do event conf =
+let what_to_do event =
   let (wd, tel, _, str_opt) = event in
     
   let name =
@@ -286,7 +286,7 @@ let what_to_do event conf =
 					       let l_opened_files = File_list.get chan in					       
 					  	 ignore (Unix.close_process_in chan);
 						 
-					  	 let l_filtered = File_list.filter conf l_opened_files in
+					  	 let l_filtered = File_list.filter l_opened_files in
 						   
 					    	   Printf.printf "[II] Opened : %d\tFiltered : %d\n" (List.length l_opened_files) (List.length l_filtered);
 						   
@@ -333,7 +333,7 @@ let what_to_do event conf =
 					      let l_opened_files = File_list.get chan in					       
 					  	ignore (Unix.close_process_in chan);
 						
-					  	let l_files_in_progress = File_list.filter conf l_opened_files in
+					  	let l_files_in_progress = File_list.filter l_opened_files in
 						  
 					  	let (l_still_in_progr, l_stop_access) =
 					    	  List.partition (fun (wd', f_file) ->

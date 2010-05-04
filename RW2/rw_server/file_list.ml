@@ -47,7 +47,9 @@ let get channel =
 
 
 (* list unfiltred -> list filtred. The filter depends on the mode *)
-let filter conf unfiltred_l =
+let filter unfiltred_l =
+
+  let conf = Config.get() in
   
   (* Check wether we're in specified mode or unwanted mode  *)      
   (* Remove all the files which the program is not in the specified_programs list *)
