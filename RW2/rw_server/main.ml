@@ -1,11 +1,8 @@
 (* TO DO
 
 - Ajouter le SQL
-- Modifier le fichier de config pour prendre en compte de nouveaux paramètres
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers (cf fichier de config donc)
 - Dans report.ml, revoir le système des erreurs. Mettre des numéros d'erreur et appeler directement dans Report les erreurs. Enlever les add_report depuis Core.ml
-- Ajouter deux options : pour notifier localement et/ou activer le serveur
-- Déplacer l'initalisation de la configuration afin de pouvoir la récupérer dans report et ajouter un test pour les notifications
 *)
 
 
