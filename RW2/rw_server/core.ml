@@ -35,6 +35,7 @@ type w_info = {
 }
 
 exception No_Result;;
+exception Found of Inotify.wd;;
 
 let fd          = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
@@ -44,17 +45,35 @@ let f_accessed  = ref []
 (* FUNCTIONS *)
 
 let get_key path_target =
-  let key = ref None in 
-    Hashtbl.iter (fun wd fi -> if fi.path = path_target then key := (Some wd)) ht_iwatched;
-    
-    match !key with
-      | None -> let err = ("error get_key with "^path_target^" not found") in Report.report (Log err) ; raise No_Result
-      | Some k -> k
+  try
+    Hashtbl.iter (fun wd fi ->
+		    if fi.path = path_target then raise (Found wd)
+		 ) ht_iwatched;
+    raise No_Result
+  with
+    | No_Result ->
+	let err = ("error get_key with "^path_target^" not found") in
+	  Report.report (Log err) ;
+	  raise No_Result
+    | Found wd -> wd
 ;;
 
 
 
-let get_winfo wd =
+(* Look in the hashtable if the value exists -> bool *)
+let is_value path_target =
+  try
+    Hashtbl.iter (fun wd fi ->
+		    if fi.path = path_target then raise (Found wd)
+		 ) ht_iwatched;
+    raise No_Result
+  with
+    | No_Result -> false
+    | Found _ -> true
+;;
+
+
+let get_value wd =
   try
     Hashtbl.find ht_iwatched wd
   with Not_found ->
@@ -68,7 +87,7 @@ let get_winfo wd =
 (* Check if the watch is for a config file *)
 let is_config_file wd =
   try
-    let info = get_winfo wd in
+    let info = get_value wd in
       info.conf
   with No_Result -> raise No_Result
 ;;
@@ -85,10 +104,10 @@ let del_watch wd =
     begin 
       try 
      	(* Get wd's father so we can delete wd from its father's children list *)
-      	let wd_father_opt = (get_winfo wd).wd_father in
+      	let wd_father_opt = (get_value wd).wd_father in
 	  
       	(* Leave it here because it is used in the try and the with *)
-      	let wd_path = (get_winfo wd).path in
+      	let wd_path = (get_value wd).path in
 	  
 	  
 	  Hashtbl.remove ht_iwatched wd;
@@ -102,7 +121,7 @@ let del_watch wd =
 		  
 		  (* Delete one child from the father's list *)
 		  let del_child wd_father wd_child =
-		    let f_father_info = get_winfo wd_father in
+		    let f_father_info = get_value wd_father in
 		    let l_new_children = List.filter (fun wd_c -> if wd_c = wd_child then false else true) f_father_info.wd_children in
 		    let new_f_f_info = { f_father_info with wd_children = l_new_children } in
 		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
@@ -142,65 +161,61 @@ let fd = fd ;;
 let add_watch path2watch wd_father_opt is_config_file =
   
   (* Check if the folder is not already watched *)  
-  let already_exist = ref false in
-    Hashtbl.iter (fun _ value -> if value.path = path2watch then already_exist := true else ()) ht_iwatched;
-    
-    if !already_exist then
-      begin
-	let error = "Error: "^path2watch^" is already watched" in
-	  prerr_endline error ;
-	  Report.report (Log error) ;
-      end
-	(* the folder is not alreay watched therefore we can start watching it *)
-    else
-      if Sys.file_exists path2watch then
-	try
-	  (* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
-	  let wd =
-	    if is_config_file then
-	      Inotify.add_watch fd path2watch [S_Close_write] (* 2 cases : Close_write and Ignored. it depends on the editor used to modidy it *)
-	    else
-	      Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
-	  in 
-	    
-	    (* if the wd has a father, the entry in the hashtable is different *)
-	    (match wd_father_opt with
-	       | None ->
-		   if is_config_file then
-		     Hashtbl.add ht_iwatched wd {conf = true  ; path = path2watch; wd_father = None; wd_children = []}
-		   else
-		     Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
-		       
-	       | Some wd_father ->
-		   Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
-		   
-		   (* Update a father's wd list with the new child *)
-		   let add_child wd_father wd_child =
-		     try
-		       let f_father_info = get_winfo wd_father in
-		       let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
-		       	 Hashtbl.replace ht_iwatched wd_father new_f_f_info
-		     with No_Result -> Report.report (Log "Exception triggered: addwatch")
-		   in
-		     add_child wd_father wd	  
-	    )
-	    ;
-	    let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	      Report.report (Log txt)
-		
-	with Failure err ->
-	  begin
-	    let error = "Error in function '"^err^"', is the name of the directory ok ?
-	  					Here is the directory concerned: '"^path2watch^"'\n"
-	    in
-	      prerr_endline error ;
-	      Report.report (Log error)
-	  end
-      else
+  if is_value path2watch then
+    begin
+      let error = "Error: "^path2watch^" is already watched" in
+	Report.report (Log error) ;
+    end
+      (* the folder is not alreay watched therefore we can start watching it *)
+  else
+    if Sys.file_exists path2watch then
+      try
+	(* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
+	let wd =
+	  if is_config_file then
+	    Inotify.add_watch fd path2watch [S_Close_write] (* 2 cases : Close_write and Ignored. it depends on the editor used to modidy it *)
+	  else
+	    Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
+	in 
+	  
+	  (* if the wd has a father, the entry in the hashtable is different *)
+	  (match wd_father_opt with
+	     | None ->
+		 if is_config_file then
+		   Hashtbl.add ht_iwatched wd {conf = true  ; path = path2watch; wd_father = None; wd_children = []}
+		 else
+		   Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
+		     
+	     | Some wd_father ->
+		 Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
+		 
+		 (* Update a father's wd list with the new child *)
+		 let add_child wd_father wd_child =
+		   try
+		     let f_father_info = get_value wd_father in
+		     let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
+		       Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		   with No_Result -> Report.report (Log "Exception triggered: addwatch")
+		 in
+		   add_child wd_father wd	  
+	  )
+	  ;
+	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
+	    Report.report (Log txt)
+	      
+      with Failure err ->
 	begin
-	  let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
+	  let error = "Error in function '"^err^"', is the name of the directory ok ?
+	  					Here is the directory concerned: '"^path2watch^"'\n"
+	  in
+	    prerr_endline error ;
 	    Report.report (Log error)
 	end
+    else
+      begin
+	let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
+	  Report.report (Log error)
+      end
 ;;
 
 
@@ -232,7 +247,9 @@ let ls_children path_folder =
 	 let folder = String.sub folder_double_dot 0 ((String.length folder_double_dot) -1) in	
 	   children := (!children)@[folder]
        done
-     with End_of_file -> let _ = Unix.close_process_in ic in print_endline "Close process"
+     with End_of_file ->
+       ignore (Unix.close_process_in ic) ;
+       print_endline "Close process"
     );
     List.tl !children
 ;;
@@ -257,8 +274,8 @@ let what_to_do event =
       | Some x -> x
   in  
     
-  let rec action type_evenement_liste is_folder =
-    match type_evenement_liste with
+  let rec action type_evenement_list is_folder =
+    match type_evenement_list with
 	[] -> ()
       | type_event::q -> 
 	  
@@ -278,7 +295,7 @@ let what_to_do event =
 	      | Open, false           -> 
 		                         begin
 					   try
-					     let folder = Filename.quote (get_winfo wd).path in
+					     let folder = Filename.quote (get_value wd).path in
 					       
 					       Printf.printf " [II] Folder: %s\n" folder;
 					       
@@ -325,7 +342,7 @@ let what_to_do event =
 		    			begin
 		    			  try
 					    (* Call lsof to know which file stopped being accessed *)
-					    let folder = Filename.quote (get_winfo wd).path in
+					    let folder = Filename.quote (get_value wd).path in
 					      
 					      Printf.printf " [II] Folder: %s\n" folder;
 					      
@@ -358,7 +375,7 @@ let what_to_do event =
 	      | Create, true          ->
 	      	                         begin
 	      				   try
-	      				     let folder = (get_winfo wd).path in
+	      				     let folder = (get_value wd).path in
 		                               add_watch (folder^"/"^name) (Some wd) false
 		                           with No_Result -> let report = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
 					                     Report.report (Log report)
@@ -367,7 +384,7 @@ let what_to_do event =
 	      | Moved_to, true        ->
 	      	                         begin
 	      				   try
-	      				     let folder = ((get_winfo wd).path)^"/"^name in
+	      				     let folder = ((get_value wd).path)^"/"^name in
 		                             let children = ls_children folder in
 					       (* Watch the new folder *)
                                		       add_watch folder (Some wd) false ;
@@ -383,7 +400,7 @@ let what_to_do event =
 	      | Delete, true          ->
 	      	                         begin
 		                           try
-		                             let folder = (get_winfo wd).path in
+		                             let folder = (get_value wd).path in
                                              let wd_key = get_key (folder^"/"^name) in
 		                               del_watch wd_key
 					   with No_Result -> let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
@@ -395,16 +412,16 @@ let what_to_do event =
 	      | Moved_from, true      ->
 	      	                         begin
 	      				   try
-	      				     let folder = (get_winfo wd).path in
-		                             let wd_key = get_key (folder^"/"^name) in					   
+	      				     let folder = (get_value wd).path in
+		                             let wd_key = get_key (folder^"/"^name) in
 					       
 					     (* Get the list of ALL the children and descendants *)
 					     let rec get_all_descendants l_children =
 					       List.fold_left (fun acc wd_child ->
-								 (get_all_descendants (get_winfo wd_child).wd_children)@[wd_child]@acc
+								 (get_all_descendants (get_value wd_child).wd_children)@[wd_child]@acc
 							      ) [] l_children
 					     in
-					     let children_and_descendants = get_all_descendants ((get_winfo wd_key).wd_children) in
+					     let children_and_descendants = get_all_descendants ((get_value wd_key).wd_children) in
 					       
 					       printf "Liste des enfants : \n";
 					       List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
@@ -412,7 +429,7 @@ let what_to_do event =
 					       
 					       (* Remove the watch on the children and descendants *)
 					       List.iter (fun wd_child ->
-							    Report.report ( Log ("move_from du child : "^(get_winfo wd_child).path) ) ;
+							    Report.report ( Log ("move_from du child : "^(get_value wd_child).path) ) ;
 							    del_watch wd_child
 							 ) children_and_descendants;
 					       
@@ -427,10 +444,10 @@ let what_to_do event =
 		                             (* Get the list of ALL the children and descendants *)
 					     let rec get_all_descendants l_children =
 					       List.fold_left (fun acc wd_child ->
-								 (get_all_descendants (get_winfo wd_child).wd_children)@[wd_child]@acc
+								 (get_all_descendants (get_value wd_child).wd_children)@[wd_child]@acc
 							      ) [] l_children
 					     in
-					     let children_and_descendants = get_all_descendants ((get_winfo wd).wd_children) in
+					     let children_and_descendants = get_all_descendants ((get_value wd).wd_children) in
 					       
 					       printf "Liste des enfants : \n";
 					       List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
@@ -440,7 +457,7 @@ let what_to_do event =
 					       List.iter (fun wd_child ->
 							    if Hashtbl.mem ht_iwatched wd_child then
 							      begin
-								(* log ("move_self du child : "^(get_winfo wd_child).path) ; *)
+								(* log ("move_self du child : "^(get_value wd_child).path) ; *)
 								del_watch wd_child
 							      end
 							 ) children_and_descendants;
