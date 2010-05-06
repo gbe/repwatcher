@@ -68,7 +68,7 @@ let run tor =
 	match socks with
 	  | None ->
 	      Mutex.lock m ;
-	      List.iter (fun (ssl_s, sockaddr_cli ) -> do_it ssl_s (get_ip sockaddr_cli)) !connected_clients;
+	      List.iter (fun (ssl_s, sockaddr_cli, _) -> do_it ssl_s (get_ip sockaddr_cli)) !connected_clients;
 	      Mutex.unlock m
 	  | Some (ssl_s, sockaddr_cli) -> do_it ssl_s (get_ip sockaddr_cli)
     in
@@ -83,7 +83,7 @@ let run tor =
       Pervasives.flush Pervasives.stdout;
       
       (* Close the clients' sockets *)
-      List.iter (fun (ssl_s,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
+      List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
       Mutex.unlock m ;
       Unix.shutdown sock SHUTDOWN_ALL;
       exit 0
@@ -108,14 +108,20 @@ let run tor =
       
       
     let client_quit sock_cli =
-      
-      Mutex.lock m ;
-      connected_clients := List.filter ( fun (s,_) -> s != sock_cli) !connected_clients;
-      Mutex.unlock m ;
 
-      Printf.printf "A client has quit\n";
-      Pervasives.flush Pervasives.stdout;
-      Ssl.shutdown sock_cli
+      let client = ref "" in      
+	
+	Mutex.lock m ;
+	connected_clients := List.filter ( fun (s,_,common_name) ->
+					     client := common_name ;
+					     s != sock_cli
+					 ) !connected_clients;
+	Mutex.unlock m ;
+	
+	let log_msg = Printf.sprintf "%s has quit\n" !client in
+	  Report.report (Log log_msg);
+	  Pervasives.flush Pervasives.stdout;
+	  Ssl.shutdown sock_cli
     in
       
 
@@ -123,9 +129,14 @@ let run tor =
       
       Printf.printf "New connection\n";      
       Printf.printf "Welcome %s\n" (get_ip sockaddr_cli);
+
+(*      let cert = Ssl.get_certificate ssl_s in
+      let subj = Ssl.get_subject cert in	
+      let lexbuf = Lexing.from_string subj in
+      let cert = Parser.start Lexer.nexttoken lexbuf in*)
       
       Mutex.lock m ;
-      connected_clients := (ssl_s, sockaddr_cli) :: !connected_clients;
+      connected_clients := (ssl_s, sockaddr_cli, "common_name") :: !connected_clients;
       Mutex.unlock m ;
 
       send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli));
