@@ -12,7 +12,15 @@ let ca = "CA/CA.crt"
 let port         = ref 9292
 let backlog      = 15
 
-
+(* Return the IP from the socket *)
+let get_ip sockaddr_cli =
+  let inet_addr_of_sockaddr = function
+    | Unix.ADDR_INET (n, _) -> n
+    | Unix.ADDR_UNIX _ -> Unix.inet_addr_any
+  in
+  let inet_addr = inet_addr_of_sockaddr sockaddr_cli  in
+    Unix.string_of_inet_addr inet_addr
+;;
 
 let run tor =
 
@@ -42,29 +50,27 @@ let run tor =
     ;
 
 
-    let send txt sock =
+    let send txt socks =
       
-      let do_it sock =
+      let do_it sock ip =
 
-	(* let sent = Unix.send sock txt 0 (String.length txt) [MSG_PEEK] in *)
 	try 
 	  Ssl.output_string sock txt;
-	  Printf.printf "Sent '%s'\n" txt;
-	  Report.report (Log ("Sent '"^txt^"'"));
-	  Pervasives.flush Pervasives.stdout
+	  let log_msg = Printf.sprintf "Sent '%s' to %s\n" txt ip in
+	    Printf.printf "%s" log_msg;
+	    Report.report (Log log_msg);
+	    Pervasives.flush Pervasives.stdout
 	    
 	with Ssl.Write_error _ ->
-	  Printf.printf "Got it 2 !! ;o)\n";
-	  Pervasives.flush Pervasives.stdout
-
+	  Report.report (Log ("SSL write error\n"))
       in
-	
-	match sock with
-	  | None   ->
+
+	match socks with
+	  | None ->
 	      Mutex.lock m ;
-	      List.iter (fun (ssl_s, _ ) -> do_it ssl_s ) !connected_clients;
+	      List.iter (fun (ssl_s, sockaddr_cli ) -> do_it ssl_s (get_ip sockaddr_cli)) !connected_clients;
 	      Mutex.unlock m
-	  | Some s -> do_it s
+	  | Some (ssl_s, sockaddr_cli) -> do_it ssl_s (get_ip sockaddr_cli)
     in
       
       
@@ -83,8 +89,7 @@ let run tor =
       exit 0
     in
       
-      
-      
+     
       
     let wait_for_pipe () =
       let bufsize = 1024 in
@@ -113,41 +118,32 @@ let run tor =
       Ssl.shutdown sock_cli
     in
       
+
     let handle_connection (ssl_s, sockaddr_cli) =
       
+      Printf.printf "New connection\n";      
+      Printf.printf "Welcome %s\n" (get_ip sockaddr_cli);
       
-      Printf.printf "New connection\n";
-      
-      let inet_addr_of_sockaddr = function
-	| Unix.ADDR_INET (n, _) -> n
-	| Unix.ADDR_UNIX _ -> Unix.inet_addr_any
-      in
-      let inet_addr = inet_addr_of_sockaddr sockaddr_cli  in
-      let ip = Unix.string_of_inet_addr inet_addr in
-	
-	Printf.printf "Welcome %s\n" ip;
-	
-	Mutex.lock m ;
-	connected_clients := (ssl_s, sockaddr_cli) :: !connected_clients;
-	Mutex.unlock m ;
+      Mutex.lock m ;
+      connected_clients := (ssl_s, sockaddr_cli) :: !connected_clients;
+      Mutex.unlock m ;
 
-	send "Successfully connected" (Some (ssl_s));
-	Pervasives.flush Pervasives.stdout;
+      send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli));
+      
+      let loop = ref true in	
 	
-	let loop = ref true in	
-	
-	  try  
-	    (* Wait for client exit *)	
-	    while !loop do
-	      let msg = Ssl.input_string ssl_s in
-		
-		if msg = "rw_client_exit" then
-		  begin
-	            client_quit ssl_s;
-		    loop := false
-		  end 
-	    done
-	  with Ssl.Read_error _ -> client_quit ssl_s
+	try  
+	  (* Wait for client exit *)	
+	  while !loop do
+	    let msg = Ssl.input_string ssl_s in
+	      
+	      if msg = "rw_client_exit" then
+		begin
+	          client_quit ssl_s;
+		  loop := false
+		end 
+	  done
+	with Ssl.Read_error _ -> client_quit ssl_s
     in
       
       
@@ -161,15 +157,19 @@ let run tor =
       Pervasives.flush Pervasives.stdout;
       
       while true do
+
 	let (s_cli, sockaddr_cli) = Unix.accept sock in
 	let ssl_s = Ssl.embed_socket s_cli ctx in
-	  (try
+
+	  try
 	    Ssl.accept ssl_s;
-	    (try
-	       ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
-	     with Invalid_argument _ -> prerr_endline "Erreur dans le thread cote serveur!! ;o)" ; Pervasives.flush Pervasives.stdout)
-	  with Ssl.Accept_error _ -> prerr_endline "A connection failed"
-	  );
+	    ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
+	  with
+	    | Invalid_argument _ ->
+		prerr_endline "Erreur dans le thread cote serveur!! ;o)" ;
+		Pervasives.flush Pervasives.stdout
+	    | Ssl.Accept_error _ ->
+		prerr_endline "A connection failed"
       done
 	
 	
