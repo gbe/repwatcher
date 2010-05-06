@@ -50,8 +50,8 @@ let init () =
 	(* If the directory name ends with a '/' then it is deleted *)
 	if String.get dir ((String.length dir) -1) = '/' then
 	  String.sub dir 0 ((String.length dir)-1)
-	else dir)
-      directories
+	else dir
+    ) directories
     in
       
     List.iter (

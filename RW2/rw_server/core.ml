@@ -268,7 +268,7 @@ let print_ht () =
 let what_to_do event =
   let (wd, tel, _, str_opt) = event in
     
-  let name =
+  let filename =
     match str_opt with
 	None -> "nothing"
       | Some x -> x
@@ -280,7 +280,7 @@ let what_to_do event =
       | type_event::q -> 
 	  
 	  if not (string_of_event type_event = "ACCESS") then
-	    printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
+	    printf "Event in progress: '%s', %s. Filename: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) filename (int_of_wd wd)
 	  ;
 	  
 	  begin	  
@@ -307,18 +307,18 @@ let what_to_do event =
 						   
 					    	   Printf.printf "[II] Opened : %d\tFiltered : %d\n" (List.length l_opened_files) (List.length l_filtered);
 						   
-					    	   List.iter (
-					      	     fun file ->
-						       (* À vérifier pourquoi il y a ce test *)
-						       if not (List.mem (wd,file) !f_accessed) then
-						  	 begin
-						    	   printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
-						    	   Report.report ( Notify (file.f_login^": "^name) ) ;
-						    	   f_accessed := (wd,file)::(!f_accessed)
-						  	 end
-					    	   ) l_filtered
-					   with No_Result -> let report = sprintf "%s was opened but its wd could not be found\n" name in
-					                     Report.report (Log report)
+					    	   List.iter ( fun file ->
+								 (* À vérifier pourquoi il y a ce test *)
+								 if not (List.mem (wd,file) !f_accessed) then
+						  		   begin
+						    		     printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
+						    		     Report.report ( Notify (file.f_login^" is downloading\n: "^filename) ) ;
+						    		     f_accessed := (wd,file)::(!f_accessed)
+						  		   end
+					    		     ) l_filtered
+					   with No_Result ->
+					     let report = sprintf "%s was opened but its wd could not be found\n" name in
+					       Report.report (Log report)
 					 end
 					      
 	      | Close_write, false    ->
@@ -364,10 +364,13 @@ let what_to_do event =
 								 ) !f_accessed
 					  	in
 						  
-					    	f_accessed := l_still_in_progr;
-					    	  List.iter (fun (_, f_file) -> Report.report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") ) ) l_stop_access
-		    			  with No_Result -> let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
-					                    Report.report (Log report)
+					    	  f_accessed := l_still_in_progr;
+					    	  List.iter (fun (_, f_file) ->
+							       Report.report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") )
+							    ) l_stop_access
+		    			  with No_Result ->
+					    let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
+					      Report.report (Log report)
 		    			end
 
 	      | Create, false         -> ()
@@ -377,8 +380,9 @@ let what_to_do event =
 	      				   try
 	      				     let folder = (get_value wd).path in
 		                               add_watch (folder^"/"^name) (Some wd) false
-		                           with No_Result -> let report = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
-					                     Report.report (Log report)
+		                           with No_Result ->
+					     let report = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
+					       Report.report (Log report)
 					 end
 					   
 	      | Moved_to, true        ->
@@ -390,8 +394,9 @@ let what_to_do event =
                                		       add_watch folder (Some wd) false ;
 					       (* Then the folder's children *)
 					       add_watch_children children
-					   with No_Result -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
-					                     Report.report (Log report)
+					   with No_Result ->
+					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
+					       Report.report (Log report)
 
 					 end
 											
@@ -403,8 +408,9 @@ let what_to_do event =
 		                             let folder = (get_value wd).path in
                                              let wd_key = get_key (folder^"/"^name) in
 		                               del_watch wd_key
-					   with No_Result -> let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
-					                     Report.report (Log report)
+					   with No_Result ->
+					     let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
+					       Report.report (Log report)
 		                         end
 
 	      | Moved_from, false     -> () (* Declenché quand on modifie un fichier existant et quand on renomme un fichier *)
@@ -421,7 +427,7 @@ let what_to_do event =
 								 (get_all_descendants (get_value wd_child).wd_children)@[wd_child]@acc
 							      ) [] l_children
 					     in
-					     let children_and_descendants = get_all_descendants ((get_value wd_key).wd_children) in
+					     let children_and_descendants = get_all_descendants (get_value wd_key).wd_children in
 					       
 					       printf "Liste des enfants : \n";
 					       List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
@@ -431,44 +437,15 @@ let what_to_do event =
 					       List.iter (fun wd_child ->
 							    Report.report ( Log ("move_from du child : "^(get_value wd_child).path) ) ;
 							    del_watch wd_child
-							 ) children_and_descendants;
-					       
+							 ) children_and_descendants
+					       ;				       
 					       Report.report ( Log ("move_from de "^name) ) ;
 					       del_watch wd_key
-					   with No_Result -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
-					                     Report.report (Log report)
+					   with No_Result ->
+					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
+					       Report.report (Log report)
 					 end
-					   
-	(*	| Move_self, _          -> if Hashtbl.mem ht_iwatched wd then
-		                           begin
-		                             (* Get the list of ALL the children and descendants *)
-					     let rec get_all_descendants l_children =
-					       List.fold_left (fun acc wd_child ->
-								 (get_all_descendants (get_value wd_child).wd_children)@[wd_child]@acc
-							      ) [] l_children
-					     in
-					     let children_and_descendants = get_all_descendants ((get_value wd).wd_children) in
-					       
-					       printf "Liste des enfants : \n";
-					       List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
-					       printf "\n";
-					       
-					       (* Remove the watch on the children and descendants *)
-					       List.iter (fun wd_child ->
-							    if Hashtbl.mem ht_iwatched wd_child then
-							      begin
-								(* log ("move_self du child : "^(get_value wd_child).path) ; *)
-								del_watch wd_child
-							      end
-							 ) children_and_descendants;
-					   
-					       (* and then on the father which is the root folder moved *)
-					       (* log ("move_self de "^nom); *)
-					       del_watch wd
-					   end
-	
-		| Delete_self, false    ->   print_endline "DELETE SELF !!!!";
-	*)	                             
+				   
 
 		| Ignored, _            -> (* When IGNORED is triggered it means the wd is not watched anymore. Therefore, we need to take this wd out of the Hashtbl *)
 		                           if Hashtbl.mem ht_iwatched wd then
@@ -492,10 +469,8 @@ let what_to_do event =
   in
     action tel false;
     printf "Hashtable :%d\n" (Hashtbl.length ht_iwatched);
-    Pervasives.flush Pervasives.stdout;
-    
+    Pervasives.flush Pervasives.stdout   
 ;;
-
 
 
 end;; (* eo module *)
