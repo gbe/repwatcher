@@ -83,7 +83,7 @@ let _ =
 		     Printf.printf "Recu '%s'\n" msg;
 		     Pervasives.flush Pervasives.stdout;
 		     ignore (Unix.system (
-			       "notify-send -i img/nobody.png Repwatcher '"^msg^"'")
+			       "notify-send -i nobody Repwatcher '"^msg^"'")
 			    );
 		   end
 		 else
@@ -98,6 +98,6 @@ let _ =
       );
       
       Ssl.shutdown ssl;
-      ignore (Unix.system ("notify-send -i img/nobody.png Repwatcher 'Server is down. Closing the client...'"));
+      ignore (Unix.system ("notify-send -i nobody Repwatcher 'Server is down. Closing the client...'"));
       
       exit 0	   

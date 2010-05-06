@@ -19,7 +19,7 @@ let notify txt =
   let conf = Config.get() in
     
     if conf.c_notify_loc then
-      ignore (system ("notify-send -i img/nobody.png Repwatcher '"^txt^"'"))     
+      ignore (system ("notify-send -i nobody Repwatcher '"^txt^"'"))     
     ;
     if conf.c_notify_rem then
       (* Send in the pipe for the server to send to the clients *)
