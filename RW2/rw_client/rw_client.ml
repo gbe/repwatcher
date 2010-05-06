@@ -78,16 +78,13 @@ let _ =
 	     if data_recv > 0 then
 	       let msg = String.sub buf 0 data_recv in
 		 
-		 if msg <> "rw_server_exit" then
-		   begin
-		     Printf.printf "Recu '%s'\n" msg;
-		     Pervasives.flush Pervasives.stdout;
-		     ignore (Unix.system (
-			       "notify-send -i nobody Repwatcher '"^msg^"'")
-			    );
-		   end
-		 else
-		   loop := false
+		 match msg with
+		   | "rw_server_exit" -> loop := false
+		   | "rw_server_con_ok"   -> ignore (Unix.system ("notify-send -i nobody Repwatcher 'Successfully connected to "^(!host)^"'"));
+		   | _                ->
+		       Printf.printf "Recu '%s'\n" msg;
+		       Pervasives.flush Pervasives.stdout;
+		       ignore (Unix.system ("notify-send -i nobody Repwatcher '"^msg^"'"));
 	     else
 	       begin
 		 Printf.printf "Recu %d\n" data_recv;

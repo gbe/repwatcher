@@ -312,7 +312,7 @@ let what_to_do event =
 								 if not (List.mem (wd,file) !f_accessed) then
 						  		   begin
 						    		     printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
-						    		     Report.report ( Notify (file.f_login^" is downloading\n: "^filename) ) ;
+						    		     Report.report ( Notify (file.f_login^" is downloading:\n"^filename) ) ;
 						    		     f_accessed := (wd,file)::(!f_accessed)
 						  		   end
 					    		     ) l_filtered
@@ -366,7 +366,7 @@ let what_to_do event =
 						  
 					    	  f_accessed := l_still_in_progr;
 					    	  List.iter (fun (_, f_file) ->
-							       Report.report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") )
+							       Report.report ( Notify (f_file.f_login^" finished downloading:\n"^f_file.f_name) )
 							    ) l_stop_access
 		    			  with No_Result ->
 					    let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" filename in
