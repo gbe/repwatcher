@@ -317,7 +317,7 @@ let what_to_do event =
 						  		   end
 					    		     ) l_filtered
 					   with No_Result ->
-					     let report = sprintf "%s was opened but its wd could not be found\n" name in
+					     let report = sprintf "%s was opened but its wd could not be found\n" filename in
 					       Report.report (Log report)
 					 end
 					      
@@ -369,7 +369,7 @@ let what_to_do event =
 							       Report.report ( Notify (f_file.f_login^": "^f_file.f_name^" finished") )
 							    ) l_stop_access
 		    			  with No_Result ->
-					    let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
+					    let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" filename in
 					      Report.report (Log report)
 		    			end
 
@@ -379,23 +379,23 @@ let what_to_do event =
 	      	                         begin
 	      				   try
 	      				     let folder = (get_value wd).path in
-		                               add_watch (folder^"/"^name) (Some wd) false
+		                               add_watch (folder^"/"^filename) (Some wd) false
 		                           with No_Result ->
-					     let report = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
+					     let report = sprintf "%s has been created but I can't start watching it because I can't find its father" filename in
 					       Report.report (Log report)
 					 end
 					   
 	      | Moved_to, true        ->
 	      	                         begin
 	      				   try
-	      				     let folder = ((get_value wd).path)^"/"^name in
+	      				     let folder = ((get_value wd).path)^"/"^filename in
 		                             let children = ls_children folder in
 					       (* Watch the new folder *)
                                		       add_watch folder (Some wd) false ;
 					       (* Then the folder's children *)
 					       add_watch_children children
 					   with No_Result ->
-					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
+					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" filename in
 					       Report.report (Log report)
 
 					 end
@@ -406,10 +406,10 @@ let what_to_do event =
 	      	                         begin
 		                           try
 		                             let folder = (get_value wd).path in
-                                             let wd_key = get_key (folder^"/"^name) in
+                                             let wd_key = get_key (folder^"/"^filename) in
 		                               del_watch wd_key
 					   with No_Result ->
-					     let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
+					     let report = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" filename in
 					       Report.report (Log report)
 		                         end
 
@@ -419,7 +419,7 @@ let what_to_do event =
 	      	                         begin
 	      				   try
 	      				     let folder = (get_value wd).path in
-		                             let wd_key = get_key (folder^"/"^name) in
+		                             let wd_key = get_key (folder^"/"^filename) in
 					       
 					     (* Get the list of ALL the children and descendants *)
 					     let rec get_all_descendants l_children =
@@ -439,10 +439,10 @@ let what_to_do event =
 							    del_watch wd_child
 							 ) children_and_descendants
 					       ;				       
-					       Report.report ( Log ("move_from de "^name) ) ;
+					       Report.report ( Log ("move_from de "^filename) ) ;
 					       del_watch wd_key
 					   with No_Result ->
-					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
+					     let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" filename in
 					       Report.report (Log report)
 					 end
 				   
