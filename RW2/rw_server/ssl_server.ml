@@ -12,6 +12,7 @@ let ca = "CA/CA.crt"
 let port         = ref 9292
 let backlog      = 15
 
+
 (* Return the IP from the socket *)
 let get_ip sockaddr_cli =
   let inet_addr_of_sockaddr = function
@@ -21,6 +22,23 @@ let get_ip sockaddr_cli =
   let inet_addr = inet_addr_of_sockaddr sockaddr_cli  in
     Unix.string_of_inet_addr inet_addr
 ;;
+
+let get_common_name cert =
+  let pat = Str.regexp "/" in	
+  let cn = Str.regexp "CN=" in
+
+  let rec loop = function
+    | [] -> "Unknown user"
+    | h :: q ->
+	if Str.string_match cn h 0 then
+	  let lastpos = Str.match_end() in
+	    String.sub h lastpos ((String.length h)-lastpos)
+	else
+	  loop q
+  in
+    loop (Str.split pat cert)
+;;
+
 
 let run tor =
 
@@ -52,15 +70,14 @@ let run tor =
 
     let send txt socks =
       
-      let do_it sock ip =
+      let do_it (ssl_s, sockaddr_cli, common_name) =
 
 	try 
-	  Ssl.output_string sock txt;
-	  let log_msg = Printf.sprintf "Sent '%s' to %s\n" txt ip in
+	  Ssl.output_string ssl_s txt;
+	  let log_msg = Printf.sprintf "Sent '%s' to %s (%s)\n" txt common_name (get_ip sockaddr_cli) in
 	    Printf.printf "%s" log_msg;
-	    Report.report (Log log_msg);
-	    Pervasives.flush Pervasives.stdout
-	    
+	    Report.report (Log log_msg)
+	      
 	with Ssl.Write_error _ ->
 	  Report.report (Log ("SSL write error\n"))
       in
@@ -68,11 +85,11 @@ let run tor =
 	match socks with
 	  | None ->
 	      Mutex.lock m ;
-	      List.iter (fun (ssl_s, sockaddr_cli, _) -> do_it ssl_s (get_ip sockaddr_cli)) !connected_clients;
+	      List.iter do_it !connected_clients;
 	      Mutex.unlock m
-	  | Some (ssl_s, sockaddr_cli) -> do_it ssl_s (get_ip sockaddr_cli)
+	  | Some sock' -> do_it sock'
     in
-      
+
       
     let handle_interrupt i = 
       
@@ -108,19 +125,18 @@ let run tor =
       
       
     let client_quit sock_cli =
-
-      let client = ref "" in      
-	
-	Mutex.lock m ;
-	connected_clients := List.filter ( fun (s,_,common_name) ->
-					     client := common_name ;
-					     s != sock_cli
-					 ) !connected_clients;
+      
+      Mutex.lock m ;
+      let (l_clients_left, l_client) = List.partition ( fun (s,_,_) ->
+							  s != sock_cli
+						      ) !connected_clients
+      in
+	connected_clients := l_clients_left ;
 	Mutex.unlock m ;
-	
-	let log_msg = Printf.sprintf "%s has quit\n" !client in
+
+	let (_,sockaddr_cli,common_name) = List.hd l_client in
+	let log_msg = Printf.sprintf "%s has quit (%s)\n" common_name (get_ip sockaddr_cli) in
 	  Report.report (Log log_msg);
-	  Pervasives.flush Pervasives.stdout;
 	  Ssl.shutdown sock_cli
     in
       
@@ -130,16 +146,15 @@ let run tor =
       Printf.printf "New connection\n";      
       Printf.printf "Welcome %s\n" (get_ip sockaddr_cli);
 
-(*      let cert = Ssl.get_certificate ssl_s in
+      let cert = Ssl.get_certificate ssl_s in
       let subj = Ssl.get_subject cert in	
-      let lexbuf = Lexing.from_string subj in
-      let cert = Parser.start Lexer.nexttoken lexbuf in*)
+      let common_name = get_common_name subj in
       
       Mutex.lock m ;
-      connected_clients := (ssl_s, sockaddr_cli, "common_name") :: !connected_clients;
+      connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
       Mutex.unlock m ;
 
-      send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli));
+      send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli, common_name));
       
       let loop = ref true in	
 	
