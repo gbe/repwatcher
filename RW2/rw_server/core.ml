@@ -300,7 +300,7 @@ let what_to_do event =
 					       Printf.printf " [II] Folder: %s\n" folder;
 					       
 					       let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					       let l_opened_files = File_list.get chan in					       
+					       let l_opened_files = File_list.get chan filename in					       
 					  	 ignore (Unix.close_process_in chan);
 						 
 					  	 let l_filtered = File_list.filter l_opened_files in
@@ -347,7 +347,7 @@ let what_to_do event =
 					      Printf.printf " [II] Folder: %s\n" folder;
 					      
 					      let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					      let l_opened_files = File_list.get chan in					       
+					      let l_opened_files = File_list.get chan filename in    
 					  	ignore (Unix.close_process_in chan);
 						
 					  	let l_files_in_progress = File_list.filter l_opened_files in

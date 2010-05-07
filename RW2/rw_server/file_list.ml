@@ -1,46 +1,44 @@
 open Ast
 open Ast_conf
 
-let get channel =
+let get channel filename =
   
   let l = ref [] in    
   let regexp_cut_space= Str.regexp "[' ']+" in
   let file = {f_name="";f_path="";f_login="";f_filesize=(Int64.of_int 0);f_prog_source=""} in
-    
-    begin
-      try
-	while true do 
-	  let line = input_line channel in
-	    
-	  let cut_line = Str.split regexp_cut_space line in
-	    
-	  let rec set_file cut_line column file =
-	    
-	    match cut_line with
-		[] -> file
-	      | t::q -> if column = 0 then
-		  set_file q (column+1) {file with f_prog_source = t}
-		    
-		else if column = 1 || column = 3 || column = 4 || column = 5 || column = 7 then
-		  set_file q (column+1) file
-		    
-		(* pseudo *)
-		else if column = 2 then
-		  set_file q (column+1) {file with f_login = t}
-		    
-		(* taille file *)
-		else if column = 6 then
-		  set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
-		    
-		else
-		  let path_and_filename = t^" "^(String.concat " " q)
-		  in {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}		    
-		       
-	  in l := (set_file cut_line 0 file)::(!l)
-	done
-      with _ -> close_in channel
-    end;
-    !l
+  
+  begin
+    try
+      while true do 
+	let line = input_line channel in
+	let cut_line = Str.split regexp_cut_space line in
+
+	let rec set_file cut_line column file =  
+	  match cut_line with
+	  | [] -> file
+	  | t::q -> if column = 0 then
+	      set_file q (column+1) {file with f_prog_source = t}
+		
+	  else if column = 1 || column = 3 || column = 4 || column = 5 || column = 7 then
+	    set_file q (column+1) file
+	      
+	      (* pseudo *)
+	  else if column = 2 then
+	    set_file q (column+1) {file with f_login = t}
+	      
+	      (* taille file *)
+	  else if column = 6 then
+	    set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
+	      
+	  else
+	    let path_and_filename = t^" "^(String.concat " " q)	in
+	    {file with f_name = filename ; f_path = (Filename.dirname path_and_filename)^"/"}		    
+	      
+	in l := (set_file cut_line 0 file)::(!l)
+      done
+    with _ -> close_in channel
+  end;
+  !l
 ;;
 
 
