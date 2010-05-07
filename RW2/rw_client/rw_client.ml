@@ -80,11 +80,11 @@ let _ =
 		 
 		 match msg with
 		   | "rw_server_exit" -> loop := false
-		   | "rw_server_con_ok"   -> ignore (Unix.system ("notify-send -i nobody Repwatcher 'Successfully connected to "^(!host)^"'"));
+		   | "rw_server_con_ok"   -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""));
 		   | _                ->
 		       Printf.printf "Recu '%s'\n" msg;
 		       Pervasives.flush Pervasives.stdout;
-		       ignore (Unix.system ("notify-send -i nobody Repwatcher '"^msg^"'"));
+		       ignore (Unix.system ("notify-send -i nobody Repwatcher \""^msg^"\""));
 	     else
 	       begin
 		 Printf.printf "Recu %d\n" data_recv;
@@ -95,6 +95,6 @@ let _ =
       );
       
       Ssl.shutdown ssl;
-      ignore (Unix.system ("notify-send -i nobody Repwatcher 'Server is down. Closing the client...'"));
+      ignore (Unix.system "notify-send -i nobody Repwatcher \"Server is down. Closing the client...\"");
       
       exit 0	   
