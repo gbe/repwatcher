@@ -48,7 +48,7 @@ let space = [' ' '\t']
 
 let comment = '#'(alpha | digit | ['/'] | space | specialchars)*
 
-let txt = (alpha | digit | ['/'] | ['_'] | ['.'] | ['-'])+
+let txt = (alpha | digit | ['/'] | ['_'] | ['.'] | ['-'] | ['+'])+
 
 
 rule nexttoken = parse
