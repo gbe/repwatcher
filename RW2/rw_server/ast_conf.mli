@@ -30,6 +30,7 @@ type mode = Specified_programs | Unwanted_programs
     
 type configuration={
   c_directories : string list;
+  c_ignore_directories : string list;
   c_mode : mode;
   c_specified_programs : string list;
   c_unwanted_programs : string list;

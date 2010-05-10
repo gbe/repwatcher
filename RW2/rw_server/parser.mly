@@ -29,6 +29,7 @@
 %token EQUAL
 %token PVIRGULE
 %token DIRECTORIES
+%token IGNORE_DIRECTORIES
 %token MODE
 %token SPEC
 %token UNWANTED
@@ -57,6 +58,7 @@
 
   deb:
  DIRECTORIES EQUAL txt_list
+ IGNORE_DIRECTORIES EQUAL txt_digits_list_star
  MODE EQUAL mode
  SPEC EQUAL txt_list
  UNWANTED EQUAL txt_digits_list_star
@@ -70,18 +72,19 @@
  EOF { 
       {
 	c_directories = $3;
-	c_mode = $6;
-	c_specified_programs = $9;
-	c_unwanted_programs = $12;
+	c_ignore_directories = $6;
+	c_mode = $9;
+	c_specified_programs = $12;
+	c_unwanted_programs = $15;
 	c_sql = {
-	  dbhost = Some $21;
-	  dbname = Some $27;
-	  dbport = $24;
-	  dbpwd  = Some $18;
-	  dbuser = Some $15;
+	  dbhost = Some $24;
+	  dbname = Some $30;
+	  dbport = $27;
+	  dbpwd  = Some $21;
+	  dbuser = Some $18;
 	};
-       c_notify_loc = $30;
-       c_notify_rem = $33
+       c_notify_loc = $33;
+       c_notify_rem = $36
       }
     }
   ;
