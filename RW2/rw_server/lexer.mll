@@ -57,6 +57,7 @@ rule nexttoken = parse
   | '='                   { EQUAL }
   | ';'                   { PVIRGULE }
   | "directories"         { DIRECTORIES }
+  | "ignore_directories"  { IGNORE_DIRECTORIES }
   | "mode"                { MODE }
   | "specified_programs"  { SPEC }
   | "unwanted_programs"   { UNWANTED }
