@@ -18,14 +18,18 @@
 *)
 
 
-type f_fichier = {
-  f_name: string;
-  f_path: string;
-  f_login: string;
-  f_filesize: int64;
-  f_prog_source: string;
+type f_file = {
+  f_name        : string ;
+  f_path        : string ;
+  f_login       : string ;
+  f_filesize    : int64  ;
+  f_prog_source : string ;
 }
 
-type fichiers = f_fichier list
+type files  = f_file list
 
-type report   = Notify of string | Log of string
+type file_state  = File_Opened | File_Closed
+
+type report = | Notify of string
+	      | Log of string
+	      | Sql of (f_file * file_state)

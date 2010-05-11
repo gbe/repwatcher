@@ -53,13 +53,37 @@ let notify txt =
     ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
 ;;
 
+let sql (f, state) =
+  
+  let escape_quote s =  
+    let r = Str.regexp "'" in
+      Str.global_replace r "''" s
+  in
+    
+  let query =
+    match state with
+      | File_Opened  ->
+	  Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
+            f.f_login f.f_prog_source f.f_path (escape_quote f.f_name) (Int64.to_string f.f_filesize) (Date.date())
+	    
+      | File_Closed ->
+	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN='%s' AND FILENAME='%s' ORDER BY STARTING_DATE DESC LIMIT 1" f.f_login (escape_quote f.f_name) in
+
+
+
+
+	  Printf.sprintf "UPDATE downloads SET ENDING_DATE='%s' WHERE " (Date.date())
+  in
+    Mysqldb.query query
+	
 module Report =
 struct
 	(* tor is now viewable from the outside (ssl_server) *)
 	let tor = tor ;;
 
-	let report rep = match rep with
-		| Notify t -> notify t
-		| Log 	 t -> log t
+	let report = function
+	  | Sql    file_state -> sql file_state
+	  | Notify txt        -> notify txt
+	  | Log    txt        -> log txt
 	;;
 end;;

@@ -313,6 +313,7 @@ let what_to_do event =
 						  		   begin
 						    		     printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
 						    		     Report.report ( Notify (file.f_login^" is downloading:\n"^file.f_name) ) ;
+						    		     Report.report ( Sql (file, File_Opened) ) ;
 						    		     f_accessed := (wd,file)::(!f_accessed)
 						  		   end
 					    		     ) l_filtered
