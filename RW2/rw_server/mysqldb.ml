@@ -11,10 +11,12 @@ let connect c_sql =
 
 let query q =
   print_string q;
-
+  
   match !cid with
     | None -> failwith "No cid"
-    | Some cid ->
-	ignore(exec cid q)(*;
-	insert_id cid*)
+    | Some cid -> exec cid q
+;;
+
+let fetch q =
+  Mysql.fetch (query q)
 ;;

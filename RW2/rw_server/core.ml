@@ -367,7 +367,8 @@ let what_to_do event =
 						  
 					    	  f_accessed := l_still_in_progr;
 					    	  List.iter (fun (_, f_file) ->
-							       Report.report ( Notify (f_file.f_login^" finished downloading:\n"^f_file.f_name) )
+							       Report.report ( Notify (f_file.f_login^" finished downloading:\n"^f_file.f_name) ) ;
+						    	       Report.report ( Sql (f_file, File_Closed) ) ;
 							    ) l_stop_access
 		    			  with No_Result ->
 					    let report = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" filename in
