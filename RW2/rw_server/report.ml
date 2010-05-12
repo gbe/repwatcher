@@ -53,6 +53,9 @@ let notify txt =
     ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
 ;;
 
+
+
+
 let sql (f, state) =
   
   let escape_quote s =  
@@ -60,22 +63,33 @@ let sql (f, state) =
       Str.global_replace r "''" s
   in
     
-  let query =
     match state with
       | File_Opened  ->
-	  Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
+	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
             f.f_login f.f_prog_source f.f_path (escape_quote f.f_name) (Int64.to_string f.f_filesize) (Date.date())
-	    
+	  in
+	    ignore (Mysqldb.query query)
+	      
       | File_Closed ->
-	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN='%s' AND FILENAME='%s' ORDER BY STARTING_DATE DESC LIMIT 1" f.f_login (escape_quote f.f_name) in
+	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN='%s' AND FILENAME='%s' ORDER BY STARTING_DATE DESC LIMIT 1" f.f_login (escape_quote f.f_name)
+	  in
+
+	  let res = Mysqldb.fetch id_query in
+	    match res with
+	      | None -> () (* We do nothing, there is nothing in the database with this login and filename *)
+	      | Some ids_array -> 
+
+		  (* 0 because I know there is only one result returned *)
+		  match Array.get ids_array 0 with
+		    | None -> assert false
+		    | Some id ->
+			let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = '%s' WHERE ID = %s" (Date.date()) id in
+			  ignore (Mysqldb.query query)
+;;	
 
 
 
 
-	  Printf.sprintf "UPDATE downloads SET ENDING_DATE='%s' WHERE " (Date.date())
-  in
-    Mysqldb.query query
-	
 module Report =
 struct
 	(* tor is now viewable from the outside (ssl_server) *)
