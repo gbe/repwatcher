@@ -31,5 +31,10 @@ type files  = f_file list
 type file_state  = File_Opened | File_Closed
 
 type report = | Notify of string
-	      | Log of string
-	      | Sql of (f_file * file_state)
+	      | Log    of string
+	      | Sql    of (f_file * file_state)
+
+type 'a query_result = 
+  | QueryOK    of 'a
+  | QueryEmpty
+  | QueryError of string

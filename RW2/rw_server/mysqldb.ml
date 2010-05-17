@@ -23,6 +23,8 @@ open Ast_conf
 open Mysql
 open Unix
 
+
+(* connection identifier *)
 let cid = ref None;;
 
 let connect c_sql =
@@ -33,10 +35,27 @@ let query q =
   print_string q;
   
   match !cid with
-    | None -> failwith "No cid"
-    | Some cid -> exec cid q
+    | None -> assert false
+    | Some cid ->
+	(* make sure the connection to the server is up
+	 * and re-establishes it if needed
+	 *)
+	ping cid ;
+	
+	let res = exec cid q in
+	  match status cid with
+	    | StatusOK      -> QueryOK res
+	    | StatusEmpty   -> QueryEmpty
+	    | StatusError _ ->
+		match errmsg cid with
+		  | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
+		  | Some errmsg' -> QueryError errmsg'
+		      
 ;;
 
 let fetch q =
-  Mysql.fetch (query q)
+  match query q with
+    | QueryOK res          -> QueryOK (Mysql.fetch res)
+    | QueryEmpty           -> QueryEmpty
+    | QueryError error_msg -> QueryError error_msg
 ;;
