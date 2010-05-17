@@ -26,7 +26,7 @@ open Format
 open Ast
 open Ast_conf
   
-let num_version = "0.4"
+let num_version = "0.4.1"
 let verbose = ref false                (* Option d'exécution, si vous voulez écrire dans le terminal tout ce qui s'ajoute dans la base *)
 let file_specified = ref false
 let ifile = ref ""                     (* Nom du fichier source *)
