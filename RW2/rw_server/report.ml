@@ -34,9 +34,9 @@ let l_reg_char_encoded =
 		 ("&", "&amp;")
 	       ]
   in
-  List.map (fun (char, char_encoded) ->
-    ((Str.regexp char), char_encoded)
-	   ) l_char
+    List.map (fun (char, char_encoded) ->
+		((Str.regexp char), char_encoded)
+	     ) l_char
 ;;
 
 
@@ -88,23 +88,32 @@ let sql (f, state) =
 	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
             f.f_login f.f_prog_source f.f_path (escape_quote f.f_name) (Int64.to_string f.f_filesize) (Date.date())
 	  in
-	    ignore (Mysqldb.query query)
+	    begin	    
+	      match Mysqldb.query query with
+		| (QueryOK _ | QueryEmpty) -> ()
+		| QueryError errmsg        -> log errmsg
+	    end
 	      
       | File_Closed ->
 	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN='%s' AND FILENAME='%s' ORDER BY STARTING_DATE DESC LIMIT 1" f.f_login (escape_quote f.f_name)
 	  in
 
-	  let res = Mysqldb.fetch id_query in
-	    match res with
-	      | None -> () (* We do nothing, there is nothing in the database with this login and filename *)
-	      | Some ids_array -> 
-
-		  (* 0 because I know there is only one result returned *)
-		  match Array.get ids_array 0 with
-		    | None -> assert false
-		    | Some id ->
-			let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = '%s' WHERE ID = %s" (Date.date()) id in
-			  ignore (Mysqldb.query query)
+	    match Mysqldb.fetch id_query with
+	      | QueryEmpty        -> ()
+	      | QueryError errmsg -> log errmsg
+	      | QueryOK res       -> 
+		  match res with
+		    | None -> () (* We do nothing, there is nothing in the database with this login and filename *)
+		    | Some ids_array -> 
+			
+			(* 0 because I know there is only one result returned *)
+			match Array.get ids_array 0 with
+			  | None -> assert false
+			  | Some id ->
+			      let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = '%s' WHERE ID = %s" (Date.date()) id in
+				match Mysqldb.query query with
+				  | (QueryOK _ | QueryEmpty) -> ()
+				  | QueryError errmsg        -> log errmsg
 ;;	
 
 
