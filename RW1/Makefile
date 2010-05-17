@@ -1,21 +1,20 @@
-CMO= lexer_conf.cmo parser_conf.cmo configuration.cmo gen_liste_fichiers.cmo sql.cmo main.cmo
+CMX= lexer_conf.cmx parser_conf.cmx configuration.cmx gen_liste_fichiers.cmx sql.cmx main.cmx
 GENERATED = lexer_conf.ml parser_conf.ml parser_conf.mli
 BIN=repwatcher
-FLAGS=# -dtypes
-VERSION=`ls /usr/lib/ocaml/`
+FLAGS=-linkpkg -package mysql# -dtypes
 
 all: $(BIN)
 
-$(BIN):$(CMO)
-	ocamlc.opt $(FLAGS) -o $(BIN) -I /usr/lib/ocaml/$(VERSION)/mysql/ mysql.cma unix.cma str.cma $(CMO)
+$(BIN):$(CMX)
+	ocamlfind ocamlopt $(FLAGS) str.cmxa unix.cmxa -o $(BIN) $(CMX)
 
-.SUFFIXES: .mli .ml .cmi .cmo .mll .mly  
+.SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
 .mli.cmi:
-	ocamlc.opt $(FLAGS) -I /usr/lib/ocaml/$(VERSION)/mysql/ -c $<
+	ocamlfind ocamlopt $(FLAGS) -c $<
 
-.ml.cmo:
-	ocamlc.opt $(FLAGS) -I /usr/lib/ocaml/$(VERSION)/mysql/ -c $<
+.ml.cmx:
+	ocamlfind ocamlopt $(FLAGS) -c $<
 
 .mll.ml:
 	ocamllex.opt $<
@@ -27,7 +26,7 @@ $(BIN):$(CMO)
 	ocamlyacc -v $<
 
 clean:
-	rm -f *.cm[io] *.annot *.o *~ $(BIN) $(GENERATED) parser_conf.output
+	rm -f *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED) parser_conf.output
 
 .depend depend:$(GENERATED)
 	rm -f .depend

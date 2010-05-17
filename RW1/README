@@ -1,8 +1,8 @@
 To contact me :
 gregory.bellier@gmail.com
 
-Depedencies :
-ocaml ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml libmysql-ocaml-dev
+Depedencies for Debian:
+ocaml ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml libmysql-ocaml-dev ocaml-findlib
 
 
 
