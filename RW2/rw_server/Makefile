@@ -1,6 +1,6 @@
 CMX= lexer.cmx parser.cmx config.cmx file_list.cmx date.cmx mysqldb.cmx report.cmx ssl_server.cmx core.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
-BIN=ino
+BIN=rw_server
 FLAGS=-dtypes -linkpkg -package mysql,ssl,inotify
 
 all: $(BIN)
