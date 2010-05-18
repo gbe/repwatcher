@@ -32,8 +32,7 @@ let connect c_sql =
 ;;
 
 let query q =
-  print_string q;
-  
+
   match !cid with
     | None -> assert false
     | Some cid ->
@@ -53,7 +52,9 @@ let query q =
 		      
 ;;
 
+
 let fetch q =
+
   match query q with
     | QueryOK res          -> QueryOK (Mysql.fetch res)
     | QueryEmpty           -> QueryEmpty
