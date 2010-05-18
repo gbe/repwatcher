@@ -29,12 +29,14 @@ type sql_db = Mysql.db = {
 type mode = Specified_programs | Unwanted_programs
     
 type configuration={
-  c_directories : string list;
-  c_ignore_directories : string list;
-  c_mode : mode;
-  c_specified_programs : string list;
-  c_unwanted_programs : string list;
-  c_sql : sql_db;
-  c_notify_loc : bool;
-  c_notify_rem : bool;
+  c_directories        : string list ;
+  c_ignore_directories : string list ;
+  c_ignore_users       : string list ;
+  c_mode               : mode        ;
+  c_specified_programs : string list ;
+  c_unwanted_programs  : string list ;
+  c_sql                : sql_db      ;
+  c_notify_loc         : bool        ;
+  c_notify_rem         : bool        ;
+  c_log_level          : int option  ;
 }
