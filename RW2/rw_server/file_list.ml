@@ -69,44 +69,19 @@ let filter unfiltered_l =
   
   let conf = Config.get() in
     
-  (* Check wether we're in specified mode or unwanted mode  *)      
-  (* Remove all the files which the program is not in the specified_programs list *)
+  (* Remove all the files according to the specified or unwanted mode from the config file *)
   let lprogs_filtered =
     match conf.c_mode with
       | Specified_programs ->
-	  
-	  let l_prog_filtered = List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltered_l in
+	  List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltered_l
 	    
-	    (* Filtre les répertoires et retourne la liste des files à insérer *)
-	    List.filter (
-	      fun file ->
-		(* renvoie un booléen pour dire si le path du file est l'un des répertoires surveillés *)
-		List.exists (fun directory ->
-			       let rexp = Str.regexp directory in
-				 Str.string_match rexp file.f_path 0
-			    ) conf.c_directories			   
-	    ) l_prog_filtered		    			   
-	      
-	      
-	      
       (* Remove all the unwanted_programs from the list *)
-      | Unwanted_programs ->
-	  
-	  (* Enlève les programmes que l'on ne veut pas *)
-	  let l_prog_filtered = List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltered_l in
+      | Unwanted_programs ->	  	  
+	  List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltered_l
 	    
-	    (* Filtre les répertoires et retourne la liste des files à insérer *)
-	    List.filter (
-	      fun file ->
-		(* renvoie un booléen pour dire si le path du file est l'un des répertoires surveillés *)
-		List.exists (fun directory ->
-			       let rexp = Str.regexp directory in
-				 Str.string_match rexp file.f_path 0
-			    ) conf.c_directories
-	    ) l_prog_filtered	
   in
     
-    (* if a file is accessed by one of the ignored users then we remove this entry to ignore it *)
+    (* Remove all the files accessed by one of the ignored users *)
     List.filter (fun file ->
 		   not (List.mem file.f_login conf.c_ignore_users)
 		) lprogs_filtered
