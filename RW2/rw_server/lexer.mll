@@ -58,6 +58,7 @@ rule nexttoken = parse
   | ';'                   { PVIRGULE }
   | "directories"         { DIRECTORIES }
   | "ignore_directories"  { IGNORE_DIRECTORIES }
+  | "ignore_users"        { IGNORE_USERS }
   | "mode"                { MODE }
   | "specified_programs"  { SPEC }
   | "unwanted_programs"   { UNWANTED }
@@ -68,6 +69,7 @@ rule nexttoken = parse
   | "sql_dbname"          { SQL_DBNAME }
   | "notify_locally"      { NOTIFY_LOCALLY }
   | "notify_remotely"     { NOTIFY_REMOTELY }
+  | "log_level"           { LOG_LEVEL }
   | "Y"                   { YES }
   | "N"                   { NO }
   | eof                   { EOF }

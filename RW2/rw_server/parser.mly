@@ -28,6 +28,7 @@
 %token DQUOTE
 %token EQUAL
 %token PVIRGULE
+%token IGNORE_USERS
 %token DIRECTORIES
 %token IGNORE_DIRECTORIES
 %token MODE
@@ -40,6 +41,7 @@
 %token SQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
+%token LOG_LEVEL
 %token YES
 %token NO
 %token <string>TXT
@@ -59,6 +61,7 @@
   deb:
  DIRECTORIES EQUAL txt_list
  IGNORE_DIRECTORIES EQUAL txt_digits_list_star
+ IGNORE_USERS EQUAL txt_digits_list_star
  MODE EQUAL mode
  SPEC EQUAL txt_list
  UNWANTED EQUAL txt_digits_list_star
@@ -69,22 +72,25 @@
  SQL_DBNAME EQUAL txt_or_digits
  NOTIFY_LOCALLY EQUAL yes_or_no
  NOTIFY_REMOTELY EQUAL yes_or_no
+ LOG_LEVEL EQUAL digits_int_option
  EOF { 
       {
 	c_directories = $3;
 	c_ignore_directories = $6;
-	c_mode = $9;
-	c_specified_programs = $12;
-	c_unwanted_programs = $15;
+	c_ignore_users = $9;
+	c_mode = $12;
+	c_specified_programs = $15;
+	c_unwanted_programs = $18;
 	c_sql = {
-	  dbhost = Some $24;
-	  dbname = Some $30;
-	  dbport = $27;
-	  dbpwd  = Some $21;
-	  dbuser = Some $18;
+	  dbhost = Some $27;
+	  dbname = Some $33;
+	  dbport = $30;
+	  dbpwd  = Some $24;
+	  dbuser = Some $21;
 	};
-       c_notify_loc = $33;
-       c_notify_rem = $36
+       c_notify_loc = $36;
+       c_notify_rem = $39;
+       c_log_level  = $42
       }
     }
   ;
