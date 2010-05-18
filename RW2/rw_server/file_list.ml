@@ -75,7 +75,7 @@ let filter unfiltered_l =
     match conf.c_mode with
       | Specified_programs ->
 	  
-	  let l_prog_filtered = List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltred_l in
+	  let l_prog_filtered = List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltered_l in
 	    
 	    (* Filtre les répertoires et retourne la liste des files à insérer *)
 	    List.filter (
@@ -93,7 +93,7 @@ let filter unfiltered_l =
       | Unwanted_programs ->
 	  
 	  (* Enlève les programmes que l'on ne veut pas *)
-	  let l_prog_filtered = List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltred_l in
+	  let l_prog_filtered = List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltered_l in
 	    
 	    (* Filtre les répertoires et retourne la liste des files à insérer *)
 	    List.filter (
