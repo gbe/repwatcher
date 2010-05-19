@@ -33,6 +33,7 @@ let ca = "CA/CA.crt"
 let port         = ref 9292
 let backlog      = 15
 
+let reg          = Str.regexp "\n"
 
 (* Return the IP from the socket *)
 let get_ip sockaddr_cli =
@@ -107,9 +108,10 @@ let run tor =
 
 	try 
 	  Ssl.output_string ssl_s txt;
-	  let log_msg = Printf.sprintf "Sent '%s' to %s (%s)\n" txt common_name (get_ip sockaddr_cli) in
-	    Printf.printf "%s" log_msg;
-	    Report.report (Log (log_msg, Level_1))
+	  let log_msg = ref (Printf.sprintf "Sent '%s' to %s (%s)" txt common_name (get_ip sockaddr_cli)) in
+	    log_msg := Str.global_replace reg " " !log_msg;
+	    Printf.printf "%s" !log_msg;
+	    Report.report (Log (!log_msg, Level_1))
 	      
 	with Ssl.Write_error _ ->
 	  Report.report (Log ("SSL write error\n", Level_1))
