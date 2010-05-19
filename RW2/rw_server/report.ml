@@ -49,7 +49,7 @@ let log (txt, log_level) =
   let conf     = Config.get() in
     
   let do_it () = 
-    let to_log = Printf.sprintf "%s\t%s" (Date.date()) txt in
+    let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
       Printf.printf "LOG: %s\n" to_log   ;
       Pervasives.flush Pervasives.stdout ;
       ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
