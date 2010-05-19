@@ -30,8 +30,10 @@ type files  = f_file list
 
 type file_state  = File_Opened | File_Closed
 
+type log_level = Level_1 | Level_2
+
 type report = | Notify of string
-	      | Log    of string
+	      | Log    of (string * log_level)
 	      | Sql    of (f_file * file_state)
 
 type 'a query_result = 

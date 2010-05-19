@@ -100,7 +100,7 @@ let init () =
 				    with Sys_error e ->
 				      let error = "Error: "^e in 
 					prerr_endline error ;
-					Report.report (Log error);
+					Report.report (Log (error, Level_1));
 					false
 				 ) !directories
       ;
@@ -157,7 +157,9 @@ let _ =
     Mysqldb.connect conf.c_sql;
 
     let fd = match conf.c_notify_rem with
-      | true  -> Report.report (Log "Start server for remote notifications") ; Unix.fork()
+      | true  ->
+	  Report.report (Log ("Start server for remote notifications", Level_2)) ;
+	  Unix.fork()
       | false -> -1
     in
       
@@ -172,7 +174,7 @@ let _ =
 	      Pervasives.flush Pervasives.stdout;
 	      
 	      Report.report (Notify "Repwatcher is watching youuu ! :)") ;
-	      Report.report (Log "Repwatcher is watching youuu ! :)") ;	    
+	      Report.report ( Log ("Repwatcher is watching youuu ! :)", Level_1) ) ;    
 	      
 	      while true do
 		

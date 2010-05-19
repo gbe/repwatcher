@@ -19,11 +19,11 @@
 
 
 type sql_db = Mysql.db = {
-  dbhost : string option;
-  dbname: string option;
-  dbport : int option;
-  dbpwd : string option;
-  dbuser : string option
+  dbhost : string option ;
+  dbname : string option ;
+  dbport : int option    ;
+  dbpwd  : string option ;
+  dbuser : string option ;
 }
 
 type mode = Specified_programs | Unwanted_programs
@@ -38,5 +38,5 @@ type configuration={
   c_sql                : sql_db      ;
   c_notify_loc         : bool        ;
   c_notify_rem         : bool        ;
-  c_log_level          : int option  ;
+  c_log_level          : int         ;
 }
