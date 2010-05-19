@@ -109,10 +109,10 @@ let run tor =
 	  Ssl.output_string ssl_s txt;
 	  let log_msg = Printf.sprintf "Sent '%s' to %s (%s)\n" txt common_name (get_ip sockaddr_cli) in
 	    Printf.printf "%s" log_msg;
-	    Report.report (Log log_msg)
+	    Report.report (Log (log_msg, Level_1))
 	      
 	with Ssl.Write_error _ ->
-	  Report.report (Log ("SSL write error\n"))
+	  Report.report (Log ("SSL write error\n", Level_1))
       in
 
 	match socks with
@@ -169,7 +169,7 @@ let run tor =
 
 	let (_,sockaddr_cli,common_name) = List.hd l_client in
 	let log_msg = Printf.sprintf "%s has quit (%s)\n" common_name (get_ip sockaddr_cli) in
-	  Report.report (Log log_msg);
+	  Report.report ( Log (log_msg, Level_1) );
 	  Ssl.shutdown sock_cli
     in
       

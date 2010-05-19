@@ -90,7 +90,13 @@
 	};
        c_notify_loc = $36;
        c_notify_rem = $39;
-       c_log_level  = $42
+       c_log_level  =
+	  match $42 with
+	    | None -> 1 (* 1 is the default log_level *)
+	    | Some i ->
+		match i with
+		  | (0|1|2) -> i
+		  | _       -> raise Parse_error
       }
     }
   ;

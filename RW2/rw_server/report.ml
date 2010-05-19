@@ -40,37 +40,56 @@ let l_reg_char_encoded =
 ;;
 
 
-let (tor,tow) = Unix.pipe();;	
-    	
-let log txt =
-  let to_log = Printf.sprintf "%s\t%s" (Date.date()) txt in
-  Printf.printf "LOG: %s\n" to_log   ;
-  Pervasives.flush Pervasives.stdout ;
-  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
+let (tor,tow) = Unix.pipe()  ;;	
+
+
+	
+let log (txt, log_level) =
+
+  let conf     = Config.get() in
+    
+  let do_it () = 
+    let to_log = Printf.sprintf "%s\t%s" (Date.date()) txt in
+      Printf.printf "LOG: %s\n" to_log   ;
+      Pervasives.flush Pervasives.stdout ;
+      ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
+  in
+    
+    match conf.c_log_level with
+      | 0 -> () (* don't log *)
+      | 1 ->
+	  begin
+	    match log_level with
+	      | Level_1 -> do_it()
+	      | Level_2 -> () (* don't log *)
+	  end
+      | 2 -> do_it()
+      | _ -> assert false
+	  
+	  
 ;;
     
     
     
 let notify txt =
-  Printf.printf "Notify: %s\n" txt;  
-  
-  let conf = Config.get() in
 
+  let conf        = Config.get() in
+  
   let txt_escaped =
     List.fold_right (fun (reg, char_encoded) txt' ->
-      Str.global_replace reg char_encoded txt'
-		 ) l_reg_char_encoded txt
+		       Str.global_replace reg char_encoded txt'
+		    ) l_reg_char_encoded txt
   in
-
-  if conf.c_notify_loc then
-    begin
-      let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" txt_escaped in
-      ignore (system call)
-    end
-      ;
-  if conf.c_notify_rem then
-    (* Send in the pipe for the server to send to the clients *)
-    ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
+    
+    if conf.c_notify_loc then
+      begin
+	let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" txt_escaped in
+	  ignore (system call)
+      end
+    ;
+    if conf.c_notify_rem then
+      (* Send in the pipe for the server to send to the clients *)
+      ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
 ;;
 
 
@@ -91,7 +110,7 @@ let sql (f, state) =
 	    begin	    
 	      match Mysqldb.query query with
 		| (QueryOK _ | QueryEmpty) -> ()
-		| QueryError errmsg        -> log errmsg
+		| QueryError errmsg        -> log (errmsg, Level_1)
 	    end
 	      
       | File_Closed ->
@@ -100,7 +119,7 @@ let sql (f, state) =
 
 	    match Mysqldb.fetch id_query with
 	      | QueryEmpty        -> ()
-	      | QueryError errmsg -> log errmsg
+	      | QueryError errmsg -> log (errmsg, Level_1)
 	      | QueryOK res       -> 
 		  match res with
 		    | None -> () (* We do nothing, there is nothing in the database with this login and filename *)
@@ -113,7 +132,7 @@ let sql (f, state) =
 			      let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = '%s' WHERE ID = %s" (Date.date()) id in
 				match Mysqldb.query query with
 				  | (QueryOK _ | QueryEmpty) -> ()
-				  | QueryError errmsg        -> log errmsg
+				  | QueryError errmsg        -> log (errmsg, Level_1)
 ;;	
 
 
@@ -127,6 +146,6 @@ struct
 	let report = function
 	  | Sql    file_state -> sql file_state
 	  | Notify txt        -> notify txt
-	  | Log    txt        -> log txt
+	  | Log    log'       -> log log'
 	;;
 end;;
