@@ -39,8 +39,14 @@ let query q =
 	(* make sure the connection to the server is up
 	 * and re-establishes it if needed
 	 *)
-	ping cid ;
-	
+	(try
+	   ping cid
+	 with Error error_msg ->
+	   Printf.printf "%s. Reconnecting to the server\n" error_msg;
+	   Pervasives.flush Pervasives.stdout;
+	   connect (Config.get()).c_sql
+	);
+
 	let res = exec cid q in
 	  match status cid with
 	    | StatusOK      -> QueryOK res
