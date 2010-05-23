@@ -42,17 +42,32 @@ let l_reg_char_encoded =
 
 let (tor,tow) = Unix.pipe()  ;;	
 
-
 	
 let log (txt, log_level) =
 
   let conf     = Config.get() in
     
   let do_it () = 
+    
     let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
       Printf.printf "LOG: %s\n" to_log   ;
-      Pervasives.flush Pervasives.stdout ;
-      ignore (Unix.system ("echo \""^to_log^"\" >> log.txt"))
+      Pervasives.flush Pervasives.stdout;
+      (*  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) *)
+
+      let f_existed = Sys.file_exists "log.txt" in
+
+      try
+	let fd = Unix.openfile "log.txt" [ O_WRONLY ; O_APPEND ; O_CREAT ] 0o666 in
+
+	  (if f_existed = false then
+	    Unix.fchmod fd 0o666
+	  );
+
+	  ignore (Unix.write fd to_log 0 (String.length to_log));
+	  Unix.close fd
+      with Unix_error (err,_,_) ->
+	let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s" (Unix.error_message err) in
+	  prerr_endline error
   in
     
     match conf.c_log_level with

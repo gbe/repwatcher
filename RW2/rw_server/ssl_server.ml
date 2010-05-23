@@ -75,7 +75,6 @@ let run tor =
       with Not_found -> failwith "Fatal error. User 'nobody' doesn't exist. The network process can't take this identity"
     end;
 
-
   let connected_clients = ref [] in
   let m = Mutex.create () in
 
