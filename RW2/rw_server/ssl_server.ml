@@ -109,7 +109,6 @@ let run tor =
 	  Ssl.output_string ssl_s txt;
 	  let log_msg = ref (Printf.sprintf "Sent '%s' to %s (%s)" txt common_name (get_ip sockaddr_cli)) in
 	    log_msg := Str.global_replace reg " " !log_msg;
-	    Printf.printf "%s" !log_msg;
 	    Report.report (Log (!log_msg, Level_1))
 	      
 	with Ssl.Write_error _ ->

@@ -154,36 +154,35 @@ let _ =
 
   (* Load the configuration file and then watch the directories given in it *)
   let conf = init () in
-    Mysqldb.connect conf.c_sql;
 
-    let fd = match conf.c_notify_rem with
-      | true  ->
-	  Report.report (Log ("Start server for remote notifications", Level_2)) ;
-	  Unix.fork()
-      | false -> -1
-    in
+  let fd = match conf.c_notify_rem with
+    | true  ->
+	Report.report (Log ("Start server for remote notifications", Level_2)) ;
+	Unix.fork()
+    | false -> -1
+  in
       
       
-      match fd with
-	| 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor
-	| _ ->
-	    begin
+    match fd with
+      | 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor
+      | _ ->
+	  begin
+	    
+	    Core.print_ht ();
+	    
+	    Pervasives.flush Pervasives.stdout;
+	    
+	    Report.report (Notify "Repwatcher is watching youuu ! :)") ;
+	    Report.report ( Log ("Repwatcher is watching youuu ! :)", Level_1) ) ;    
+	    
+	    while true do
 	      
-	      Core.print_ht ();
-	      
-	      Pervasives.flush Pervasives.stdout;
-	      
-	      Report.report (Notify "Repwatcher is watching youuu ! :)") ;
-	      Report.report ( Log ("Repwatcher is watching youuu ! :)", Level_1) ) ;    
-	      
-	      while true do
+	      let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+	      let event_l = Inotify.read Core.fd in
 		
-		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
-		let event_l = Inotify.read Core.fd in
-		  
-		  List.iter (fun event -> Core.what_to_do event) event_l;
-	      done;
-	      
-	      Unix.close Core.fd
-	    end
+		List.iter (fun event -> Core.what_to_do event) event_l;
+	    done;
+	    
+	    Unix.close Core.fd
+	  end
 ;;
