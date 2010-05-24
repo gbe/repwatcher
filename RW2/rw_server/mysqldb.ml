@@ -31,26 +31,33 @@ let connect () =
   cid := Some (Mysql.connect (Config.get()).c_sql)
 ;;
 
+let disconnect () =
+  match !cid with
+  | None -> assert false
+  | Some cid -> Mysql.disconnect cid
+;;
+
 let query q =
 
   connect();
-
+  
   match !cid with
-    | None -> assert false
-    | Some cid ->
-
-	let res = exec cid q in
-	let status_query = status cid in
-	  
-	  disconnect cid;
-	  
-	  match status_query with
-	    | StatusOK      -> QueryOK res
-	    | StatusEmpty   -> QueryEmpty
-	    | StatusError _ ->
-		match errmsg cid with
-		  | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
-		  | Some errmsg' -> QueryError errmsg'
+  | None -> assert false
+  | Some cid ->
+      
+      let res = exec cid q in
+      
+      let ret =
+	match	status cid with
+	| StatusOK      -> QueryOK res
+	| StatusEmpty   -> QueryEmpty
+	| StatusError _ ->
+	    match errmsg cid with
+	    | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
+	    | Some errmsg' -> QueryError errmsg'
+      in
+      disconnect ();
+      ret
 ;;
 
 
