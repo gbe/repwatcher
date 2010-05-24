@@ -66,7 +66,10 @@ let log (txt, log_level) =
 	  ignore (Unix.write fd to_log 0 (String.length to_log));
 	  Unix.close fd
       with Unix_error (err,_,_) ->
-	let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s" (Unix.error_message err) in
+	(* Disable logging *)
+	Config.conf := Some {conf with c_log_level = 0};
+
+	let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
 	  prerr_endline error
   in
     
