@@ -27,35 +27,30 @@ open Unix
 (* connection identifier *)
 let cid = ref None;;
 
-let connect c_sql =
-  cid := Some (Mysql.connect c_sql)
+let connect () =
+  cid := Some (Mysql.connect (Config.get()).c_sql)
 ;;
 
 let query q =
 
+  connect();
+
   match !cid with
     | None -> assert false
     | Some cid ->
-	(* make sure the connection to the server is up
-	 * and re-establishes it if needed
-	 *)
-	(try
-	   ping cid
-	 with Error error_msg ->
-	   Printf.printf "%s. Reconnecting to the server\n" error_msg;
-	   Pervasives.flush Pervasives.stdout;
-	   connect (Config.get()).c_sql
-	);
 
 	let res = exec cid q in
-	  match status cid with
+	let status_query = status cid in
+	  
+	  disconnect cid;
+	  
+	  match status_query with
 	    | StatusOK      -> QueryOK res
 	    | StatusEmpty   -> QueryEmpty
 	    | StatusError _ ->
 		match errmsg cid with
 		  | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
 		  | Some errmsg' -> QueryError errmsg'
-		      
 ;;
 
 
