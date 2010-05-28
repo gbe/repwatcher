@@ -107,8 +107,8 @@ let init () =
       
       
       let children =
-	List.fold_right (
-	  fun dir dirs2watch ->
+	List.fold_left (
+	  fun dirs2watch dir ->
 	    
 	    let dir_children = Core.ls_children dir in
 	    let dir_children_without_ignored_ones = 
@@ -127,7 +127,7 @@ let init () =
 	    in
 	      dir_children_without_ignored_ones@dirs2watch
  		
-	) !directories []
+	) [] !directories
       in
 	
 	List.iter (fun dir -> Core.add_watch dir None false) !directories;
