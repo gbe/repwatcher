@@ -24,14 +24,14 @@ open Ast_conf
 
 let l_reg_char_encoded =
 
-(* &amp; needs to be the last one of the list.
+(* &amp; needs to be the first one in the list.
  * Otherwise, &gt; (for example) will be changed in &amp;gt;
  *)
-  let l_char = [ (">", "&gt;") ;
-		 ("<", "&lt;") ;
+  let l_char = [ ("&", "&amp;")  ;
+		 (">", "&gt;")   ;
+		 ("<", "&lt;")   ;
 		 ("'", "&apos;") ;
-		 ((Char.escaped '"'), "&quot;");
-		 ("&", "&amp;")
+		 ((Char.escaped '"'), "&quot;")		 
 	       ]
   in
     List.map (fun (char, char_encoded) ->
@@ -45,45 +45,63 @@ let (tor,tow) = Unix.pipe()  ;;
 	
 let log (txt, log_level) =
 
-  let conf     = Config.get() in
-    
-  let do_it () = 
+  let conf      = Config.get() in 
+
+
+  let rec open_fd ?(l=[ O_WRONLY ; O_APPEND]) () = 
+    try
+      let fd = Unix.openfile "log.txt" l 0o666 in
+      
+      (* if true then it means the exception was triggered before *)
+      if List.mem O_CREAT l then begin
+	Unix.fchmod fd 0o666
+      end;
+
+      Some fd
+      
+      
+    with Unix_error (err,_,_) ->
+      
+      match err with
+      | ENOENT -> (* no such file or directory *)
+	  open_fd ~l:[ O_WRONLY ; O_APPEND ; O_CREAT ] ()
+      | _      ->
+	  
+	  (* Disable logging *)
+	  Config.conf := Some {conf with c_log_level = 0};
+	  
+	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
+	  prerr_endline error;
+	  
+	  (* fd = None because it failed to open *)
+	  None
+  in
+
+  let log_it ()  = 
     
     let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
-      Printf.printf "LOG: %s\n" to_log   ;
-      Pervasives.flush Pervasives.stdout;
-      (*  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) *)
+    Printf.printf "LOG: %s\n" to_log   ;
+    Pervasives.flush Pervasives.stdout;
+    (*  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) *)
 
-      let f_existed = Sys.file_exists "log.txt" in
-
-      try
-	let fd = Unix.openfile "log.txt" [ O_WRONLY ; O_APPEND ; O_CREAT ] 0o666 in
-
-	  (if f_existed = false then
-	    Unix.fchmod fd 0o666
-	  );
-
-	  ignore (Unix.write fd to_log 0 (String.length to_log));
-	  Unix.close fd
-      with Unix_error (err,_,_) ->
-	(* Disable logging *)
-	Config.conf := Some {conf with c_log_level = 0};
-
-	let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
-	  prerr_endline error
+    (* Open the file *)
+    match open_fd() with
+    | None -> () (* An error occured, the file could not be opened *)
+    | Some fd ->
+	ignore (Unix.write fd to_log 0 (String.length to_log));
+	Unix.close fd
   in
     
-    match conf.c_log_level with
-      | 0 -> () (* don't log *)
-      | 1 ->
-	  begin
-	    match log_level with
-	      | Level_1 -> do_it()
-	      | Level_2 -> () (* don't log *)
-	  end
-      | 2 -> do_it()
-      | _ -> assert false
-	  
+  match conf.c_log_level with
+  | 0 -> () (* don't log *)
+  | 1 ->
+      begin
+	match log_level with
+	| Level_1 -> log_it()
+	| Level_2 -> () (* don't log *)
+      end
+  | 2 -> log_it()
+  | _ -> assert false  
 	  
 ;;
     
@@ -94,9 +112,9 @@ let notify txt =
   let conf        = Config.get() in
   
   let txt_escaped =
-    List.fold_right (fun (reg, char_encoded) txt' ->
+    List.fold_left (fun txt' (reg, char_encoded) ->
 		       Str.global_replace reg char_encoded txt'
-		    ) l_reg_char_encoded txt
+		    ) txt l_reg_char_encoded
   in
     
     if conf.c_notify_loc then
