@@ -22,7 +22,6 @@
 (* TO DO
 
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers
-- Dans report.ml, revoir le système des erreurs. Mettre des numéros d'erreur et appeler directement dans Report les erreurs. Enlever les add_report depuis Core.ml
 *)
 
 
