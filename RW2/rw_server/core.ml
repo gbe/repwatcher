@@ -256,7 +256,7 @@ let print_ht () =
 let what_to_do event =
   let (wd, tel, _, str_opt) = event in
     
-  let filename =
+  let name =
     match str_opt with
 	None -> "nothing"
       | Some x -> x
@@ -268,7 +268,7 @@ let what_to_do event =
       | type_event::q -> 
 	  
 	  if not (string_of_event type_event = "ACCESS") then
-	    printf "Event in progress: '%s', %s. Filename: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) filename (int_of_wd wd)
+	    printf "Event in progress: '%s', %s. Filename: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
 	  ;
 	  
 	  begin	  
@@ -283,7 +283,7 @@ let what_to_do event =
 	      | Open, false           -> 
 		                         begin
 					   match get_value wd with
-					   | None -> let err = sprintf "%s was opened but its wd could not be found\n" filename in
+					   | None -> let err = sprintf "%s was opened but its wd could not be found\n" name in
 					     Report.report (Log (err, Level_1) )
 					   | Some value ->
 					       let folder = Filename.quote value.path in
@@ -291,7 +291,7 @@ let what_to_do event =
 					       Printf.printf " [II] Folder: %s\n" folder;
 					       
 					       let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					       let l_opened_files = File_list.get chan filename in					       
+					       let l_opened_files = File_list.get chan name in					       
 					       ignore (Unix.close_process_in chan);
 					       
 					       let l_filtered = File_list.filter l_opened_files in
@@ -328,7 +328,7 @@ let what_to_do event =
 	      | Close_nowrite, false  ->
 		    			begin
 					  match get_value wd with
-					  | None -> let err = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" filename in
+					  | None -> let err = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
 					    Report.report ( Log (err, Level_1) )
 					  
 					  | Some value ->
@@ -338,7 +338,7 @@ let what_to_do event =
 					      
 					      (* Call lsof to know which file stopped being accessed *)					      
 					      let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					      let l_opened_files = File_list.get chan filename in    
+					      let l_opened_files = File_list.get chan name in    
 					      ignore (Unix.close_process_in chan);
 					      
 					      let l_files_in_progress = File_list.filter l_opened_files in
@@ -368,22 +368,22 @@ let what_to_do event =
 	      | Create, true          ->
 	      	                         begin
 					   match get_value wd with
-					   | None       -> let err = sprintf "%s has been created but I can't start watching it because I can't find its father" filename in
+					   | None       -> let err = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
 					     Report.report ( Log (err, Level_1) )
 					       
 					   | Some value ->
 	      				       let folder = value.path in
-		                               add_watch (folder^"/"^filename) (Some wd) false
+		                               add_watch (folder^"/"^name) (Some wd) false
 					 end
 					   
 	      | Moved_to, true        ->
 	      	                         begin
 	      				   match get_value wd with
-					   | None       -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" filename in
+					   | None       -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
 					     Report.report ( Log (report, Level_2) )
 					   
 					   | Some value ->
-					       let folder = (value.path)^"/"^filename in
+					       let folder = (value.path)^"/"^name in
 		                               let children = ls_children folder in
 
 					       (* Watch the new folder *)
@@ -396,13 +396,13 @@ let what_to_do event =
 	      | Moved_to, false       -> () (* Probablement les mêmes conditions que moved_from, false *)
 		  
 	      | Delete, true          ->
-                         		  let err = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" filename in
+                         		  let err = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
 		                          begin
 					    match get_value wd with
 					    | None        -> Report.report ( Log (err, Level_1) )
 					    | Some value  ->
 						let folder = value.path in
-						match get_key (folder^"/"^filename) with
+						match get_key (folder^"/"^name) with
 						| None        -> Report.report ( Log (err, Level_1) )
 						| Some wd_key ->  del_watch wd_key						      
 					  end
@@ -412,12 +412,12 @@ let what_to_do event =
 	      | Moved_from, true      ->
 	      	                         begin
 	      				   match get_value wd with
-					   | None         -> let report = sprintf "Error. %s has been \"moved from\" but I can't find its corresponding value in the Hashtbl. Move canceled" filename in
+					   | None         -> let report = sprintf "Error. %s has been \"moved from\" but I can't find its corresponding value in the Hashtbl. Move canceled" name in
 					                     Report.report (Log (report, Level_1))
 					   | Some value1  ->
 					       let folder = value1.path in
 					       
-					       match get_key (folder^"/"^filename) with
+					       match get_key (folder^"/"^name) with
 					       | None        -> Report.report (Log ("Error. Move_from: get_key -> wd_key", Level_1))
 					       | Some wd_key ->
 						   
@@ -449,7 +449,7 @@ let what_to_do event =
 							     del_watch wd_child
 								 ) children_and_descendants
 							 ;				       
-						       Report.report ( Log (("move_from de "^filename), Level_2) ) ;
+						       Report.report ( Log (("move_from de "^name), Level_2) ) ;
 						       del_watch wd_key
 							 
 					 end
