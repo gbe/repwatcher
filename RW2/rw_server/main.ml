@@ -22,7 +22,6 @@
 (* TO DO
 
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers
-- Régler dans Core.what_to_do la variable filename qui peut aussi concerner les dossiers. Ce nommage pose un problème de compréhension
 - Revoir les assert false et tous les messages d'erreur
 *)
 
