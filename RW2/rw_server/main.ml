@@ -19,14 +19,6 @@
 
 
 
-(* TO DO
-
-- Voir pour mettre en surveillance des fichiers et pas seulement des dossiers
-- Revoir les assert false et tous les messages d'erreur
-*)
-
-
-
 open Unix
 open Printf
 

@@ -88,8 +88,12 @@ let log (txt, log_level) =
     match open_fd() with
     | None -> () (* An error occured, the file could not be opened *)
     | Some fd ->
-	ignore (Unix.write fd to_log 0 (String.length to_log));
-	Unix.close fd
+	try
+	  ignore (Unix.write fd to_log 0 (String.length to_log));
+	  Unix.close fd
+	with _ ->
+	  prerr_endline "An error occured either trying to log in the file or to close it\n" ;
+	  Pervasives.flush Pervasives.stdout
   in
     
   match conf.c_log_level with
@@ -124,8 +128,10 @@ let notify txt =
       end
     ;
     if conf.c_notify_rem then
-      (* Send in the pipe for the server to send to the clients *)
-      ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
+      try
+	(* Send in the pipe for the server to send to the clients *)
+	ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
+      with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
 ;;
 
 

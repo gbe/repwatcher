@@ -88,11 +88,19 @@ let run tor =
 
 
   let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Server_context in
-    
+
     if !password <> "" then
       Ssl.set_password_callback ctx (fun _ -> !password);
-    
-    Ssl.use_certificate ctx !certfile !privkey;
+
+  begin
+    try
+      Ssl.use_certificate ctx !certfile !privkey;
+    with Ssl.Private_key_error ->
+      let error = "Err. Ssl_server: wrong private key password" in
+      Report.report (Log (error, Level_1)) ;
+      failwith error
+  end;
+  
     Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
 
     (try
@@ -232,3 +240,4 @@ let run tor =
       done
 	
 	
+
