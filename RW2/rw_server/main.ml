@@ -31,7 +31,6 @@ open Report
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
 
 
-
 (* Check if the config exists and then
  * - Parse it
  * - Put a watch on it
@@ -132,6 +131,30 @@ let init () =
 ;;
 
 
+
+
+let wait_pipe_from_child_process () =
+  let bufsize = 1024 in
+  let buf = String.create bufsize in
+  
+  while true do
+    let recv = Unix.read Pipe.tor2 buf 0 bufsize in
+    Printf.printf "Main, tor2 franchit. recv= %d\n" recv;
+    if recv > 0 then
+      begin
+	match String.sub buf 0 recv with
+	| "ask_current_dls" ->
+	    let str_ht_current_dls = Marshal.to_string Files_progress.ht [Marshal.No_sharing] in
+	    ignore (Unix.write Pipe.tow3 str_ht_current_dls 0 (String.length str_ht_current_dls))
+	| _ -> Report.report (Log ("Err. The server received an unknown command", Level_2))
+      end;
+    Pervasives.flush Pervasives.stdout
+  done
+;;
+
+
+
+
 (* Fonction main *)
 let _ =
   
@@ -154,11 +177,18 @@ let _ =
     | false -> -1
   in
       
-      
+     
     match fd with
-      | 0 -> if conf.c_notify_rem then Ssl_server.run Report.tor
+      | 0 ->
+	  if conf.c_notify_rem then begin
+	    Ssl_server.run Pipe.tor Pipe.tow2 Pipe.tor3
+	  end
+
       | _ ->
 	  begin
+	  if conf.c_notify_rem then begin
+	    ignore (Thread.create wait_pipe_from_child_process ())
+	  end;
 	    
 	    Core.print_ht ();
 	    

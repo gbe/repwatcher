@@ -22,30 +22,10 @@ open Unix
 open Ast
 open Ast_conf
 
-let l_reg_char_encoded =
 
-(* &amp; needs to be the first one in the list.
- * Otherwise, &gt; (for example) will be changed in &amp;gt;
- *)
-  let l_char = [ ("&", "&amp;")  ;
-		 (">", "&gt;")   ;
-		 ("<", "&lt;")   ;
-		 ("'", "&apos;") ;
-		 ((Char.escaped '"'), "&quot;")		 
-	       ]
-  in
-    List.map (fun (char, char_encoded) ->
-		((Str.regexp char), char_encoded)
-	     ) l_char
-;;
-
-
-let (tor,tow) = Unix.pipe()  ;;	
-
-	
 let log (txt, log_level) =
 
-  let conf      = Config.get() in 
+  let conf = Config.get() in 
 
 
   let rec open_fd ?(l=[ O_WRONLY ; O_APPEND]) () = 
@@ -115,11 +95,7 @@ let notify txt =
 
   let conf        = Config.get() in
   
-  let txt_escaped =
-    List.fold_left (fun txt' (reg, char_encoded) ->
-		       Str.global_replace reg char_encoded txt'
-		    ) txt l_reg_char_encoded
-  in
+  let txt_escaped = Txt_operations.escape_for_notify txt in
     
     if conf.c_notify_loc then
       begin
@@ -130,7 +106,7 @@ let notify txt =
     if conf.c_notify_rem then
       try
 	(* Send in the pipe for the server to send to the clients *)
-	ignore (Unix.write tow txt_escaped 0 (String.length txt_escaped))
+	ignore (Unix.write Pipe.tow txt_escaped 0 (String.length txt_escaped))
       with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
 ;;
 
@@ -182,8 +158,6 @@ let sql (f, state) =
 
 module Report =
 struct
-	(* tor is now viewable from the outside (ssl_server) *)
-	let tor = tor ;;
 
 	let report = function
 	  | Sql    file_state -> sql file_state

@@ -21,7 +21,7 @@
 open Ast
 open Ast_conf
 
-let get channel filename =
+let get channel =
   
   let l = ref [] in    
   let regexp_cut_space= Str.regexp "[' ']+" in
@@ -52,7 +52,7 @@ let get channel filename =
 	      
 	  else
 	    let path_and_filename = t^" "^(String.concat " " q)	in
-	    {file with f_name = filename ; f_path = (Filename.dirname path_and_filename)^"/"}		    
+	    {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}		    
 	      
 	in l := (set_file cut_line 0 file)::(!l)
       done
