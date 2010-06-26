@@ -26,7 +26,6 @@ type f_file = {
   f_prog_source : string ;
 }
 
-type files      = f_file list
 type file_state = File_Opened | File_Closed
 type log_level  = Level_1     | Level_2
 

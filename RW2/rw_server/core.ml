@@ -26,7 +26,6 @@ open Ast
 open Ast_conf
 open Report
 
-
 type w_info = {
   conf         : bool;
   path         : string;
@@ -38,7 +37,6 @@ exception Found of Inotify.wd;;
 
 let fd          = Inotify.init()
 let ht_iwatched = Hashtbl.create 4001
-let f_accessed  = ref []
 
 
 (* FUNCTIONS *)
@@ -255,7 +253,7 @@ let print_ht () =
 
 let what_to_do event =
   let (wd, tel, _, str_opt) = event in
-    
+
   let name =
     match str_opt with
 	None -> "nothing"
@@ -291,24 +289,26 @@ let what_to_do event =
 					       Printf.printf " [II] Folder: %s\n" folder;
 					       
 					       let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					       let l_opened_files = File_list.get chan name in					       
+					       let l_opened_files = File_list.get chan in					       
 					       ignore (Unix.close_process_in chan);
 					       
 					       let l_filtered = File_list.filter l_opened_files in
 					       
 					       Printf.printf "[II] Opened : %d\tFiltered : %d\n" (List.length l_opened_files) (List.length l_filtered);
 					       
-					       List.iter ( fun file ->
-						 (* À vérifier pourquoi il y a ce test *)
-						 if not (List.mem (wd,file) !f_accessed) then
+					       List.iter (
+					       fun file ->
+
+						 (* This test is here because without it we could be notified 3 times for the same thing *)
+						 if not (Hashtbl.mem Files_progress.ht (wd,file)) then
 						   begin
-						     printf "AAAAAAAAAAAAHHHH : %s et %d\n" file.f_name (List.length l_opened_files);
+						     (*  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name; *)
 						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Level_1) ) ;
 						     Report.report ( Notify (file.f_login^" is downloading:\n"^file.f_name)      ) ;
 						     Report.report ( Sql (file, File_Opened)                                     ) ;
-						     f_accessed := (wd,file)::(!f_accessed)
+						     Hashtbl.add Files_progress.ht (wd,file) (Date.date())
 						   end
-					    		  ) l_filtered
+					      ) l_filtered
 					 end
 					      
 	      | Close_write, false    ->
@@ -338,29 +338,29 @@ let what_to_do event =
 					      
 					      (* Call lsof to know which file stopped being accessed *)					      
 					      let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
-					      let l_opened_files = File_list.get chan name in    
+					      let l_opened_files = File_list.get chan in
 					      ignore (Unix.close_process_in chan);
 					      
-					      let l_files_in_progress = File_list.filter l_opened_files in
-					      
-					      let (l_still_in_progr, l_stop_access) =
-					    	List.partition (fun (wd', f_file) ->
-						  
-						  (* Check if it's in the same watch *)
-						  if wd' = wd then
-						    List.mem f_file l_files_in_progress					  
+					      let l_files_in_progress              = File_list.filter l_opened_files in
+
+                                              (* Return the list of the files which stopped being accessed *)
+					      let l_stop    =
+						Hashtbl.fold (fun (wd2, f_file) _ l_stop' ->
+						  (* if wd2 is wd's child and is not in progress anymore *)
+                                                 if ( wd = wd2 && not (List.mem f_file l_files_in_progress) ) then
+						    (wd2, f_file)::l_stop'
 						  else
-						    (* If not then it means it's not the same directory. Therefore we keep it *)
-						    true
-							       ) !f_accessed
+						    l_stop'
+                                                ) Files_progress.ht []
 					      in
 					      
-					      f_accessed := l_still_in_progr;
-					      List.iter (fun (_, f_file) ->
+					      List.iter (
+					      fun (wd2, f_file) ->
+                                                Hashtbl.remove Files_progress.ht (wd2, f_file);
 						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Level_1)  ) ;
 						Report.report ( Notify (f_file.f_login^" finished downloading:\n"^f_file.f_name)          ) ;
 						Report.report ( Sql    (f_file, File_Closed)                                              ) ;
-							) l_stop_access
+					     ) l_stop
 		    			end
 
 	      | Create, false         -> ()

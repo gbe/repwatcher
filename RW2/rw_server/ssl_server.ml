@@ -62,7 +62,7 @@ let get_common_name cert =
 ;;
 
 
-let run tor =
+let run tor tow2 tor3 =
 
   (* Drop privileges by changing the processus' identity if its current id is root *)
   if Unix.geteuid() = 0 && Unix.getegid() = 0 then
@@ -149,18 +149,33 @@ let run tor =
       
      
       
-    let wait_for_pipe () =
+    let wait_pipe_for_notifications () =
       let bufsize = 1024 in
       let buf = String.create bufsize in
 	
-	while true do
-	  let recv = Unix.read tor buf 0 bufsize in
-	    if recv > 0 then
-	      begin
-		let msg = String.sub buf 0 recv in
-		  send msg None
-	      end
-	done
+      while true do
+	let recv = Unix.read tor buf 0 bufsize in
+	if recv > 0 then
+	  let msg = String.sub buf 0 recv in
+	  send msg None
+      done
+    in
+
+    let wait_pipe_for_current_downloads () =
+      let bufsize = 1024 in
+      let buf = String.create bufsize in
+      
+      let recv = Unix.read tor3 buf 0 bufsize in
+
+      Printf.printf "SSL_server, tor3 franchit. recv= %d\n" recv;
+      Pervasives.flush Pervasives.stdout;
+
+      if recv > 0 then begin
+	let data = String.sub buf 0 recv in
+	Some (Marshal.from_string data 0 : (Inotify.wd * Ast.f_file, string) Hashtbl.t)
+      end  
+      else
+	None
     in
       
       
@@ -196,7 +211,24 @@ let run tor =
       Mutex.unlock m ;
 
       send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli, common_name));
-      
+
+      let msg_new_client = "ask_current_dls" in
+      ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
+      let ht = wait_pipe_for_current_downloads () in
+
+      begin
+	match ht with
+	| Some ht' ->
+	    Printf.printf "Hashtbl.accessed length = %d\n" (Hashtbl.length ht');
+	    Hashtbl.iter (
+	    fun (_,f_in_progress) date ->
+	      let msg = Printf.sprintf "At %s, %s started downloading\n%s" date f_in_progress.f_login (Txt_operations.escape_for_notify f_in_progress.f_name) in
+	      send msg (Some(ssl_s, sockaddr_cli, common_name))
+	   ) ht';
+	    Pervasives.flush Pervasives.stdout
+	| None -> ()
+      end;
+
       let loop = ref true in	
 	
 	try  
@@ -218,7 +250,7 @@ let run tor =
     let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt) in
       
       
-      ignore (Thread.create wait_for_pipe ());
+      ignore (Thread.create wait_pipe_for_notifications ());
       
       Printf.printf "Waiting for connections...\n";
       Pervasives.flush Pervasives.stdout;
