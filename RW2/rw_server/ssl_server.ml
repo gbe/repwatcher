@@ -62,7 +62,7 @@ let get_common_name cert =
 ;;
 
 
-let run tor tow2 tor3 =
+let run tor tow2 =
 
   (* Drop privileges by changing the processus' identity if its current id is root *)
   if Unix.geteuid() = 0 && Unix.getegid() = 0 then
@@ -109,15 +109,16 @@ let run tor tow2 tor3 =
     ;
 
 
-    let send txt socks =
+    let send ser_txt socks =
       
       let do_it (ssl_s, sockaddr_cli, common_name) =
 
 	try 
-	  Ssl.output_string ssl_s txt;
-	  let log_msg = ref (Printf.sprintf "Sent '%s' to %s (%s)" txt common_name (get_ip sockaddr_cli)) in
+	  Ssl.output_string ssl_s ser_txt;
+(*	  let log_msg = ref (Printf.sprintf "Sent '%s' to %s (%s)" ser_txt common_name (get_ip sockaddr_cli)) in
 	    log_msg := Str.global_replace reg " " !log_msg;
 	    Report.report (Log (!log_msg, Level_1))
+*)
 	      
 	with Ssl.Write_error _ ->
 	  Report.report (Log ("SSL write error\n", Level_1))
@@ -133,8 +134,9 @@ let run tor tow2 tor3 =
 
       
     let handle_interrupt i = 
-      
-      send "rw_server_exit" None;
+
+      let ser_info = Marshal.to_string (Info_notif "rw_server_exit") [Marshal.No_sharing] in      
+      send ser_info None;
       
       Mutex.lock m ;
       Printf.printf "NB clients: %d\n" (List.length !connected_clients);
@@ -149,18 +151,24 @@ let run tor tow2 tor3 =
       
      
       
-    let wait_pipe_for_notifications () =
-      let bufsize = 1024 in
+    let pipe_waits_for_notifications () =
+      let bufsize = 2048 in
       let buf = String.create bufsize in
 	
       while true do
 	let recv = Unix.read tor buf 0 bufsize in
 	if recv > 0 then
-	  let msg = String.sub buf 0 recv in
-	  send msg None
+	  begin
+	    let data = String.sub buf 0 recv in
+	    let notif = (Marshal.from_string data 0 : Ast.notification) in
+            match notif with
+               | (New_notif _ | Info_notif _ ) -> send data None
+               | Old_notif _ -> send data (Some (List.hd !connected_clients))
+	  end
       done
     in
 
+(*
     let wait_pipe_for_current_downloads () =
       let bufsize = 1024 in
       let buf = String.create bufsize in
@@ -177,7 +185,7 @@ let run tor tow2 tor3 =
       else
 	None
     in
-      
+  *)    
       
       
     let client_quit sock_cli =
@@ -210,24 +218,11 @@ let run tor tow2 tor3 =
       connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
       Mutex.unlock m ;
 
-      send "rw_server_con_ok" (Some(ssl_s, sockaddr_cli, common_name));
+      let ser_info = Marshal.to_string (Info_notif "rw_server_con_ok") [Marshal.No_sharing] in
+      send ser_info (Some(ssl_s, sockaddr_cli, common_name));
 
       let msg_new_client = "ask_current_dls" in
       ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
-      let ht = wait_pipe_for_current_downloads () in
-
-      begin
-	match ht with
-	| Some ht' ->
-	    Printf.printf "Hashtbl.accessed length = %d\n" (Hashtbl.length ht');
-	    Hashtbl.iter (
-	    fun (_,f_in_progress) date ->
-	      let msg = Printf.sprintf "At %s, %s started downloading\n%s" date f_in_progress.f_login (Txt_operations.escape_for_notify f_in_progress.f_name) in
-	      send msg (Some(ssl_s, sockaddr_cli, common_name))
-	   ) ht';
-	    Pervasives.flush Pervasives.stdout
-	| None -> ()
-      end;
 
       let loop = ref true in	
 	
@@ -250,7 +245,7 @@ let run tor tow2 tor3 =
     let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt) in
       
       
-      ignore (Thread.create wait_pipe_for_notifications ());
+      ignore (Thread.create pipe_waits_for_notifications ());
       
       Printf.printf "Waiting for connections...\n";
       Pervasives.flush Pervasives.stdout;

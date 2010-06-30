@@ -144,8 +144,15 @@ let wait_pipe_from_child_process () =
       begin
 	match String.sub buf 0 recv with
 	| "ask_current_dls" ->
-	    let str_ht_current_dls = Marshal.to_string Files_progress.ht [Marshal.No_sharing] in
-	    ignore (Unix.write Pipe.tow3 str_ht_current_dls 0 (String.length str_ht_current_dls))
+
+	    let l_current_dls = Hashtbl.fold (fun (_,file) date ret -> ret@[(file.f_login, (Txt_operations.escape_for_notify file.f_name), date)] ) Files_progress.ht [] in
+	    
+	    (* We go through the pipe only if it's necessary *)
+	    if List.length l_current_dls > 0 then
+	      begin
+		let str_current_dls = Marshal.to_string (Old_notif l_current_dls) [Marshal.No_sharing] in
+		ignore (Unix.write Pipe.tow str_current_dls 0 (String.length str_current_dls))
+	      end
 	| _ -> Report.report (Log ("Err. The server received an unknown command", Level_2))
       end;
     Pervasives.flush Pervasives.stdout
@@ -181,7 +188,7 @@ let _ =
     match fd with
       | 0 ->
 	  if conf.c_notify_rem then begin
-	    Ssl_server.run Pipe.tor Pipe.tow2 Pipe.tor3
+	    Ssl_server.run Pipe.tor Pipe.tow2
 	  end
 
       | _ ->
@@ -194,8 +201,8 @@ let _ =
 	    
 	    Pervasives.flush Pervasives.stdout;
 	    
-	    Report.report (Notify "Repwatcher is watching youuu ! :)") ;
-	    Report.report ( Log ("Repwatcher is watching youuu ! :)", Level_1) ) ;    
+	    Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
+	    Report.report ( Log   ("Repwatcher is watching youuu ! :)", Level_1)       ) ;    
 	    
 	    while true do
 	      

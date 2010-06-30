@@ -18,36 +18,26 @@
 *)
 
 
-type f_file = {
-  f_name        : string ;
-  f_path        : string ;
-  f_login       : string ;
-  f_filesize    : int64  ;
-  f_prog_source : string ;
-}
 
-type file_state = File_Opened | File_Closed
-type log_level  = Level_1     | Level_2
+let l_encoded_chars =
+(* &amp; needs to be the first one in the list.
+ * Otherwise, &gt; (for example) will be changed in &amp;gt;
+ *)
+  let l_char = [ ("&", "&amp;")  ;
+		 (">", "&gt;")   ;
+		 ("<", "&lt;")   ;
+		 ("'", "&apos;") ;
+		 ((Char.escaped '"'), "&quot;")		 
+	       ]
+  in
+  List.map (fun (char, char_encoded) ->
+    ((Str.regexp char), char_encoded)
+	   ) l_char
+;;
 
-
-(* New of login * filename
- * Old of login * filename * date) list
- * Info of message (such as Repwatcher is watching you)
-*)
-
-type notification =
-  | New_notif  of string * string * file_state
-  | Old_notif  of (string * string * string) list
-  | Info_notif of string
-
-type report = | Notify of notification
-	      | Log    of (string * log_level)
-	      | Sql    of (f_file * file_state)
-
-type 'a query_result = 
-  | QueryOK    of 'a
-  | QueryEmpty
-  | QueryError of string
-
-
+let escape_for_notify txt =
+    List.fold_left (fun txt' (reg, encoded_char) ->
+		       Str.global_replace reg encoded_char txt'
+		    ) txt l_encoded_chars
+;;
 

@@ -91,23 +91,59 @@ let log (txt, log_level) =
     
     
     
-let notify txt =
-
-  let conf        = Config.get() in
+let notify notification =  
   
-  let txt_escaped = Txt_operations.escape_for_notify txt in
-    
-    if conf.c_notify_loc then
+  match notification with
+  | New_notif (login, filename, filestate) ->
       begin
-	let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" txt_escaped in
-	  ignore (system call)
+
+	let filename_escaped = Txt_operations.escape_for_notify filename in
+	let conf             = Config.get() in  
+
+	if conf.c_notify_loc then
+	  begin
+	    let msg_state =
+	      match filestate with
+	      | File_Opened -> "is downloading"
+	      | File_Closed -> "finished downloading"
+	    in
+	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
+	    ignore (system call)
+	  end ;
+
+	if conf.c_notify_rem then
+	  try
+               
+	    let str_new_dl = Marshal.to_string ( New_notif (login, filename_escaped, filestate) ) [Marshal.No_sharing] in
+	    
+	    (* Send in the pipe for the server to send to the clients *)
+	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )
+	  with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
+	      
       end
-    ;
-    if conf.c_notify_rem then
-      try
-	(* Send in the pipe for the server to send to the clients *)
-	ignore (Unix.write Pipe.tow txt_escaped 0 (String.length txt_escaped))
-      with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
+
+  | Info_notif info ->
+      begin
+      	let info_escaped = Txt_operations.escape_for_notify info in
+	let conf         = Config.get() in
+	if conf.c_notify_loc then
+	  begin
+	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
+	    ignore (system call)
+	  end ;
+
+	if conf.c_notify_rem then
+	  try
+            
+	    let str_info = Marshal.to_string ( Info_notif info_escaped ) [Marshal.No_sharing] in
+	    
+	    (* Send in the pipe for the server to send to the clients *)
+	    ignore ( Unix.write Pipe.tow str_info 0 (String.length str_info) )
+	  with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
+      end
+
+
+  | _ -> assert false (* Old_notif is not allowed here *)
 ;;
 
 
@@ -160,8 +196,8 @@ module Report =
 struct
 
 	let report = function
-	  | Sql    file_state -> sql file_state
-	  | Notify txt        -> notify txt
-	  | Log    log'       -> log log'
+	  | Sql    file_state   -> sql file_state
+	  | Notify notification -> notify notification
+	  | Log    log'         -> log log'
 	;;
 end;;

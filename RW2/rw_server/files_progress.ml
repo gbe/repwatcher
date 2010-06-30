@@ -17,37 +17,4 @@
 
 *)
 
-
-type f_file = {
-  f_name        : string ;
-  f_path        : string ;
-  f_login       : string ;
-  f_filesize    : int64  ;
-  f_prog_source : string ;
-}
-
-type file_state = File_Opened | File_Closed
-type log_level  = Level_1     | Level_2
-
-
-(* New of login * filename
- * Old of login * filename * date) list
- * Info of message (such as Repwatcher is watching you)
-*)
-
-type notification =
-  | New_notif  of string * string * file_state
-  | Old_notif  of (string * string * string) list
-  | Info_notif of string
-
-type report = | Notify of notification
-	      | Log    of (string * log_level)
-	      | Sql    of (f_file * file_state)
-
-type 'a query_result = 
-  | QueryOK    of 'a
-  | QueryEmpty
-  | QueryError of string
-
-
-
+let ht = Hashtbl.create 41;;
