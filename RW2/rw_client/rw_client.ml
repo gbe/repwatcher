@@ -17,7 +17,7 @@
 
 *)
 
-
+open Notifications
 open Unix
 
 let _ =
@@ -89,29 +89,57 @@ let _ =
     let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt) in
   
 
+    let regexp_space = Str.regexp "[' ']" in
+    let regexp_dot = Str.regexp "[':']" in
 
       
       (try
-	 while !loop do
-	   let data_recv = Ssl.read ssl buf 0 bufsize in
-	     
-	     if data_recv > 0 then
-	       let msg = String.sub buf 0 data_recv in
-		 
-		 match msg with
-		   | "rw_server_exit" -> loop := false
-		   | "rw_server_con_ok"   -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""));
-		   | _                ->
-		       Printf.printf "Recu '%s'\n" msg;
-		       Pervasives.flush Pervasives.stdout;
-		       ignore (Unix.system ("notify-send -i nobody Repwatcher \""^msg^"\""));
-	     else
-	       begin
-		 Printf.printf "Recu %d\n" data_recv;
-		 Pervasives.flush Pervasives.stdout
-	       end
-	 done;
-       with Ssl.Read_error _ -> ()
+	while !loop do
+	  let data_recv = Ssl.read ssl buf 0 bufsize in
+	  
+	  if data_recv > 0 then
+	    let data = String.sub buf 0 data_recv in
+	    let notif = (Marshal.from_string data 0 : notification) in
+	    
+	    match notif with
+	    | Info_notif info ->
+		begin
+		  match info with
+		  | "rw_server_exit"   -> loop := false
+		  | "rw_server_con_ok" -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""));
+		  | _                  ->
+		      assert false
+		end
+		  
+	    | New_notif (login, filename, filestate) -> 
+
+		let (str_of_state, msg_state) =
+		  match filestate with
+		  | File_Opened -> ("File_Opened", "is downloading")
+		  | File_Closed -> ("File_Closed", "finished downloading")
+		in
+
+		Printf.printf "Recu new_notif: '%s', '%s' et %s\n" login filename str_of_state;
+		Pervasives.flush Pervasives.stdout;
+		let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename in
+		ignore (Unix.system call)
+		  
+	    | Old_notif dls_l ->
+		List.iter (
+		fun (login, filename, date) ->
+		  Printf.printf "Recu Old_notif: '%s', '%s' et '%s'\n" login filename date;
+		  Pervasives.flush Pervasives.stdout;
+
+		  let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
+		  let h_m = 
+		    let hms_l = Str.split regexp_dot h_m_s in
+		    (List.nth hms_l 0)^":"^(List.nth hms_l 1)
+		  in
+		  let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m login filename in
+		  ignore (Unix.system call)
+	       ) dls_l
+	done;
+      with Ssl.Read_error _ -> ()
       );
       
       Ssl.shutdown ssl;

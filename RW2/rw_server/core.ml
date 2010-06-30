@@ -303,9 +303,9 @@ let what_to_do event =
 						 if not (Hashtbl.mem Files_progress.ht (wd,file)) then
 						   begin
 						     (*  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name; *)
-						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Level_1) ) ;
-						     Report.report ( Notify (file.f_login^" is downloading:\n"^file.f_name)      ) ;
-						     Report.report ( Sql (file, File_Opened)                                     ) ;
+						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Level_1  )  ) ;
+						     Report.report ( Notify (New_notif (file.f_login, file.f_name, File_Opened ) )  ) ;
+						     Report.report ( Sql (file, File_Opened)                                        ) ;
 						     Hashtbl.add Files_progress.ht (wd,file) (Date.date())
 						   end
 					      ) l_filtered
@@ -358,7 +358,7 @@ let what_to_do event =
 					      fun (wd2, f_file) ->
                                                 Hashtbl.remove Files_progress.ht (wd2, f_file);
 						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Level_1)  ) ;
-						Report.report ( Notify (f_file.f_login^" finished downloading:\n"^f_file.f_name)          ) ;
+						Report.report ( Notify (New_notif (f_file.f_login, f_file.f_name, File_Closed)         )  ) ;
 						Report.report ( Sql    (f_file, File_Closed)                                              ) ;
 					     ) l_stop
 		    			end

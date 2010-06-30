@@ -6,7 +6,7 @@ FLAGS=-linkpkg -package ssl
 all: $(BIN)
 
 $(BIN):$(CMX)
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
+	ocamlfind ocamlopt $(FLAGS) str.cmxa -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
 
 .SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
