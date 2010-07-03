@@ -8,5 +8,5 @@ At this time, the repo has 3 branches:
 To check them out, please proceed like this:
 git checkout --track origin/<branch>
 
-For example : git checkout --track origin/RW1
+For example : git checkout --track -b RW1 origin/RW1
 
