@@ -107,7 +107,7 @@ let init () =
 			     (* - if the exception is triggered, then it means that the directories ignored
 			      * have nothing to do with this one
 			      * 
-			      * - This code is the same that above but without the test Sys.is_directory because I consider that the answer is true.
+			      * - This code is the same than above but without the test Sys.is_directory because I consider that the answer is true.
 			      * I trust the result from "ls" therefore I skip a test for efficency.
 			      *)
 			     try
