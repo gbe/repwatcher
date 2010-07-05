@@ -3,4 +3,5 @@ TO DO
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers
 - Revoir les assert false et tous les messages d'erreur
 - Voir pour déplacer la fonction d'écoute du pipe de ssl_server -> main (tor2) lors de la demande d'envoyer les fichiers anciennement accédés
+- Tester si le "Unix.close Core.fd" l.215 du main.ml est accédé à un moment. De même, éventuellement voir une interception de signaux pour fermer d'une meilleure façon l'ensemble du programme
 
