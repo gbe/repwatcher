@@ -24,7 +24,7 @@ open Ast_conf
 let get channel =
   
   let l = ref [] in    
-  let regexp_cut_space= Str.regexp " " in
+  let regexp_cut_space= Str.regexp "[' ']+" in
   let file = {f_name="";f_path="";f_login="";f_filesize=(Int64.of_int 0);f_prog_source=""} in
   
   begin
