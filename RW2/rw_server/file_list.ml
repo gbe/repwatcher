@@ -24,13 +24,16 @@ open Ast_conf
 let get channel =
   
   let l = ref [] in    
-  let regexp_cut_space= Str.regexp "[' ']+" in
+  let regexp_cut_space = Str.regexp "[' ']+" in
+  let regexp_quote     = Str.regexp "'" in
+  let regexp_quote2    = Str.regexp "&quot;" in
+
   let file = {f_name="";f_path="";f_login="";f_filesize=(Int64.of_int 0);f_prog_source=""} in
   
   begin
     try
       while true do 
-	let line = input_line channel in
+	let line     = Str.global_replace regexp_quote "&quot;" (input_line channel) in
 	let cut_line = Str.split regexp_cut_space line in
 
 	let rec set_file cut_line column file =  
@@ -39,7 +42,7 @@ let get channel =
 	  | t::q -> if column = 0 then
 	      set_file q (column+1) {file with f_prog_source = t}
 		
-	  else if column = 1 || column = 3 || column = 4 || column = 5 || column = 7 then
+	  else if List.mem column [1 ; 3 ; 4 ; 5 ; 7] then
 	    set_file q (column+1) file
 	      
 	      (* pseudo *)
@@ -50,9 +53,13 @@ let get channel =
 	  else if column = 6 then
 	    set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
 	      
-	  else
-	    let path_and_filename = t^" "^(String.concat " " q)	in
-	    {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}		    
+	  else begin
+	    let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) win
+	    let f = {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"} in
+	    Printf.printf "==> filename: %s\n==> path: %s\n" f.f_name f.f_path;
+	    Pervasives.flush Pervasives.stdout;
+	    f
+	  end
 	      
 	in l := (set_file cut_line 0 file)::(!l)
       done
