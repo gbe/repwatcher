@@ -53,13 +53,9 @@ let get channel =
 	  else if column = 6 then
 	    set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
 	      
-	  else begin
-	    let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) win
-	    let f = {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"} in
-	    Printf.printf "==> filename: %s\n==> path: %s\n" f.f_name f.f_path;
-	    Pervasives.flush Pervasives.stdout;
-	    f
-	  end
+	  else
+	    let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) in
+	    {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}
 	      
 	in l := (set_file cut_line 0 file)::(!l)
       done
