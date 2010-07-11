@@ -27,7 +27,7 @@ let wait_pipe_from_child_process () =
   
   while true do
     let recv = Unix.read Pipe.tor2 buf 0 bufsize in
-    Printf.printf "Main, tor2 franchit. recv= %d\n" recv;
+
     if recv > 0 then
       begin
 	match String.sub buf 0 recv with
@@ -43,6 +43,5 @@ let wait_pipe_from_child_process () =
 	      end
 	| _ -> Report.report (Log ("Err. The server received an unknown command", Level_2))
       end;
-    Pervasives.flush Pervasives.stdout
   done
 ;;
