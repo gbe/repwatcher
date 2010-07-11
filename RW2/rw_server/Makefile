@@ -1,4 +1,4 @@
-CMX= lexer.cmx parser.cmx config.cmx file_list.cmx date.cmx mysqldb.cmx txt_operations.cmx pipe.cmx report.cmx files_progress.cmx ssl_server.cmx core.cmx main.cmx
+CMX= lexer.cmx parser.cmx config.cmx file_list.cmx date.cmx mysqldb.cmx txt_operations.cmx pipe.cmx report.cmx files_progress.cmx ssl_server.cmx core.cmx pipe_listening.cmx main.cmx
 GENERATED= lexer.ml parser.ml parser.mli
 BIN=rw_server
 FLAGS=-dtypes -linkpkg -package mysql,ssl,inotify

@@ -26,14 +26,14 @@ let get channel =
   let l = ref [] in    
   let regexp_cut_space = Str.regexp "[' ']+" in
   let regexp_quote     = Str.regexp "'" in
-  let regexp_quote2    = Str.regexp "&quot;" in
+  let regexp_quote2    = Str.regexp "&apos;" in
 
   let file = {f_name="";f_path="";f_login="";f_filesize=(Int64.of_int 0);f_prog_source=""} in
   
   begin
     try
       while true do 
-	let line     = Str.global_replace regexp_quote "&quot;" (input_line channel) in
+	let line     = Str.global_replace regexp_quote "&apos;" (input_line channel) in
 	let cut_line = Str.split regexp_cut_space line in
 
 	let rec set_file cut_line column file =  
@@ -45,11 +45,11 @@ let get channel =
 	  else if List.mem column [1 ; 3 ; 4 ; 5 ; 7] then
 	    set_file q (column+1) file
 	      
-	      (* pseudo *)
+	      (* login *)
 	  else if column = 2 then
 	    set_file q (column+1) {file with f_login = t}
 	      
-	      (* taille file *)
+	      (* file size *)
 	  else if column = 6 then
 	    set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
 	      
