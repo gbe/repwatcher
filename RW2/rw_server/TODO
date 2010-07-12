@@ -6,3 +6,4 @@ TO DO
 - Régler le problème de licence potentiel (entre COPYING et en-tête des fichiers)
 - Supprimer quelques printf
 - Lors de l'exécution du programme, il va vouloir logger. Lors de la tentaive de connexion, si le mot de passe est faux, le programme crash. Idée: tester au lancement du programme une tentative de connexion à la base SQL
+- Lors de l'accès à un fichier, renseignez l'entrée f_path de l'enregistrement file en prenant l'info depuis lsof et pas ce qu'inotify nous donne
