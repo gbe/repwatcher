@@ -155,7 +155,7 @@ let add_watch path2watch wd_father_opt is_config_file =
     let error = "Error: "^path2watch^" is already watched" in
     Report.report (Log (error, Level_1) ) ;
     
-    (* the folder is not alreay watched therefore we can start watching it *)
+    (* the folder is not already watched therefore we can start watching it *)
   else
     if Sys.file_exists path2watch then
       try
@@ -166,32 +166,37 @@ let add_watch path2watch wd_father_opt is_config_file =
 	  else
 	    Inotify.add_watch fd path2watch [S_Open ; S_Close_write ; S_Close_nowrite ; S_Create ; S_Delete ; S_Moved_from ; S_Moved_to]
 	in 
-	  
-	  (* if the wd has a father, the entry in the hashtable is different *)
-	  (match wd_father_opt with
-	     | None ->
-		 if is_config_file then
-		   Hashtbl.add ht_iwatched wd {conf = true  ; path = path2watch; wd_father = None; wd_children = []}
-		 else
-		   Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
-		     
-	     | Some wd_father ->
-		 Hashtbl.add ht_iwatched   wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
-		 
-		 (* Update a father's wd list with the new child *)
-		 let add_child wd_father wd_child =
-		   match get_value wd_father with
-		   | None               -> Report.report (Log ("Exception triggered in add_watch. Unknown wd", Level_1))
-		   | Some f_father_info ->
-		       let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
-		       Hashtbl.replace ht_iwatched wd_father new_f_f_info
-		 in
-		 add_child wd_father wd	  
-	  )
-	  ;
-	  let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
+	
+	(* If this inode is not already watched but with a different path.
+	 *  It can occur if mount --bind is used and both folders are set to be watched
+	 *)
+	if not (Hashtbl.mem ht_iwatched wd) then
+	  begin
+	    (* if the wd has a father, the entry in the hashtable is different *)
+	    (match wd_father_opt with
+	    | None ->
+		if is_config_file then
+		  Hashtbl.add ht_iwatched wd {conf = true  ; path = path2watch; wd_father = None; wd_children = []}
+		else
+		  Hashtbl.add ht_iwatched wd {conf = false ; path = path2watch; wd_father = None; wd_children = []}
+		    
+	    | Some wd_father ->
+		Hashtbl.add ht_iwatched   wd {conf = false ; path = path2watch; wd_father = Some wd_father; wd_children = []};
+		
+		(* Update a father's wd list with the new child *)
+		let add_child wd_father wd_child =
+		  match get_value wd_father with
+		  | None               -> Report.report (Log ("Exception triggered in add_watch. Unknown wd", Level_1))
+		  | Some f_father_info ->
+		      let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
+		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		in
+		add_child wd_father wd	  
+	    );
+	    let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
 	    Report.report (Log (txt, Level_2) )
-	      
+	  end
+	    
       with 
       | Failure err ->
 	  let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n"
@@ -199,10 +204,8 @@ let add_watch path2watch wd_father_opt is_config_file =
 	  prerr_endline error ;
 	  Report.report (Log (error, Level_1) )
     else
-      begin
-	let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
-	  Report.report (Log (error, Level_1) )
-      end
+      let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
+      Report.report (Log (error, Level_1) )
 ;;
 
 
