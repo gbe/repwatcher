@@ -5,3 +5,4 @@ TO DO
 - Tester si le "Unix.close Core.fd" l.215 du main.ml est accédé à un moment. De même, éventuellement voir une interception de signaux pour fermer d'une meilleure façon l'ensemble du programme
 - Régler le problème de licence (entre COPYING et en-tête des fichiers)
 - Supprimer quelques printf
+- Revoir les requêtes SQL (bug David)
