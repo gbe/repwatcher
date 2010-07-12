@@ -75,7 +75,7 @@ let init () =
       
       (* Filter if the directory in the config file
        * - exists
-       * - is not set to be watched AND also ignored. Only a stupid people can do that
+       * - is not set to be watched AND also ignored. Only someone stupid can do that
        *)
       directories := List.filter (fun dir ->
 				    try

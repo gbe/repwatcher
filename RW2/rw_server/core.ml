@@ -224,6 +224,10 @@ let add_watch_children l_children =
 
 (* List the subfolders of a folder *)
 let ls_children path_folder =
+
+  Printf.printf "Browse the subdirectories of those set in the configuration file. This may take a few seconds...\n";
+  Pervasives.flush Pervasives.stdout;
+
   let ic = Unix.open_process_in ("ls -1 -R "^(Filename.quote path_folder)^" | grep :$") in
     
   let children = ref [] in
@@ -238,7 +242,7 @@ let ls_children path_folder =
        done
      with End_of_file ->
        ignore (Unix.close_process_in ic) ;
-       print_endline "Close process"
+       print_endline "Finished browsing"
     );
     List.tl !children
 ;;
