@@ -31,105 +31,98 @@ open Report
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
 
 
+
 (* Check if the config exists and then
  * - Parse it
- * - Put a watch on it
- *
- * Then watch the directories
+ * - Watch on it
  *)
-let init () =
-
-  let load_and_watch_config () =
-    
-    if Sys.file_exists config_file then
-      begin
-	(* Get the configuration file *)
-	let conf = Config.parse config_file in
-	  (* Watch it *)
-	  Core.add_watch config_file None true;
-	  conf
-      end
-    else
-      failwith "Config file doesn't exist"
-  in
-
-
-
-  (* Set the watch on the directories *) 
-  let watch_dirs conf_directories ignore_directories =   
-    
-    let rem_slash l_directories = List.map (
-      fun dir ->
-	(* If the directory name ends with a '/' then it is deleted *)
-	if String.get dir ((String.length dir) -1) = '/' then
-	  String.sub dir 0 ((String.length dir)-1)
-	else dir
-    ) l_directories
-    in
-      
-    let directories                   = ref (rem_slash conf_directories)                  in
-    let ignore_directories_clean_name =     rem_slash ignore_directories                  in
-      
-    let regexp_ignore_directories     = List.map Str.regexp ignore_directories_clean_name in
-      
-      
-      (* Filter if the directory in the config file
-       * - exists
-       * - is not set to be watched AND also ignored. Only someone stupid can do that
-       *)
-      directories := List.filter (fun dir ->
-				    try
-				      if Sys.is_directory dir then						
-					try
-					  ignore (List.find (fun reg  -> Str.string_match reg dir 0) regexp_ignore_directories);
-					  false
-					with Not_found -> true
-				      else
-					false
-					  
-				    (* No such file or directory *)
-				    with Sys_error e ->
-				      let error = "Error: "^e in 
-					prerr_endline error ;
-					Report.report (Log (error, Level_1));
-					false
-				 ) !directories
-      ;
-      
-      
-      let children =
-	List.fold_left (
-	  fun dirs2watch dir ->
-	    
-	    let dir_children = Core.ls_children dir in
-	    let dir_children_without_ignored_ones = 
-	      List.filter (fun dir_child ->
-			     (* - if the exception is triggered, then it means that the directories ignored
-			      * have nothing to do with this one
-			      * 
-			      * - This code is the same than above but without the test Sys.is_directory because I consider that the answer is true.
-			      * I trust the result from "ls" therefore I skip a test for efficency.
-			      *)
-			     try
-			       ignore (List.find (fun reg  -> Str.string_match reg dir_child 0) regexp_ignore_directories);
-			       false
-			     with Not_found -> true
-			  ) dir_children
-	    in
-	      dir_children_without_ignored_ones@dirs2watch
- 		
-	) [] !directories
-      in
-	
-	List.iter (fun dir -> Core.add_watch dir None false) !directories;
-	Core.add_watch_children children
-  in
-    
-  let conf = load_and_watch_config () in
-    watch_dirs conf.c_directories conf.c_ignore_directories;
-    conf
+let load_and_watch_config () =
+  
+  if Sys.file_exists config_file then
+    begin
+      (* Parse the configuration file *)
+      let conf = Config.parse config_file in
+      (* Watch it *)
+      Core.add_watch config_file None true;
+      conf
+    end
+  else
+    failwith "Config file doesn't exist"
 ;;
 
+
+
+(* Watch the directories from the config file *) 
+let watch_dirs conf_directories ignore_directories =   
+  
+  let rem_slash l_directories = List.map (
+    fun dir ->
+      (* If the directory name ends with a '/' then it is deleted *)
+      if String.get dir ((String.length dir) -1) = '/' then
+	String.sub dir 0 ((String.length dir)-1)
+      else dir
+   ) l_directories
+  in
+  
+  let directories                   = ref (rem_slash conf_directories)                  in
+  let ignore_directories_clean_name =     rem_slash ignore_directories                  in
+  
+  let regexp_ignore_directories     = List.map Str.regexp ignore_directories_clean_name in
+  
+  
+  (* Filter if the directory in the config file
+   * - exists
+   * - is not set to be watched AND also ignored. Only someone stupid can do that
+   *)
+  directories := List.filter (fun dir ->
+    try
+      if Sys.is_directory dir then						
+	try
+	  ignore (List.find (fun reg  -> Str.string_match reg dir 0) regexp_ignore_directories);
+	  false
+	with Not_found -> true
+      else
+	false
+	  
+	  (* No such file or directory *)
+    with Sys_error e ->
+      let error = "Error: "^e in 
+      prerr_endline error ;
+      Report.report (Log (error, Level_1));
+      false
+			     ) !directories
+      ;
+  
+  
+  let children =
+    List.fold_left (
+    fun dirs2watch dir ->
+      
+      let dir_children = Core.ls_children dir in
+      let dir_children_without_ignored_ones = 
+	List.filter (
+	fun dir_child ->
+	  (* - if the exception is triggered, then it means that the directories ignored
+	   * have nothing to do with this one
+	   * 
+	   * - This code is the same than above but without the test Sys.is_directory because I consider that the answer is true.
+	   * I trust the result from "ls" therefore I skip a test for efficency.
+	   *)
+	  try
+	    ignore (List.find (fun reg  -> Str.string_match reg dir_child 0) regexp_ignore_directories);
+	    false
+	  with Not_found -> true
+       ) dir_children
+      in
+      dir_children_without_ignored_ones@dirs2watch
+ 					   
+   ) [] !directories
+  in
+  
+  List.iter (fun dir -> Core.add_watch dir None false) !directories;
+  Core.add_watch_children children
+;;
+    
 
 
 
@@ -137,18 +130,30 @@ let init () =
 (* Fonction main *)
 let _ =
   
-  (* Verifie que le programme est lance en root seulement *)
-(*  if (Unix.getuid()) <> 0 then
-    begin
-      print_endline "This program has to be executed as root\n";
-      exit 1
-    end;
-*)
+  (* Load and watch the configuration file *)
+  let conf = load_and_watch_config () in
 
 
-  (* Load the configuration file and then watch the directories given in it *)
-  let conf = init () in
+  (* Test if we can successfully connect to the SGBD
+   * if we don't, then we exit right now
+   * This is added because the program crashed long after starting running it
+   * at the very moment a SQL transaction was needed
+   * With this, we know from the start if (at least this part) it goes right or wrong.
+   *)  
+  begin
+    try
+      Mysqldb.connect();
+      Mysqldb.disconnect()
+    with Mysql.Error msg ->
+      Report.report (Log (msg, Level_1));
+      let error_msg = Printf.sprintf "%s\nPlease, make sure the SQL password is correct.\n" msg in
+      failwith error_msg
+  end;
+  
+  (* watch the directories given in the config file *)
+  watch_dirs conf.c_directories conf.c_ignore_directories;
 
+  
   let fd = match conf.c_notify_rem with
     | true  ->
 	Report.report (Log ("Start server for remote notifications", Level_2)) ;

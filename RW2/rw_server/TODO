@@ -3,7 +3,5 @@ TO DO
 - Voir pour mettre en surveillance des fichiers et pas seulement des dossiers
 - Revoir les assert false et tous les messages d'erreur
 - Tester si le "Unix.close Core.fd" l.215 du main.ml est accédé à un moment. De même, éventuellement voir une interception de signaux pour fermer d'une meilleure façon l'ensemble du programme
-- Régler le problème de licence potentiel (entre COPYING et en-tête des fichiers)
+- Régler le problème de licence (entre COPYING et en-tête des fichiers)
 - Supprimer quelques printf
-- Lors de l'exécution du programme, il va vouloir logger. Lors de la tentaive de connexion, si le mot de passe est faux, le programme crash. Idée: tester au lancement du programme une tentative de connexion à la base SQL
-- Lors de l'accès à un fichier, renseignez l'entrée f_path de l'enregistrement file en prenant l'info depuis lsof et pas ce qu'inotify nous donne
