@@ -174,7 +174,7 @@ let _ =
 	    ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
 	  end;
 	    
-	    Core.print_ht ();
+(*	    Core.print_ht (); *)
 	    
 	    Pervasives.flush Pervasives.stdout;
 	    
