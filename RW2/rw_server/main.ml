@@ -202,9 +202,6 @@ let _ =
 
 	    (* From this point, we close rw_server properly *)
 	    (* No need to handle SQL because each connection is closed immediately *)
-	    Unix.close Core.fd;
-	    
-	    (* Close the fd used to log *)
-	    Report.close_fd2log();
+	    Unix.close Core.fd;	    
 	  end
 ;;

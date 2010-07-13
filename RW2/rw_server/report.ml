@@ -22,8 +22,6 @@ open Unix
 open Ast
 open Ast_conf
 
-let fd2log = ref None;;
-
 let log (txt, log_level) =
 
   let conf = Config.get() in 
@@ -37,9 +35,9 @@ let log (txt, log_level) =
       if List.mem O_CREAT l then begin
 	Unix.fchmod fd 0o666
       end;
-
-      fd2log := Some fd
-      
+	
+	Some fd
+	
       
     with Unix_error (err,_,_) ->
       
@@ -54,8 +52,8 @@ let log (txt, log_level) =
 	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
 	  prerr_endline error;
 	  
-	  (* fd = None because it failed to open *)
-	  fd2log := None
+	    (* fd = None because it failed to open *)
+	    None
   in
 
   let log_it ()  = 
@@ -63,17 +61,13 @@ let log (txt, log_level) =
     let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
     Printf.printf "LOG: %s\n" to_log   ;
     Pervasives.flush Pervasives.stdout;
-    (*  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) *)
 
-    (* Open the file descriptor if it's not alreadu opened *)
-    open_fd();
-
-    match !fd2log with
+    match open_fd() with
     | None -> () (* An error occured, the file could not be opened *)
     | Some fd ->
 	try
 	  ignore (Unix.write fd to_log 0 (String.length to_log));
-	  (* fd2log is closed in at the end of main.ml when ctrl +c is pressed *)
+	  Unix.close fd
 
 	with _ ->
 	  prerr_endline "An error occured either trying to log in the file or to close it\n" ;
@@ -198,12 +192,6 @@ let sql (f, state) =
 
 module Report =
 struct
-  
-  let close_fd2log () =
-    match !fd2log with
-    | None -> ()
-    | Some fd -> Unix.close fd
-;;
   
   let report = function
     | Sql    (file, state)   -> sql (file, state)
