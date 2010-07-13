@@ -175,20 +175,36 @@ let _ =
 	  end;
 	    
 (*	    Core.print_ht (); *)
-	    
-	    Pervasives.flush Pervasives.stdout;
-	    
+	       
 	    Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
 	    Report.report ( Log   ("Repwatcher is watching youuu ! :)", Level_1)       ) ;    
+
 	    
-	    while true do
-	      
-	      let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
-	      let event_l = Inotify.read Core.fd in
-		
-		List.iter (fun event -> Core.what_to_do event) event_l;
+            (* **************************** *)
+	    (* For interruptions *)
+	    let loop = ref true in
+	    
+	    let handle_interrupt i =
+	      loop := false
+	    in	    	    
+	    ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+	    ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+            (* **************************** *)	    
+	    
+	    while !loop do
+	      try
+		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+		let event_l = Inotify.read Core.fd in
+		List.iter (fun event -> Core.what_to_do event) event_l
+	      with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
 	    done;
 	    
-	    Unix.close Core.fd
+
+	    (* From this point, we close rw_server properly *)
+	    (* No need to handle SQL because each connection is closed immediately *)
+	    Unix.close Core.fd;
+	    
+	    (* Close the fd used to log *)
+	    Report.close_fd2log();
 	  end
 ;;

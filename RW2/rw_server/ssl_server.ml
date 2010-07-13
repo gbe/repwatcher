@@ -139,9 +139,6 @@ let run tor tow2 =
       send ser_info None;
       
       Mutex.lock m ;
-      Printf.printf "NB clients: %d\n" (List.length !connected_clients);
-      Pervasives.flush Pervasives.stdout;
-      
       (* Close the clients' sockets *)
       List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
       Mutex.unlock m ;
@@ -167,26 +164,8 @@ let run tor tow2 =
 	  end
       done
     in
-
-(*
-    let wait_pipe_for_current_downloads () =
-      let bufsize = 1024 in
-      let buf = String.create bufsize in
       
-      let recv = Unix.read tor3 buf 0 bufsize in
 
-      Printf.printf "SSL_server, tor3 franchit. recv= %d\n" recv;
-      Pervasives.flush Pervasives.stdout;
-
-      if recv > 0 then begin
-	let data = String.sub buf 0 recv in
-	Some (Marshal.from_string data 0 : (Inotify.wd * Ast.f_file, string) Hashtbl.t)
-      end  
-      else
-	None
-    in
-  *)    
-      
       
     let client_quit sock_cli =
       
@@ -207,12 +186,13 @@ let run tor tow2 =
 
     let handle_connection (ssl_s, sockaddr_cli) =
       
-      Printf.printf "New connection\n";      
-      Printf.printf "Welcome %s\n" (get_ip sockaddr_cli);
-
       let cert = Ssl.get_certificate ssl_s in
       let subj = Ssl.get_subject cert in	
       let common_name = get_common_name subj in
+
+      let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
+      print_endline new_client;
+      Report.report ( Log (new_client, Level_1) );
       
       Mutex.lock m ;
       connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
@@ -241,30 +221,30 @@ let run tor tow2 =
     in
       
       
-    let () = Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt) in
-    let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt) in
+    ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+    ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+    
       
+    ignore (Thread.create pipe_waits_for_notifications ());
       
-      ignore (Thread.create pipe_waits_for_notifications ());
+    Printf.printf "Waiting for connections...\n";
+    Pervasives.flush Pervasives.stdout;
       
-      Printf.printf "Waiting for connections...\n";
-      Pervasives.flush Pervasives.stdout;
+    while true do
       
-      while true do
-
-	let (s_cli, sockaddr_cli) = Unix.accept sock in
-	let ssl_s = Ssl.embed_socket s_cli ctx in
-
-	  try
-	    Ssl.accept ssl_s;
-	    ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
-	  with
-	    | Invalid_argument _ ->
-		prerr_endline "Erreur dans le thread cote serveur!! ;o)" ;
-		Pervasives.flush Pervasives.stdout
-	    | Ssl.Accept_error _ ->
-		prerr_endline "A connection failed"
-      done
+      let (s_cli, sockaddr_cli) = Unix.accept sock in
+      let ssl_s = Ssl.embed_socket s_cli ctx in
+      
+      try
+	Ssl.accept ssl_s;
+	ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
+      with
+      | Invalid_argument _ ->
+	  prerr_endline "Erreur dans le thread cote serveur!! ;o)" ;
+	  Pervasives.flush Pervasives.stdout
+      | Ssl.Accept_error _ ->
+	  prerr_endline "A connection failed"
+    done
 	
 	
 
