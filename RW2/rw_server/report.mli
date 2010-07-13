@@ -21,5 +21,6 @@
 
 module Report :
 sig
-	val report : Ast.report -> unit
+	val close_fd2log : unit -> unit
+	val report       : Ast.report -> unit
 end

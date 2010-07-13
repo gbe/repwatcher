@@ -26,7 +26,7 @@ $(BIN):$(CMX)
 	ocamlyacc -v $<
 
 clean:
-	rm -f a.out main.cmi *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED)
+	rm -f a.out main.cmi *.cm[ix] *.annot *.o *~ .depend $(BIN) $(GENERATED)
 
 .depend depend:$(GENERATED)
 	rm -f .depend

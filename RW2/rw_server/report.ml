@@ -22,6 +22,7 @@ open Unix
 open Ast
 open Ast_conf
 
+let fd2log = ref None;;
 
 let log (txt, log_level) =
 
@@ -37,7 +38,7 @@ let log (txt, log_level) =
 	Unix.fchmod fd 0o666
       end;
 
-      Some fd
+      fd2log := Some fd
       
       
     with Unix_error (err,_,_) ->
@@ -54,7 +55,7 @@ let log (txt, log_level) =
 	  prerr_endline error;
 	  
 	  (* fd = None because it failed to open *)
-	  None
+	  fd2log := None
   in
 
   let log_it ()  = 
@@ -64,13 +65,16 @@ let log (txt, log_level) =
     Pervasives.flush Pervasives.stdout;
     (*  ignore (Unix.system ("echo \""^to_log^"\" >> log.txt")) *)
 
-    (* Open the file *)
-    match open_fd() with
+    (* Open the file descriptor if it's not alreadu opened *)
+    open_fd();
+
+    match !fd2log with
     | None -> () (* An error occured, the file could not be opened *)
     | Some fd ->
 	try
 	  ignore (Unix.write fd to_log 0 (String.length to_log));
-	  Unix.close fd
+	  (* fd2log is closed in at the end of main.ml when ctrl +c is pressed *)
+
 	with _ ->
 	  prerr_endline "An error occured either trying to log in the file or to close it\n" ;
 	  Pervasives.flush Pervasives.stdout
@@ -194,10 +198,16 @@ let sql (f, state) =
 
 module Report =
 struct
-
-	let report = function
-	  | Sql    (file, state)   -> sql (file, state)
-	  | Notify notification    -> notify notification
-	  | Log    log'            -> log log'
-	;;
+  
+  let close_fd2log () =
+    match !fd2log with
+    | None -> ()
+    | Some fd -> Unix.close fd
+;;
+  
+  let report = function
+    | Sql    file_state   -> sql file_state
+    | Notify notification -> notify notification
+    | Log    log'         -> log log'
+;;
 end;;

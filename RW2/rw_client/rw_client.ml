@@ -85,8 +85,8 @@ let _ =
       exit 0
     in
       
-    let () = Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt) in
-    let () = Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt) in
+    ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+    ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
   
 
     let regexp_space = Str.regexp "[' ']" in
