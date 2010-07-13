@@ -196,8 +196,8 @@ module Report =
 struct
 
 	let report = function
-	  | Sql    file_state   -> sql file_state
-	  | Notify notification -> notify notification
-	  | Log    log'         -> log log'
+	  | Sql    (file, state)   -> sql (file, state)
+	  | Notify notification    -> notify notification
+	  | Log    log'            -> log log'
 	;;
 end;;
