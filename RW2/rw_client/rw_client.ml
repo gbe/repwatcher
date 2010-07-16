@@ -31,6 +31,12 @@ let _ =
 
   let usage = "usage: rw_client host [-p port]" in
 
+  Printf.printf "Repwatcher  Copyright (C) 2009  Gregory Bellier
+This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
+This is free software, and you are welcome to redistribute it
+under certain conditions; for details read COPYING file\n\n";
+  Pervasives.flush Pervasives.stdout;
+
   Arg.parse
     [
       "-p", Arg.Int (fun i -> port := i), "\tPort";

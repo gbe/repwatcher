@@ -58,7 +58,7 @@ let log (txt, log_level) =
   let log_it ()  = 
     
     let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
-    Printf.printf "LOG: %s\n" to_log   ;
+    Printf.printf "LOG: %s" to_log   ;
     Pervasives.flush Pervasives.stdout;
 
     match open_fd() with
