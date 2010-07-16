@@ -129,6 +129,14 @@ let watch_dirs conf_directories ignore_directories =
 (* Fonction main *)
 let _ =
   
+  Printf.printf "Repwatcher  Copyright (C) 2009  Gregory Bellier
+This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
+This is free software, and you are welcome to redistribute it
+under certain conditions; for details read COPYING file\n\n";
+  Pervasives.flush Pervasives.stdout;
+
+
+
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
 
