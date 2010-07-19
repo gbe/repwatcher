@@ -147,16 +147,16 @@ let notify notification =
 
 
 let sql (f, state) =
-  
-  let escape_quote s =  
-    let r = Str.regexp "'" in
-      Str.global_replace r "''" s
-  in
     
     match state with
       | File_Opened  ->
-	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')"
-            f.f_login f.f_prog_source f.f_path (escape_quote f.f_name) (Int64.to_string f.f_filesize) (Date.date())
+	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES (%s, %s, %s, %s, %s, %s)"
+            (Mysqldb.ml2str f.f_login)
+	    (Mysqldb.ml2str f.f_prog_source)
+	    (Mysqldb.ml2str f.f_path)
+	    (Mysqldb.ml2str f.f_name)
+	    (Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	    (Mysqldb.ml2str (Date.date()))
 	  in
 	    begin	    
 	      match Mysqldb.query query with
@@ -165,7 +165,9 @@ let sql (f, state) =
 	    end
 	      
       | File_Closed ->
-	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN='%s' AND FILENAME='%s' ORDER BY STARTING_DATE DESC LIMIT 1" f.f_login (escape_quote f.f_name)
+	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN=%s AND FILENAME=%s ORDER BY STARTING_DATE DESC LIMIT 1"
+	    (Mysqldb.ml2str f.f_login)
+	    (Mysqldb.ml2str f.f_name)
 	  in
 
 	    match Mysqldb.fetch id_query with
@@ -180,7 +182,9 @@ let sql (f, state) =
 			match Array.get ids_array 0 with
 			  | None -> assert false
 			  | Some id ->
-			      let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = '%s' WHERE ID = %s" (Date.date()) id in
+			      let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = %s WHERE ID = %s"
+				(Mysqldb.ml2str (Date.date()))
+				(Mysqldb.ml2str id) in
 				match Mysqldb.query query with
 				  | (QueryOK _ | QueryEmpty) -> ()
 				  | QueryError errmsg        -> log (errmsg, Level_1)

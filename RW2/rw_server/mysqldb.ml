@@ -26,6 +26,8 @@ open Unix
 (* connection identifier *)
 let cid = ref None;;
 
+let ml2str = Mysql.ml2str;;
+
 let connect () =
   cid := Some (Mysql.connect (Config.get()).c_sql)
 ;;
