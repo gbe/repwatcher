@@ -272,7 +272,7 @@ let what_to_do event =
       | type_event::q -> 
 	  
 	  if not (string_of_event type_event = "ACCESS") then
-	    printf "Event in progress: '%s', %s. Filename: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
+	    printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
 	  ;
 	  
 	  begin	  
