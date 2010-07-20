@@ -45,20 +45,30 @@ let query q =
   match !cid with
   | None -> assert false
   | Some cid ->
-      
-      let res = exec cid q in
-      
-      let ret =
-	match	status cid with
-	| StatusOK      -> QueryOK res
-	| StatusEmpty   -> QueryEmpty
-	| StatusError _ ->
-	    match errmsg cid with
-	    | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
-	    | Some errmsg' -> QueryError errmsg'
-      in
-      disconnect ();
-      ret
+
+      try
+	let res = exec cid q in
+
+	let ret =
+	  match status cid with
+	  | StatusOK      -> QueryOK res
+	  | StatusEmpty   -> QueryEmpty
+	  | StatusError _ ->
+	      match errmsg cid with
+	      | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
+	      | Some errmsg' -> QueryError errmsg'
+	in
+        disconnect ();
+	ret
+
+      with (Mysql.Error error) ->
+	let ret =
+	  match errmsg cid with
+	  | None         -> QueryError ("Oops. "^error)
+	  | Some errmsg' -> QueryError errmsg'
+	in
+	disconnect ();
+	ret
 ;;
 
 
