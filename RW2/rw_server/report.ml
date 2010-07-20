@@ -62,15 +62,14 @@ let log (txt, log_level) =
     Pervasives.flush Pervasives.stdout;
 
     match open_fd() with
-    | None -> () (* An error occured, the file could not be opened *)
+    | None -> prerr_endline "An error occured, the file to log could neither be opened nor created"
     | Some fd ->
 	try
 	  ignore (Unix.write fd to_log 0 (String.length to_log));
 	  Unix.close fd
 
 	with _ ->
-	  prerr_endline "An error occured either trying to log in the file or to close it\n" ;
-	  Pervasives.flush Pervasives.stdout
+	  prerr_endline "An error occured either trying to log in the file or to close it"
   in
     
   match conf.c_log_level with
