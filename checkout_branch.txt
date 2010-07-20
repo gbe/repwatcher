@@ -1,0 +1,8 @@
+To know all the branches from the repo : git branch -a
+
+There is at least one branch which is RW1. It's the stable version.
+To check it out :
+git checkout --track -b RW1 origin/RW1
+
+To go back to master: git checkout master
+
