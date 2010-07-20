@@ -1,0 +1,35 @@
+To contact me :
+gregory.bellier@gmail.com
+
+Dependencies for Debian/Ubuntu:
+ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml-dev libinotify-ocaml-dev libnotify-bin
+
+
+
+You need to create this database and table in MySQL:
+
+CREATE DATABASE `repwatcher` ;
+
+CREATE TABLE `repwatcher`.`downloads` (
+  `ID` int(4) NOT NULL auto_increment,
+  `LOGIN` varchar(20) NOT NULL,
+  `PROGRAM` varchar(26) NOT NULL,
+  `PATH` varchar(512) default NULL,
+  `FILENAME` varchar(80) character set utf8 NOT NULL,
+  `FILESIZE` varchar(13) default NULL,
+  `STARTING_DATE` datetime NOT NULL,
+  `ENDING_DATE` datetime default NULL,
+  PRIMARY KEY  (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+To compile : make
+To clean the compiled files : make clean
+
+You need to configure the file repwatcher.conf
+
+I recommend to use the program "screen" to run repwatcher in a virtual terminal.
+
+Don't hesitate to give me some feedbacks.
+
+Dest.
