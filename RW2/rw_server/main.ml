@@ -146,15 +146,19 @@ under certain conditions; for details read COPYING file\n\n";
    * This is added because the program crashed long after starting running it
    * at the very moment a SQL transaction was needed
    * With this, we know from the start if (at least this part) it goes right or wrong.
+   * There is no need to add a try/with here because it's handled in Mysqldb.ml
    *)  
   begin
-    try
-      Mysqldb.connect();
-      Mysqldb.disconnect()
-    with Mysql.Error msg ->
-      Report.report (Log (msg, Level_1));
-      let error_msg = Printf.sprintf "%s\nPlease, make sure the SQL password is correct.\n" msg in
-      failwith error_msg
+    match Mysqldb.connect() with
+    | Some error -> 
+	Report.report (Log (error, Level_1));
+	failwith error
+    | None       ->
+	match Mysqldb.disconnect() with
+	| Some error ->
+	    Report.report (Log (error, Level_1));
+	    failwith error
+	| None -> ()
   end;
   
   (* watch the directories given in the config file *)

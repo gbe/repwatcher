@@ -58,9 +58,9 @@ let log (txt, log_level) =
   let log_it ()  = 
     
     let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
-    Printf.printf "LOG: %s" to_log   ;
+(*    Printf.printf "LOG: %s" to_log   ;
     Pervasives.flush Pervasives.stdout;
-
+*)
     match open_fd() with
     | None -> prerr_endline "An error occured, the file to log could neither be opened nor created"
     | Some fd ->
@@ -148,7 +148,8 @@ let notify notification =
 let sql (f, state) =
     
     match state with
-      | File_Opened  ->
+      | File_Opened  ->	  
+
 	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES (%s, %s, %s, %s, %s, %s)"
             (Mysqldb.ml2str f.f_login)
 	    (Mysqldb.ml2str f.f_prog_source)
@@ -157,37 +158,80 @@ let sql (f, state) =
 	    (Mysqldb.ml2str (Int64.to_string f.f_filesize))
 	    (Mysqldb.ml2str (Date.date()))
 	  in
-	    begin	    
-	      match Mysqldb.query query with
-		| (QueryOK _ | QueryEmpty) -> ()
-		| QueryError errmsg        -> log (errmsg, Level_1)
-	    end
-	      
+
+	  begin
+	    (* Connect to Mysql *)
+	    match Mysqldb.connect() with
+	    | Some error -> log (error, Level_1)
+	    | None       ->
+
+		log ("Connected to MySQL", Level_2);
+		log (("Next SQL query to compute:\n"^query^"\n"), Level_2);
+
+		(* Do the query *)
+		(match Mysqldb.query query with
+		| (QueryOK _ | QueryEmpty) -> log ("Query successfully executed", Level_2)
+		| QueryError error         -> log (error, Level_1)
+		);
+	
+		(* Disconnect *)
+		match Mysqldb.disconnect() with
+		| Some error -> log (error, Level_1)
+		| None       -> log ("Disconnected from MySQL", Level_2);
+	  end
+
       | File_Closed ->
 	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN=%s AND FILENAME=%s ORDER BY STARTING_DATE DESC LIMIT 1"
-	    (Mysqldb.ml2str f.f_login)
-	    (Mysqldb.ml2str f.f_name)
+	      (Mysqldb.ml2str f.f_login)
+	      (Mysqldb.ml2str f.f_name)
 	  in
 
-	    match Mysqldb.fetch id_query with
-	      | QueryEmpty        -> ()
-	      | QueryError errmsg -> log (errmsg, Level_1)
-	      | QueryOK res       -> 
-		  match res with
-		    | None -> () (* We do nothing, there is nothing in the database with this login and filename *)
+	  (* Connect to Mysql *)
+	  match Mysqldb.connect() with
+	  | Some error -> log (error, Level_1)
+	  | None ->
+
+	      log ("Connected to MySQL", Level_2);
+	      log (("Next SQL query to compute:\n"^id_query^"\n"), Level_2);
+	      
+	      begin
+		(* Do the query *)
+		match Mysqldb.fetch id_query with
+		| QueryEmpty        -> log ("Query successfully executed but no result returned", Level_2)
+		| QueryError errmsg -> log (errmsg, Level_1)
+		| QueryOK res       ->
+
+		    log ("Query successfully executed and returned a result", Level_2);
+
+		    match res with
+		    | None -> assert false
+			  (* there is nothing in the database with this login and filename.
+			   * But this case shoudn't happen. If not, what's the point of QueryEmpty?
+			   *)
+
 		    | Some ids_array -> 
 			
 			(* 0 because I know there is only one result returned *)
 			match Array.get ids_array 0 with
-			  | None -> assert false
-			  | Some id ->
-			      let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = %s WHERE ID = %s"
+			| None -> assert false
+			| Some id ->
+			    let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = %s WHERE ID = %s"
 				(Mysqldb.ml2str (Date.date()))
 				(Mysqldb.ml2str id) in
-				match Mysqldb.query query with
-				  | (QueryOK _ | QueryEmpty) -> ()
-				  | QueryError errmsg        -> log (errmsg, Level_1)
-;;	
+
+			    log (("Next SQL query to compute:\n"^query^"\n"), Level_2);
+
+			    match Mysqldb.query query with
+			    | QueryOK _          -> log ("Query successfully executed and returned a result", Level_2)
+			    | QueryEmpty         -> log ("Query successfully executed but no result returned", Level_2)
+			    | QueryError errmsg  -> log (errmsg, Level_1)
+	      end;
+
+	      (* Disconnect *)
+	      match Mysqldb.disconnect() with
+	      | Some error -> log (error, Level_1)
+	      | None       -> log ("Disconnected from MySQL", Level_2)
+;;
 
 
 
@@ -196,8 +240,8 @@ module Report =
 struct
   
   let report = function
-    | Sql    (file, state)   -> sql (file, state)
-    | Notify notification    -> notify notification
-    | Log    log'            -> log log'
+    | Sql    (file, state)    -> sql (file, state)
+    | Notify notification     -> notify notification
+    | Log    (txt, log_level) -> log (txt, log_level)
 ;;
 end;;

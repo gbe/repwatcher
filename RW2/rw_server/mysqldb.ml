@@ -29,22 +29,28 @@ let cid = ref None;;
 let ml2str = Mysql.ml2str;;
 
 let connect () =
-  cid := Some (Mysql.connect (Config.get()).c_sql)
+  try
+    cid := Some (Mysql.connect (Config.get()).c_sql);
+    None
+  with Mysql.Error error -> Some error
 ;;
 
 let disconnect () =
-  begin
-    match !cid with
-      | None -> assert false
-      | Some cid -> Mysql.disconnect cid
-  end;
-  cid := None
+  match !cid with
+  | None -> Some ("RW couldn't disconnect from Mysql. The handler is not connected")
+  | Some cid' ->
+      try
+	Mysql.disconnect cid';
+	cid := None;
+	None
+      with Mysql.Error error ->
+	cid := None;
+	Some ("RW couldn't disconnect from Mysql: "^error)
 ;;
 
 let query q =
 
-  connect();
-  
+  (* Check if a connection has been established *)
   match !cid with
   | None -> assert false
   | Some cid ->
@@ -52,33 +58,25 @@ let query q =
       try
 	let res = exec cid q in
 
-	let ret =
-	  match status cid with
-	  | StatusOK      -> QueryOK res
-	  | StatusEmpty   -> QueryEmpty
-	  | StatusError _ ->
-	      match errmsg cid with
-	      | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
-	      | Some errmsg' -> QueryError errmsg'
-	in
-        disconnect ();
-	ret
+	match status cid with
+	| StatusOK      -> QueryOK res
+	| StatusEmpty   -> QueryEmpty
+	| StatusError _ ->
+	    match errmsg cid with
+	    | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
+	    | Some errmsg' -> QueryError errmsg'
 
-      with (Mysql.Error error) ->
-	let ret =
-	  match errmsg cid with
-	  | None         -> QueryError ("Oops. "^error)
-	  | Some errmsg' -> QueryError errmsg'
-	in
-	disconnect ();
-	ret
+      with Mysql.Error error -> QueryError error
 ;;
 
 
 let fetch q =
-
+  
   match query q with
-    | QueryOK res          -> QueryOK (Mysql.fetch res)
-    | QueryEmpty           -> QueryEmpty
-    | QueryError error_msg -> QueryError error_msg
+  | QueryEmpty       -> QueryEmpty
+  | QueryError error -> QueryError error
+  | QueryOK res      -> 
+      try
+	QueryOK (Mysql.fetch res)
+      with Mysql.Error error -> QueryError error
 ;;
