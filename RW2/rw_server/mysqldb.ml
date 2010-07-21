@@ -33,9 +33,12 @@ let connect () =
 ;;
 
 let disconnect () =
-  match !cid with
-  | None -> assert false
-  | Some cid -> Mysql.disconnect cid
+  begin
+    match !cid with
+      | None -> assert false
+      | Some cid -> Mysql.disconnect cid
+  end;
+  cid := None
 ;;
 
 let query q =
