@@ -20,20 +20,21 @@
 open Lexing
 open Format
 
-let conf = ref None
+let conf = ref None;;
 
-(* localise l'erreur en indiquant la ligne
- et la colonne *)
-let localisation (pos,e) config_file =
+(* localize the error and give the line and column *)
+let localization (pos,e) config_file =
   let l = pos.pos_lnum in
   let c = pos.pos_cnum - pos.pos_bol + 1 in
   let lc = e.pos_cnum - pos.pos_bol + 1 in
-  eprintf "Fichier \"%s\", ligne %d, caractère %d-%d:\n" config_file l c lc
+  eprintf "File \"%s\", line %d, character %d-%d:\n" config_file l c lc
+;;
 
 let get () =
   match !conf with
     | None -> failwith "Failed to retrieve the configuration file"
     | Some c -> c
+;;
 
 let parse config_file =
   let c = open_in config_file in
@@ -44,12 +45,12 @@ let parse config_file =
       get()
     with
       | Lexer.Lexing_error s -> 
-	  localisation (lexeme_start_p lb, lexeme_end_p lb) config_file;
+	  localization (lexeme_start_p lb, lexeme_end_p lb) config_file;
 	  eprintf "lexical error in the configuration file repwatcher.conf: %s\n@." s;
 	  exit 1
       | Parsing.Parse_error ->
-	  localisation (lexeme_start_p lb, lexeme_end_p lb) config_file;
+	  localization (lexeme_start_p lb, lexeme_end_p lb) config_file;
 	  eprintf "syntax error in the configuration file repwatcher.conf\n@.";
 	  exit 1
- 
+;; 
 		  
