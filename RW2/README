@@ -15,7 +15,7 @@ CREATE TABLE `repwatcher`.`downloads` (
   `LOGIN` varchar(20) NOT NULL,
   `PROGRAM` varchar(26) NOT NULL,
   `PATH` varchar(512) default NULL,
-  `FILENAME` varchar(80) character set utf8 NOT NULL,
+  `FILENAME` varchar(256) character set utf8 NOT NULL,
   `FILESIZE` varchar(13) default NULL,
   `STARTING_DATE` datetime NOT NULL,
   `ENDING_DATE` datetime default NULL,
