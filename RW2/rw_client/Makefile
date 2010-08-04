@@ -1,7 +1,7 @@
 CMX= rw_client.cmx
 GENERATED = 
 BIN= rw_client
-FLAGS=-linkpkg -package ssl
+FLAGS=-dtypes -linkpkg -package ssl,dbus
 
 all: $(BIN)
 

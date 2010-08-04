@@ -19,6 +19,37 @@
 open Notifications
 open Unix
 
+
+let dbus img title txt =   
+  let notif_interface = "org.freedesktop.Notifications" in
+  let notif_name = notif_interface in
+  let notif_path = "/org/freedesktop/Notifications" in
+
+  let send_msg ~bus ~destination ~path ~intf ~serv ~params =
+    let msg = DBus.Message.new_method_call destination path intf serv in
+      DBus.Message.append msg params;
+      ignore (DBus.Connection.send_with_reply bus msg (-1))
+      (*let r = DBus.Connection.send_with_reply bus msg (-1) in
+      let l = DBus.Message.get r in
+	l*)
+  in
+  let send_notif_msg = send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface in
+
+  let bus = DBus.Bus.get DBus.Bus.Session in
+  let params = [
+    DBus.String "y";
+    DBus.UInt32 1l;
+    DBus.String img;
+    DBus.String title;
+    DBus.String txt;
+    DBus.Array (DBus.Strings []);
+    DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
+    DBus.Int32 4000l;
+  ] in	
+    ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
+;;
+
+
 let _ =
 
   let port = ref 9292 in
@@ -111,7 +142,8 @@ under certain conditions; for details read COPYING file\n\n";
 		begin
 		  match info with
 		  | "rw_server_exit"   -> loop := false
-		  | "rw_server_con_ok" -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""));
+		  | "rw_server_con_ok" -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""))
+(*		  | "rw_server_con_ok" -> dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host)) *)
 		  | _                  ->
 		      assert false
 		end
@@ -128,7 +160,10 @@ under certain conditions; for details read COPYING file\n\n";
 		Pervasives.flush Pervasives.stdout;
 		let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename in
 		ignore (Unix.system call)
-		  
+
+(*		let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename in
+		  dbus "nobody" "Repwatcher" dbus_notif
+*)		  
 	    | Old_notif dls_l ->
 		List.iter (
 		fun (login, filename, date) ->
@@ -141,7 +176,11 @@ under certain conditions; for details read COPYING file\n\n";
 		    (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		  in
 		  let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m login filename in
-		  ignore (Unix.system call)
+		    ignore (Unix.system call)
+		     
+(*		  let dbus_notif = Printf.sprintf "<b>%s</b> started downloading\n%s" login filename in
+*		    dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
+ *)
 	       ) dls_l
 	done;
       with Ssl.Read_error _ -> ()
@@ -149,5 +188,6 @@ under certain conditions; for details read COPYING file\n\n";
       
       Ssl.shutdown ssl;
       ignore (Unix.system "notify-send -i nobody Repwatcher \"Server is down. Closing the client...\"");
-      
+(*      dbus "nobody" "Repwatcher" "Server is down. Closing the client..."; *)
+
       exit 0	   
