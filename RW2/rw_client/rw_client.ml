@@ -18,36 +18,7 @@
 
 open Notifications
 open Unix
-
-
-let dbus img title txt =   
-  let notif_interface = "org.freedesktop.Notifications" in
-  let notif_name = notif_interface in
-  let notif_path = "/org/freedesktop/Notifications" in
-
-  let send_msg ~bus ~destination ~path ~intf ~serv ~params =
-    let msg = DBus.Message.new_method_call destination path intf serv in
-      DBus.Message.append msg params;
-      ignore (DBus.Connection.send_with_reply bus msg (-1))
-      (*let r = DBus.Connection.send_with_reply bus msg (-1) in
-      let l = DBus.Message.get r in
-	l*)
-  in
-  let send_notif_msg = send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface in
-
-  let bus = DBus.Bus.get DBus.Bus.Session in
-  let params = [
-    DBus.String "y";
-    DBus.UInt32 1l;
-    DBus.String img;
-    DBus.String title;
-    DBus.String txt;
-    DBus.Array (DBus.Strings []);
-    DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
-    DBus.Int32 4000l;
-  ] in	
-    ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
-;;
+open Dbus_call
 
 
 let _ =
