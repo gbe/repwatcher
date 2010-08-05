@@ -20,7 +20,6 @@
 open Unix
 open Ast
 open Ast_conf
-open DBus
 
 let log (txt, log_level) =
 
@@ -134,12 +133,11 @@ let notify notification =
 	      | File_Opened -> "is downloading"
 	      | File_Closed -> "finished downloading"
 	    in
-	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
+(*	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
 	      ignore (system call)
-		
-	  (*let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename_escaped in
-	    dbus "nobody" "Repwatcher" dbus_notif
-	  *)
+*)		
+	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename_escaped in
+	      dbus "nobody" "Repwatcher" dbus_notif		
 	  end ;
 
 	if conf.c_notify_rem then
