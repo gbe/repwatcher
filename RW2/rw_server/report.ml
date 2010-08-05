@@ -80,7 +80,7 @@ let log (txt, log_level) =
 	  | Level_1 -> log_it ()
 	  | Level_2 -> () (* don't log *)
       end
-  | Extra -> log_it ()
+  | Debug -> log_it ()
 ;;
     
 

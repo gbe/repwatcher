@@ -94,7 +94,7 @@
 		match i with
 		  | 0 -> Disabled
 		  | 1 -> Regular
-		  | 2 -> Extra
+		  | 2 -> Debug
 		  | _       -> raise Parse_error
       }
     }
