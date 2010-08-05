@@ -89,10 +89,12 @@
        c_notify_rem = $39;
        c_log_level  =
 	  match $42 with
-	    | None -> 1 (* 1 is the default log_level *)
+	    | None -> Regular (* Regular is the default log_level *)
 	    | Some i ->
 		match i with
-		  | (0|1|2) -> i
+		  | 0 -> Disabled
+		  | 1 -> Regular
+		  | 2 -> Extra
 		  | _       -> raise Parse_error
       }
     }

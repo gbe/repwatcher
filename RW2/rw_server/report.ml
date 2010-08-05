@@ -46,7 +46,7 @@ let log (txt, log_level) =
       | _      ->
 	  
 	  (* Disable logging *)
-	  Config.conf := Some {conf with c_log_level = 0};
+	  Config.conf := Some {conf with c_log_level = Disabled};
 	  
 	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
 	  prerr_endline error;
@@ -73,16 +73,14 @@ let log (txt, log_level) =
   in
     
   match conf.c_log_level with
-  | 0 -> () (* don't log *)
-  | 1 ->
+  | Disabled -> () (* don't log *)
+  | Regular  ->
       begin
 	match log_level with
-	| Level_1 -> log_it()
-	| Level_2 -> () (* don't log *)
+	  | Level_1 -> log_it ()
+	  | Level_2 -> () (* don't log *)
       end
-  | 2 -> log_it()
-  | _ -> assert false  
-	  
+  | Extra -> log_it ()
 ;;
     
 
