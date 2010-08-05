@@ -28,6 +28,13 @@ type f_file = {
 type file_state = File_Opened | File_Closed
 type log_level  = Level_1     | Level_2
 
+(*
+New log_level type
+type log_level = | Normal
+		 | Warning
+		 | Error
+		 | Extra
+*)
 
 (* New of login * filename
  * Old of login * filename * date) list

@@ -28,7 +28,7 @@ type mode = Specified_programs | Unwanted_programs
 
 type log_verbosity  = | Disabled
 		      | Regular
-		      | Extra
+		      | Debug
 
 type configuration={
   c_directories        : string list   ;
