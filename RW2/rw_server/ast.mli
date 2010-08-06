@@ -32,7 +32,6 @@ New log_level type
 *)
 type log_level = | Normal
 		 | Normal_Extra
-		 | Warning
 		 | Error
 
 

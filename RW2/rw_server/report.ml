@@ -62,7 +62,7 @@ let log (txt, log_level) =
     let log_filename =
       match log_level with
 	  | (Normal  | Normal_Extra) -> "rw.log"
-	  | (Warning | Error)        -> "rw.log.err"
+	  | Error                    -> "rw.log.err"
     in
 
       match open_fd log_filename with
@@ -77,12 +77,11 @@ let log (txt, log_level) =
   in
 
     begin
-      (* Only the Errors and Warnings get printed *)
+      (* Only the Errors get printed and on stderr *)
       match log_level with
-	| (Normal  | Normal_Extra) -> ()
-
-	| (Warning | Error)        ->
-	    (* print on stderr *)
+	| Normal -> ()
+	| Normal_Extra -> ()
+	| Error                    ->
 	    prerr_endline to_log ;
 	    Pervasives.flush Pervasives.stdout
     end;
@@ -94,9 +93,9 @@ let log (txt, log_level) =
       | Regular  ->
 	  begin
 	    match log_level with
-	      | Normal            -> log_it ()
-	      | Normal_Extra      -> () (* don't log *)
-	      | (Warning | Error) -> log_it ()
+	      | Normal       -> log_it ()
+	      | Normal_Extra -> () (* don't log *)
+	      | Error        -> log_it ()
 	  end
       | Debug -> log_it ()
 ;;
