@@ -41,7 +41,7 @@ let wait_pipe_from_child_process () =
 		let str_current_dls = Marshal.to_string (Old_notif l_current_dls) [Marshal.No_sharing] in
 		ignore (Unix.write Pipe.tow str_current_dls 0 (String.length str_current_dls))
 	      end
-	| _ -> Report.report (Log ("Err. The server received an unknown command", Level_2))
+	| _ -> Report.report (Log ("Err. The server received an unknown command", Warning))
       end;
   done
 ;;

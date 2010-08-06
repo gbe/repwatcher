@@ -73,24 +73,25 @@ let watch_dirs conf_directories ignore_directories =
    * - exists
    * - is not set to be watched AND also ignored. Only someone stupid can do that
    *)
-  directories := List.filter (fun dir ->
-    try
-      if Sys.is_directory dir then						
-	try
-	  ignore (List.find (fun reg  -> Str.string_match reg dir 0) regexp_ignore_directories);
+  directories := List.filter (
+    fun dir ->
+      try
+	if Sys.is_directory dir then						
+	  try
+	    ignore (List.find (fun reg  -> Str.string_match reg dir 0) regexp_ignore_directories);
+	    false
+	  with Not_found -> true
+	else
 	  false
-	with Not_found -> true
-      else
-	false
-	  
-	  (* No such file or directory *)
-    with Sys_error e ->
-      let error = "Error: "^e in 
-      prerr_endline error ;
-      Report.report (Log (error, Level_1));
-      false
-			     ) !directories
-      ;
+	    
+      (* No such file or directory *)
+      with Sys_error e ->
+	let error = "Error: "^e in 
+	  prerr_endline error ;
+	  Report.report (Log (error, Error));
+	  false
+  ) !directories
+    ;
   
   
   let children =
@@ -151,12 +152,12 @@ under certain conditions; for details read COPYING file\n\n";
   begin
     match Mysqldb.connect() with
     | Some error -> 
-	Report.report (Log (error, Level_1));
+	Report.report (Log (error, Error));
 	failwith error
     | None       ->
 	match Mysqldb.disconnect() with
 	| Some error ->
-	    Report.report (Log (error, Level_1));
+	    Report.report (Log (error, Error));
 	    failwith error
 	| None -> ()
   end;
@@ -167,7 +168,7 @@ under certain conditions; for details read COPYING file\n\n";
   
   let fd = match conf.c_notify_rem with
     | true  ->
-	Report.report (Log ("Start server for remote notifications", Level_2)) ;
+	Report.report (Log ("Start server for remote notifications", Normal_Extra)) ;
 	Unix.fork()
     | false -> -1
   in
@@ -185,10 +186,8 @@ under certain conditions; for details read COPYING file\n\n";
 	    ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
 	  end;
 	    
-(*	    Core.print_ht (); *)
-	       
 	    Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
-	    Report.report ( Log   ("Repwatcher is watching youuu ! :)", Level_1)       ) ;    
+	    Report.report ( Log   ("Repwatcher is watching youuu ! :)", Normal)        ) ;    
 
 	    
             (* **************************** *)

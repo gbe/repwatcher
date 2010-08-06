@@ -46,7 +46,7 @@ let get_key path_target =
       if fi.path = path_target then raise (Found wd)
 		 ) ht_iwatched;
     let err = ("error get_key with "^path_target^" not found") in
-    Report.report ( Log (err, Level_1) ) ;
+    Report.report ( Log (err, Warning) ) ;
     None
   with Found wd -> Some wd
 ;;
@@ -69,7 +69,7 @@ let get_value wd =
     Some (Hashtbl.find ht_iwatched wd)
   with Not_found ->
     let err = Printf.sprintf "Error in main - Hashtbl.find -> impossible to find the key: %d" (int_of_wd wd) in
-    Report.report ( Log (err, Level_1) ) ;
+    Report.report ( Log (err, Warning) ) ;
     None
 ;;
 
@@ -98,7 +98,7 @@ let del_watch wd =
     try
       (* Get wd's father so we can delete wd from its father's children list *)
       match get_value wd with
-      | None -> Report.report (Log ("Error: del_watch. Could not find the wd to delete", Level_1) )
+      | None -> Report.report (Log ("Error: del_watch. Could not find the wd to delete", Warning) )
       | Some value ->
 	  let wd_father_opt = value.wd_father in	 
 	  
@@ -114,7 +114,7 @@ let del_watch wd =
 		(* Delete one child from the father's list *)
 		let del_child wd_father wd_child =
 		  match get_value wd_father with
-		  | None -> Report.report (Log ("Error: del_watch. Could not find the wd's father to delete", Level_1) )
+		  | None -> Report.report (Log ("Error: del_watch. Could not find the wd's father to delete", Warning) )
 		  | Some f_father_info -> 
 		      let l_new_children = List.filter (fun wd_c -> if wd_c = wd_child then false else true) f_father_info.wd_children in
 		      let new_f_f_info = { f_father_info with wd_children = l_new_children } in
@@ -123,16 +123,16 @@ let del_watch wd =
 		del_child wd_father wd;
 		
 		let report = sprintf "%d n'est plus enfant de %d\n" (int_of_wd wd) (int_of_wd wd_father) in
-		Report.report ( Log (report, Level_2) )
+		Report.report ( Log (report, Normal_Extra) )
 	  end;
 
 	  let report = sprintf "*** %s, wd = %d is not watched anymore\n" value.path (int_of_wd wd) in
-	  Report.report ( Log (report, Level_2) )
+	  Report.report ( Log (report, Normal_Extra) )
     with 
       Failure err ->
 	let error = sprintf "ERROR in function '%s', does the target still exist ? Here is the wd_target concerned: %d\n" err (int_of_wd wd) in
 	prerr_endline error ;
-	Report.report (Log (error, Level_1) )
+	Report.report (Log (error, Warning) )
 ;;
 
 
@@ -152,7 +152,7 @@ let add_watch path2watch wd_father_opt is_config_file =
   (* Check if the folder is not already watched *)  
   if is_value path2watch then
     let error = "Error: "^path2watch^" is already watched" in
-    Report.report (Log (error, Level_1) ) ;
+    Report.report (Log (error, Warning) ) ;
     
     (* the folder is not already watched therefore we can start watching it *)
   else
@@ -185,7 +185,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 		(* Update a father's wd list with the new child *)
 		let add_child wd_father wd_child =
 		  match get_value wd_father with
-		  | None               -> Report.report (Log ("Exception triggered in add_watch. Unknown wd", Level_1))
+		  | None               -> Report.report (Log ("Exception triggered in add_watch. Unknown wd", Warning))
 		  | Some f_father_info ->
 		      let new_f_f_info = { f_father_info with wd_children = wd_child::(f_father_info.wd_children) } in
 		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
@@ -193,7 +193,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 		add_child wd_father wd	  
 	    );
 	    let txt = Printf.sprintf "*** %s is now watched, wd = %d\n" path2watch (int_of_wd wd) in
-	    Report.report (Log (txt, Level_2) )
+	    Report.report (Log (txt, Normal_Extra) )
 	  end
 	    
       with 
@@ -201,10 +201,10 @@ let add_watch path2watch wd_father_opt is_config_file =
 	  let error = "Error in function '"^err^"', is the name of the directory ok ? Here is the directory concerned: '"^path2watch^"'\n"
 	  in
 	  prerr_endline error ;
-	  Report.report (Log (error, Level_1) )
+	  Report.report (Log (error, Warning) )
     else
       let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
-      Report.report (Log (error, Level_1) )
+      Report.report (Log (error, Warning) )
 ;;
 
 
@@ -214,7 +214,7 @@ let add_watch_children l_children =
   List.iter (fun f ->
     let folder_path = Filename.dirname f in
     match get_key folder_path with
-    | None           -> Report.report (Log ("Oops. Can't start watching a children list because I can't find their wd's father based on his path", Level_1) )
+    | None           -> Report.report (Log ("Oops. Can't start watching a children list because I can't find their wd's father based on his path", Warning) )
     | Some wd_father ->	add_watch f (Some wd_father) false 
 	    ) l_children
 ;;
@@ -288,7 +288,7 @@ let what_to_do event =
 		                         begin
 					   match get_value wd with
 					   | None -> let err = sprintf "%s was opened but its wd could not be found\n" name in
-					     Report.report (Log (err, Level_1) )
+					     Report.report (Log (err, Warning) )
 					   | Some value ->
 					       let folder = Filename.quote value.path in
 					       
@@ -309,9 +309,9 @@ let what_to_do event =
 						 if not (Hashtbl.mem Files_progress.ht (wd,file)) then
 						   begin
 						     (*  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name; *)
-						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Level_1  )  ) ;
-						     Report.report ( Notify (New_notif (file.f_login, file.f_name, File_Opened ) )  ) ;
-						     Report.report ( Sql (file, File_Opened)                                        ) ;
+						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Normal  )  ) ;
+						     Report.report ( Sql (file, File_Opened)                                       ) ;
+						     Report.report ( Notify (New_notif (file.f_login, file.f_name, File_Opened ))  ) ;
 						     Hashtbl.add Files_progress.ht (wd,file) (Date.date())
 						   end
 					      ) l_filtered
@@ -327,15 +327,16 @@ let what_to_do event =
 		                           begin
 		                             if is_config_file wd then
 					       (* reinit fd; *)
-					       Report.report (Log ("Configuration file modified and REwatch it", Level_2) );
+					       Report.report (Log ("Configuration file modified and REwatch it", Normal_Extra) );
 					   end
 
 	      | Close_nowrite, true   -> ()
 	      | Close_nowrite, false  ->
 		    			begin
 					  match get_value wd with
-					  | None -> let err = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
-					    Report.report ( Log (err, Level_1) )
+					  | None ->
+					      let err = sprintf "%s has been closed (nowrite) but I can't report it because I can't find its wd info" name in
+						Report.report ( Log (err, Warning) )
 					  
 					  | Some value ->
 					      let folder = Filename.quote value.path in
@@ -363,9 +364,9 @@ let what_to_do event =
 					      List.iter (
 					      fun (wd2, f_file) ->
                                                 Hashtbl.remove Files_progress.ht (wd2, f_file);
-						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Level_1)  ) ;
-						Report.report ( Notify (New_notif (f_file.f_login, f_file.f_name, File_Closed)         )  ) ;
-						Report.report ( Sql    (f_file, File_Closed)                                              ) ;
+						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Normal)  ) ;
+						Report.report ( Sql    (f_file, File_Closed)                                             ) ;
+						Report.report ( Notify (New_notif (f_file.f_login, f_file.f_name, File_Closed)        )  ) ;
 					     ) l_stop
 		    			end
 
@@ -374,8 +375,9 @@ let what_to_do event =
 	      | Create, true          ->
 	      	                         begin
 					   match get_value wd with
-					   | None       -> let err = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
-					     Report.report ( Log (err, Level_1) )
+					   | None       ->
+					       let err = sprintf "%s has been created but I can't start watching it because I can't find its father" name in
+						 Report.report ( Log (err, Warning) )
 					       
 					   | Some value ->
 	      				       let folder = value.path in
@@ -385,8 +387,9 @@ let what_to_do event =
 	      | Moved_to, true        ->
 	      	                         begin
 	      				   match get_value wd with
-					   | None       -> let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
-					     Report.report ( Log (report, Level_2) )
+					   | None       ->
+					       let report = sprintf "%s has been \"moved from\" but I can't find its father. Move cancel" name in
+						 Report.report ( Log (report, Warning) )
 					   
 					   | Some value ->
 					       let folder = (value.path)^"/"^name in
@@ -405,11 +408,11 @@ let what_to_do event =
                          		  let err = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
 		                          begin
 					    match get_value wd with
-					    | None        -> Report.report ( Log (err, Level_1) )
+					    | None        -> Report.report ( Log (err, Warning) )
 					    | Some value  ->
 						let folder = value.path in
 						match get_key (folder^"/"^name) with
-						| None        -> Report.report ( Log (err, Level_1) )
+						| None        -> Report.report ( Log (err, Warning) )
 						| Some wd_key ->  del_watch wd_key						      
 					  end
 
@@ -418,17 +421,20 @@ let what_to_do event =
 	      | Moved_from, true      ->
 	      	                         begin
 	      				   match get_value wd with
-					   | None         -> let report = sprintf "Error. %s has been \"moved from\" but I can't find its corresponding value in the Hashtbl. Move canceled" name in
-					                     Report.report (Log (report, Level_1))
+					   | None         ->
+					       let report =
+						 sprintf "Error. %s has been \"moved from\" but I can't find its corresponding value in the Hashtbl. Move canceled" name
+					       in
+					         Report.report (Log (report, Warning))
 					   | Some value1  ->
 					       let folder = value1.path in
 					       
 					       match get_key (folder^"/"^name) with
-					       | None        -> Report.report (Log ("Error. Move_from: get_key -> wd_key", Level_1))
+					       | None        -> Report.report (Log ("Error. Move_from: get_key -> wd_key", Warning))
 					       | Some wd_key ->
 						   
 						   match get_value wd_key with
-						   | None       -> Report.report (Log ("Error: Move_from: get_value", Level_1))
+						   | None       -> Report.report (Log ("Error: Move_from: get_value", Warning))
 						   | Some value2 ->
 						       
 						       (* Get the list of ALL the children and descendants *)
@@ -442,20 +448,23 @@ let what_to_do event =
 						       in
 						       let children_and_descendants = get_all_descendants value2.wd_children in
 						       
-						       printf "Liste des enfants : \n";
-						       List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
-						       printf "\n";
+							 (* printf "Liste des enfants : \n";
+							    List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
+							    printf "\n";
+							 *)
 						       
 						       (* Remove the watch on the children and descendants *)
 						       List.iter (fun wd_child ->
 							 match get_value wd_child with
-							 | None       -> Report.report (Log ("Error. What_to_do(move_from): Could not find a wd_child to delete", Level_1))
+							 | None       ->
+							     Report.report (Log ("Error. What_to_do(move_from): Could not find a wd_child to delete", Warning))
+
 							 | Some value4 -> 
-							     Report.report ( Log (("move_from du child : "^(value4.path), Level_2) )) ;
+							     Report.report ( Log (("move_from du child : "^(value4.path), Normal_Extra) )) ;
 							     del_watch wd_child
 								 ) children_and_descendants
 							 ;				       
-						       Report.report ( Log (("move_from de "^name), Level_2) ) ;
+						       Report.report ( Log (("move_from de "^name), Normal_Extra) ) ;
 						       del_watch wd_key
 							 
 					 end
@@ -471,12 +480,12 @@ let what_to_do event =
 		                             begin
 		                               if is_config_file wd then
 						 (* reinit (); *)
-						 Report.report (Log ("Configuration file modified and REwatch it", Level_2));
+						 Report.report (Log ("Configuration file modified and REwatch it", Normal_Extra) );
 					       
 					       print_ht ();
 					     end
 					   
-		| _ -> Report.report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet.", Level_2))
+		| _ -> Report.report (Log ("I don't do: "^(string_of_event type_event)^", "^(string_of_bool is_folder)^" yet.", Normal_Extra))
 	  end
   
   in

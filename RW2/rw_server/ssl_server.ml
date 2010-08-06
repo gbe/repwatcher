@@ -96,7 +96,7 @@ let run tor tow2 =
       Ssl.use_certificate ctx !certfile !privkey;
     with Ssl.Private_key_error ->
       let error = "Err. Ssl_server: wrong private key password" in
-      Report.report (Log (error, Level_1)) ;
+      Report.report (Log (error, Error)) ;
       failwith error
   end;
   
@@ -113,14 +113,9 @@ let run tor tow2 =
       let do_it (ssl_s, sockaddr_cli, common_name) =
 
 	try 
-	  Ssl.output_string ssl_s ser_txt;
-(*	  let log_msg = ref (Printf.sprintf "Sent '%s' to %s (%s)" ser_txt common_name (get_ip sockaddr_cli)) in
-	    log_msg := Str.global_replace reg " " !log_msg;
-	    Report.report (Log (!log_msg, Level_1))
-*)
-	      
+	  Ssl.output_string ssl_s ser_txt	      
 	with Ssl.Write_error _ ->
-	  Report.report (Log ("SSL write error\n", Level_1))
+	  Report.report (Log ("SSL write error\n", Error))
       in
 
 	match socks with
@@ -178,7 +173,7 @@ let run tor tow2 =
 
 	let (_,sockaddr_cli,common_name) = List.hd l_client in
 	let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
-	  Report.report ( Log (log_msg, Level_1) );
+	  Report.report ( Log (log_msg, Normal) );
 	  Ssl.shutdown sock_cli
     in
       
@@ -191,7 +186,7 @@ let run tor tow2 =
 
       let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
       print_endline new_client;
-      Report.report ( Log (new_client, Level_1) );
+      Report.report ( Log (new_client, Normal) );
       
       Mutex.lock m ;
       connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
