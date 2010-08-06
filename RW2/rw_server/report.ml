@@ -23,12 +23,13 @@ open Ast_conf
 
 let log (txt, log_level) =
 
-  let conf = Config.get() in 
+  let conf = Config.get() in
+  let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
 
 
-  let rec open_fd ?(l=[ O_WRONLY ; O_APPEND]) () = 
+  let rec open_fd ?(l=[ O_WRONLY ; O_APPEND]) log_filename = 
     try
-      let fd = Unix.openfile "log.txt" l 0o666 in
+      let fd = Unix.openfile log_filename l 0o666 in
       
       (* if true then it means the exception was triggered before *)
       if List.mem O_CREAT l then begin
@@ -42,45 +43,62 @@ let log (txt, log_level) =
       
       match err with
       | ENOENT -> (* no such file or directory *)
-	  open_fd ~l:[ O_WRONLY ; O_APPEND ; O_CREAT ] ()
+	  open_fd ~l:[ O_WRONLY ; O_APPEND ; O_CREAT ] log_filename
       | _      ->
 	  
 	  (* Disable logging *)
 	  Config.conf := Some {conf with c_log_level = Disabled};
 	  
 	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
-	  prerr_endline error;
-	  
+	    prerr_endline error;
+	    
 	    (* fd = None because it failed to open *)
 	    None
   in
 
+
   let log_it ()  = 
     
-    let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
-(*    Printf.printf "LOG: %s" to_log   ;
-    Pervasives.flush Pervasives.stdout;
-*)
-    match open_fd() with
-    | None -> prerr_endline "An error occured, the file to log could neither be opened nor created"
-    | Some fd ->
-	try
-	  ignore (Unix.write fd to_log 0 (String.length to_log));
-	  Unix.close fd
+    let log_filename =
+      match log_level with
+	  | (Normal  | Normal_Extra) -> "rw.log"
+	  | (Warning | Error)        -> "rw.log.err"
+    in
 
-	with _ ->
-	  prerr_endline "An error occured either trying to log in the file or to close it"
+      match open_fd log_filename with
+	| None -> prerr_endline "An error occured, the file to log could neither be opened nor created"
+	| Some fd ->
+	    try
+	      ignore (Unix.write fd to_log 0 (String.length to_log));
+	      Unix.close fd
+		
+	    with _ ->
+	      prerr_endline "An error occured either trying to log in the file or to close it"
   in
-    
-  match conf.c_log_level with
-  | Disabled -> () (* don't log *)
-  | Regular  ->
-      begin
-	match log_level with
-	  | Level_1 -> log_it ()
-	  | Level_2 -> () (* don't log *)
-      end
-  | Debug -> log_it ()
+
+    begin
+      (* Only the Errors and Warnings get printed *)
+      match log_level with
+	| (Normal  | Normal_Extra) -> ()
+
+	| (Warning | Error)        ->
+	    (* print on stderr *)
+	    prerr_endline to_log ;
+	    Pervasives.flush Pervasives.stdout
+    end;
+
+
+    (* Depending on the user choice, we log *)
+    match conf.c_log_level with
+      | Disabled -> () (* don't log *)
+      | Regular  ->
+	  begin
+	    match log_level with
+	      | Normal            -> log_it ()
+	      | Normal_Extra      -> () (* don't log *)
+	      | (Warning | Error) -> log_it ()
+	  end
+      | Debug -> log_it ()
 ;;
     
 
@@ -145,7 +163,7 @@ let notify notification =
 	    
 	    (* Send in the pipe for the server to send to the clients *)
 	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )
-	  with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
+	  with _ -> log ("An error occured trying to send in the pipe the notification", Error)
 	      
       end
 
@@ -166,7 +184,7 @@ let notify notification =
 	    
 	    (* Send in the pipe for the server to send to the clients *)
 	    ignore ( Unix.write Pipe.tow str_info 0 (String.length str_info) )
-	  with _ -> log ("An error occured trying to send in the pipe the notification", Level_1)
+	  with _ -> log ("An error occured trying to send in the pipe the notification", Error)
       end
 
 
@@ -193,22 +211,22 @@ let sql (f, state) =
 	  begin
 	    (* Connect to Mysql *)
 	    match Mysqldb.connect() with
-	    | Some error -> log (error, Level_1)
+	    | Some error -> log (error, Error)
 	    | None       ->
 
-		log ("Connected to MySQL", Level_2);
-		log (("Next SQL query to compute:\n"^query^"\n"), Level_2);
+		log ("Connected to MySQL", Normal_Extra);
+		log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
 
 		(* Do the query *)
 		(match Mysqldb.query query with
-		| (QueryOK _ | QueryEmpty) -> log ("Query successfully executed", Level_2)
-		| QueryError error         -> log (error, Level_1)
+		| (QueryOK _ | QueryEmpty) -> log ("Query successfully executed", Normal_Extra)
+		| QueryError error         -> log (error, Error)
 		);
 	
 		(* Disconnect *)
 		match Mysqldb.disconnect() with
-		| Some error -> log (error, Level_1)
-		| None       -> log ("Disconnected from MySQL", Level_2);
+		| Some error -> log (error, Error)
+		| None       -> log ("Disconnected from MySQL", Normal_Extra);
 	  end
 
       | File_Closed ->
@@ -219,26 +237,24 @@ let sql (f, state) =
 
 	  (* Connect to Mysql *)
 	  match Mysqldb.connect() with
-	  | Some error -> log (error, Level_1)
+	  | Some error -> log (error, Error)
 	  | None ->
 
-	      log ("Connected to MySQL", Level_2);
-	      log (("Next SQL query to compute:\n"^id_query^"\n"), Level_2);
+	      log ("Connected to MySQL", Normal_Extra);
+	      log (("Next SQL query to compute:\n"^id_query^"\n"), Normal_Extra);
 	      
 	      begin
 		(* Do the query *)
 		match Mysqldb.fetch id_query with
-		| QueryEmpty        -> log ("Query successfully executed but no result returned", Level_2)
-		| QueryError errmsg -> log (errmsg, Level_1)
+		| QueryEmpty        -> log ("Query successfully executed but no result returned", Normal_Extra)
+		| QueryError errmsg -> log (errmsg, Error)
 		| QueryOK res       ->
 
-		    log ("Query successfully executed and returned a result", Level_2);
+		    log ("Query successfully executed", Normal_Extra);
 
 		    match res with
-		    | None -> assert false
-			  (* there is nothing in the database with this login and filename.
-			   * But this case shoudn't happen. If not, what's the point of QueryEmpty?
-			   *)
+		    | None ->
+			log ( ("Error. Previous query successfully executed but nothing was returned. This means something is wrong. Please check and try in your database the following query :\n"^id_query), Error );
 
 		    | Some ids_array -> 
 			
@@ -250,18 +266,18 @@ let sql (f, state) =
 				(Mysqldb.ml2str (Date.date()))
 				(Mysqldb.ml2str id) in
 
-			    log (("Next SQL query to compute:\n"^query^"\n"), Level_2);
+			    log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
 
 			    match Mysqldb.query query with
-			    | QueryOK _          -> log ("Query successfully executed and returned a result", Level_2)
-			    | QueryEmpty         -> log ("Query successfully executed but no result returned", Level_2)
-			    | QueryError errmsg  -> log (errmsg, Level_1)
+			    | QueryOK _          -> log ("Query successfully executed and returned a result", Normal_Extra)
+			    | QueryEmpty         -> log ("Query successfully executed but no result returned", Normal_Extra)
+			    | QueryError errmsg  -> log (errmsg, Error)
 	      end;
 
 	      (* Disconnect *)
 	      match Mysqldb.disconnect() with
-	      | Some error -> log (error, Level_1)
-	      | None       -> log ("Disconnected from MySQL", Level_2)
+	      | Some error -> log (error, Error)
+	      | None       -> log ("Disconnected from MySQL", Normal_Extra)
 ;;
 
 
