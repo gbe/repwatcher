@@ -68,7 +68,6 @@ function failure {
 	exit 1
 }
 
-rm -rf CA server
 
 if [ ! -d "CA" ]; then
 	mkdir CA
