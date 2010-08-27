@@ -40,8 +40,9 @@ function create_key {
 	echo -e "==> Key $1 created\n\n"
 }
 
-#arg1 = key (in)
-#arg2 = cert.csr (out)
+# arg1 = key (in)
+# arg2 = cert.csr (out)
+# arg3 = 2/8 (feedback)
 function request_signed_cert {
 	# No clear here so as to see that the key
 	# has been created for the server/client
@@ -69,16 +70,40 @@ function failure {
 }
 
 
+function exit_or_continue {
+	echo -n -e "\nThe folder $1 already exists. "
+	echo "If you continue, it will be overwritten.";
+	echo -n "Would you like to exit now (Y/n)? ";
+	read ans;
+
+	case $ans in
+		[yY])
+			echo "Exiting..." ;
+			exit 1 ;;
+		[nN])
+			echo "Continuing..." ;;
+		*)
+			echo "Exiting..." ;
+			exit 1
+	esac
+}
+
 if [ ! -d "CA" ]; then
 	mkdir CA
+else
+	exit_or_continue "CA" && rm -f CA/*
 fi
 
 if [ ! -d "server" ]; then
 	mkdir server
+else
+	exit_or_continue "server" && rm -f server/*
 fi
 
 if [ ! -d "client" ]; then
 	mkdir client
+else
+	exit_or_continue "client" && rm -f client/*
 fi
 
 
@@ -99,7 +124,7 @@ create_key server/rw_serv.key 3/8 || failure "Could not create the server's key"
 
 request_signed_cert server/rw_serv.key server/rw_serv.csr 4/8 || failure "Couldn't request a signed certificate";
 
-sign_cert server/rw_serv.csr 5/8 && rm -f ca.srl server/rw_serv.csr || failure "CA could't sign server certificate";
+sign_cert server/rw_serv.csr 5/8 && rm -f ca.srl server/rw_serv.csr || failure "CA couldn't sign server certificate";
 
 echo -e "\n==> Server certificate ready."
 ###############################################
