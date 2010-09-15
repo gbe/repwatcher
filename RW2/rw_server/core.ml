@@ -227,16 +227,14 @@ let ls_children path_folder =
   Printf.printf "Browse the subdirectories of those set in the configuration file. This may take a few seconds...\n";
   Pervasives.flush Pervasives.stdout;
 
-  let ic = Unix.open_process_in ("ls -1 -R "^(Filename.quote path_folder)^" | grep :$") in
+  let ic = Unix.open_process_in ("find "^(Filename.quote path_folder)^" -type d") in
     
   let children = ref [] in
     
     (try
        while true do
-	 (* returns /tmp/rw: *)
-	 let folder_double_dot = input_line ic in
-           (* delete the ':' *)
-	 let folder = String.sub folder_double_dot 0 ((String.length folder_double_dot) -1) in	
+	 (* returns /tmp/rw *)
+	 let folder = input_line ic in
 	   children := (!children)@[folder]
        done
      with End_of_file ->
