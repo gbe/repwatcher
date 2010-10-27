@@ -8,3 +8,6 @@ TO DO
 - Appel à D-Bus pour les notifications
 - Client pour Mac (Growl)
 - Voir pour mettre en place une base Postgresql (et linker à la compilation, en cas de besoin sur MySQL ou Postgresql mais pas les 2)
+- Voir pour mettre en place du sqlite
+- Processus fils pour serveur SSL à chrooter. Utiliser la fonction Sys.is_directory pour tester que le dossier chroot existe. S'il n'existe pas, le processus fils doit quitter et doit entraîner son père avec lui
+- Voir pour supprimer l'appel système qui liste les sous-répertoires et le faire avec des fonctions OCaml
