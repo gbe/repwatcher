@@ -11,9 +11,7 @@ let rec list_dirs dir =
     (try
        (* Teste si le répertoire donné en argument existe *)
        match Sys.is_directory dir with
-	 | true ->
-	     dh_opt := Some (opendir dir);
-	     l := dir::(!l)
+	 | true ->  dh_opt := Some (opendir dir)
 	 | false -> ()
      with Sys_error _ -> ()
     );
@@ -34,8 +32,7 @@ let rec list_dirs dir =
 			  begin
 			    match entry with
 			      | ("." | "..") -> ()
-			      | _            -> 
-				  l := List.rev((list_dirs fullpath))@(!l)
+			      | _            -> l := (!l)@(list_dirs fullpath)
 			  end
 		      | false -> ()
 		  with Sys_error err -> print_endline err
@@ -43,7 +40,7 @@ let rec list_dirs dir =
 	      done;
 	    with End_of_file -> closedir dh
 	  end;
-	  List.rev !l
+	  dir::(!l)
 ;;
 
 
