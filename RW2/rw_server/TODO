@@ -10,4 +10,8 @@ TO DO
 - Voir pour mettre en place une base Postgresql (et linker à la compilation, en cas de besoin sur MySQL ou Postgresql mais pas les 2)
 - Voir pour mettre en place du sqlite
 - Processus fils pour serveur SSL à chrooter. Utiliser la fonction Sys.is_directory pour tester que le dossier chroot existe. S'il n'existe pas, le processus fils doit quitter et doit entraîner son père avec lui
+- Le fichier de conf doit permettre de choisir le dossier où l'on veut chrooter le processus réseau.
 - Voir pour supprimer l'appel système qui liste les sous-répertoires et le faire avec des fonctions OCaml
+- Ajouter dans le fichier de configuration une entrée pour spécifier l'identité que le process réseau doit prendre
+- Ajouter un message de warning si le fichier de conf est en lecture pour "others" (droits unix)
+- Ajouter un message de warning si la ou les clés privées sont accessibles en lecture pour "others"
