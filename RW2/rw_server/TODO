@@ -16,3 +16,4 @@ TO DO
 - Ajouter un message de warning si le fichier de conf est en lecture pour "others" (droits unix)
 - Ajouter un message de warning si la ou les clés privées sont accessibles en lecture pour "others"
 - Tester de temps en temps si un client est toujours là. S'il ne répond pas au bout de 5 fois dans un intervalle de temps de 3 minutes (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
+- Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
