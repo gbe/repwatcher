@@ -19,3 +19,4 @@ TO DO
 - Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
 - Identité du processus principal à changer s'il a été lancé en root (exemple d'utilisateur: 'repwatcher'). S'il n'a pas été lancé en root, conservé l'identité.
 - Identité du processus principal à sélectionner depuis le fichier de conf lors d'abandon des droits de root -> utilisateur.
+- Revoir le type de filesize dans la base MySQL. Le passer de varchar à bigint ? Bigint = représentation 64 bits ?
