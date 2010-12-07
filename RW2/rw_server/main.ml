@@ -71,7 +71,7 @@ let watch_dirs conf_directories ignore_directories =
   
   (* Filter if the directory in the config file
    * - exists
-   * - is not set to be watched AND also ignored. Only someone stupid can do that
+   * - is set to be watched BUT also ignored. Only someone stupid can do that
    *)
   directories := List.filter (
     fun dir ->
