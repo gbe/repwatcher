@@ -18,7 +18,7 @@
 
 open Notifications
 open Unix
-open Dbus_call
+(* open Dbus_call *)
 
 
 let _ =
