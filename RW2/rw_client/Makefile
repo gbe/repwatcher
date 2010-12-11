@@ -1,7 +1,7 @@
-CMX= dbus_call.cmx rw_client.cmx
+CMX= rw_client.cmx
 GENERATED = 
 BIN= rw_client
-FLAGS=-linkpkg -package ssl,dbus
+FLAGS=-linkpkg -package ssl
 
 all: $(BIN)
 
