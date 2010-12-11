@@ -119,7 +119,10 @@ let watch_dirs conf_directories ignore_directories =
    ) [] !directories
   in
   
+  (* Watch the folders given in the config file... *)
   List.iter (fun dir -> Core.add_watch dir None false) !directories;
+
+  (* ... then watch their subfolders *)
   Core.add_watch_children children
 ;;
     

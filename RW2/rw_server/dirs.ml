@@ -5,7 +5,7 @@ let rec ls folder =
   let dh_opt = ref None in
   
   begin try
-    (* Teste si le répertoire donné en argument existe *)
+    (* Check if the given folder exists in argument *)
     match Sys.is_directory folder with
     | true ->  dh_opt := Some (Unix.opendir folder)
     | false -> ()
@@ -23,7 +23,7 @@ let rec ls folder =
 	    let entry = Unix.readdir dh in
 	    try
 	      let fullpath = (folder^"/"^entry) in
-	      (* Teste si c'est un fichier ou un dossier *)
+	      (* Test if it's a file or a folder *)
 	      match Sys.is_directory fullpath with
 	      | true ->
 		  begin

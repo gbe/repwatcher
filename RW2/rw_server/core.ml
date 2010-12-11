@@ -374,8 +374,8 @@ let what_to_do event =
 					       (* Then the folder's children *)
 					       add_watch_children children
 					 end
-											
-	      | Moved_to, false       -> () (* Probablement les mêmes conditions que moved_from, false *)
+
+	      | Moved_to, false       -> () (* Probably the same conditions than moved_from, false *)
 		  
 	      | Delete, true          ->
                          		  let err = sprintf "%s has been deleted but I can't stop watching it because I can't find its father" name in
