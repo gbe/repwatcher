@@ -120,7 +120,7 @@ let dbus img title txt =
     DBus.String title; (* Name of the program which triggers the notification *)
     DBus.UInt32 1l;
     DBus.String img; (* The picture displayed *)
-    DBus.String title;i (* Title of the notification window *)
+    DBus.String title; (* Title of the notification window *)
     DBus.String txt; (* The content *)
     DBus.Array (DBus.Strings []);
     DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
