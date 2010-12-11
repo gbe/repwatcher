@@ -117,14 +117,14 @@ let dbus img title txt =
 
   let bus = DBus.Bus.get DBus.Bus.Session in
   let params = [
-    DBus.String "y";
+    DBus.String title; (* Name of the program which triggers the notification *)
     DBus.UInt32 1l;
-    DBus.String img;
-    DBus.String title;
-    DBus.String txt;
+    DBus.String img; (* The picture displayed *)
+    DBus.String title;i (* Title of the notification window *)
+    DBus.String txt; (* The content *)
     DBus.Array (DBus.Strings []);
     DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
-    DBus.Int32 4000l;
+    DBus.Int32 8000l; (* seems to be the milliseconds the notification must be seen *)
   ] in	
     ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
 ;;
@@ -172,8 +172,11 @@ let notify notification =
 	let conf         = Config.get() in
 	if conf.c_notify_loc then
 	  begin
+(*
 	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
 	    ignore (system call)
+*)
+	    dbus "nobody" "Repwatcher" info_escaped
 	  end ;
 
 	if conf.c_notify_rem then
