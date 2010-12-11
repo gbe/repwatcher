@@ -98,7 +98,7 @@ let watch_dirs conf_directories ignore_directories =
     List.fold_left (
     fun dirs2watch dir ->
       
-      let dir_children = Core.ls_children dir in
+      let dir_children = List.tl (Dirs.ls dir) in
       let dir_children_without_ignored_ones = 
 	List.filter (
 	fun dir_child ->

@@ -221,31 +221,6 @@ let add_watch_children l_children =
 
 
 
-(* List the subfolders of a folder *)
-let ls_children path_folder =
-
-  Printf.printf "Browse the subdirectories of those set in the configuration file. This may take a few seconds...\n";
-  Pervasives.flush Pervasives.stdout;
-
-  let ic = Unix.open_process_in ("find "^(Filename.quote path_folder)^" -type d") in
-    
-  let children = ref [] in
-    
-    (try
-       while true do
-	 (* returns /tmp/rw *)
-	 let folder = input_line ic in
-	   children := (!children)@[folder]
-       done
-     with End_of_file ->
-       ignore (Unix.close_process_in ic) ;
-       print_endline "Finished browsing"
-    );
-    List.tl !children
-;;
-
-
-
 let print_ht () =
   Hashtbl.iter (fun key value -> 
 		  printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
@@ -391,7 +366,7 @@ let what_to_do event =
 					   
 					   | Some value ->
 					       let folder = (value.path)^"/"^name in
-		                               let children = ls_children folder in
+		                               let children = List.tl (Dirs.ls folder) in
 
 					       (* Watch the new folder *)
                                		       add_watch folder (Some wd) false ;
