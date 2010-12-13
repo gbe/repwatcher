@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ let log (txt, log_level) =
       | _      ->
 	  
 	  (* Disable logging *)
-	  Config.conf := Some {conf with c_log_level = Disabled};
+	  Config.conf := Some {conf with c_log = Disabled};
 	  
 	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
 	    prerr_endline error;
@@ -88,7 +88,7 @@ let log (txt, log_level) =
 
 
     (* Depending on the user choice, we log *)
-    match conf.c_log_level with
+    match conf.c_log with
       | Disabled -> () (* don't log *)
       | Regular  ->
 	  begin
@@ -141,7 +141,7 @@ let notify notification =
 	let filename_escaped = Txt_operations.escape_for_notify filename in
 	let conf             = Config.get() in  
 
-	if conf.c_notify_loc then
+	if conf.c_notify.n_locally then
 	  begin
 	    let msg_state =
 	      match filestate with
@@ -155,7 +155,7 @@ let notify notification =
 	      dbus "nobody" "Repwatcher" dbus_notif		
 	  end ;
 
-	if conf.c_notify_rem then
+	if conf.c_notify.n_remotely then
 	  try
                
 	    let str_new_dl = Marshal.to_string ( New_notif (login, filename_escaped, filestate) ) [Marshal.No_sharing] in
@@ -170,7 +170,7 @@ let notify notification =
       begin
       	let info_escaped = Txt_operations.escape_for_notify info in
 	let conf         = Config.get() in
-	if conf.c_notify_loc then
+	if conf.c_notify.n_locally then
 	  begin
 (*
 	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
@@ -179,7 +179,7 @@ let notify notification =
 	    dbus "nobody" "Repwatcher" info_escaped
 	  end ;
 
-	if conf.c_notify_rem then
+	if conf.c_notify.n_remotely then
 	  try
             
 	    let str_info = Marshal.to_string ( Info_notif info_escaped ) [Marshal.No_sharing] in

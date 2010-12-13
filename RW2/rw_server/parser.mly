@@ -1,6 +1,6 @@
 /*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,18 +19,17 @@
 
 
 %{
-  open Ast_conf
+   open Ast_conf 
 %}
   
-%token DQUOTE
+
 %token EQUAL
 %token PVIRGULE
-%token IGNORE_USERS
 %token DIRECTORIES
 %token IGNORE_DIRECTORIES
-%token MODE
-%token SPEC
-%token UNWANTED
+%token IGNORE_USERS
+%token SPECIFIED_PROGRAMS
+%token UNWANTED_PROGRAMS
 %token SQL_LOGIN
 %token SQL_PSWD
 %token SQL_HOST
@@ -39,107 +38,158 @@
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
 %token LOG_LEVEL
-%token YES
-%token NO
 %token <string>TXT
-%token <string>DIGITS
-%token EOF 
+%token EOF
 
   
 /* Point d'entrée de la grammaire */
-%start deb
+%start conf
   
 /* Type des valeurs retournées par l'analyseur syntaxique */
-%type <Ast_conf.configuration> deb
+%type <Ast_conf.configuration> conf
   
 %%
 
 
-  deb:
- DIRECTORIES EQUAL txt_list
- IGNORE_DIRECTORIES EQUAL txt_digits_list_star
- IGNORE_USERS EQUAL txt_digits_list_star
- MODE EQUAL mode
- SPEC EQUAL txt_list
- UNWANTED EQUAL txt_digits_list_star
- SQL_LOGIN EQUAL txt_or_digits
- SQL_PSWD EQUAL txt_or_digits
- SQL_HOST EQUAL txt
- SQL_PORT EQUAL digits_int_option
- SQL_DBNAME EQUAL txt_or_digits
- NOTIFY_LOCALLY EQUAL yes_or_no
- NOTIFY_REMOTELY EQUAL yes_or_no
- LOG_LEVEL EQUAL digits_int_option
- EOF { 
-      {
-	c_directories = $3;
-	c_ignore_directories = $6;
-	c_ignore_users = $9;
-	c_mode = $12;
-	c_specified_programs = $15;
-	c_unwanted_programs = $18;
-	c_sql = {
-	  dbhost = Some $27;
-	  dbname = Some $33;
-	  dbport = $30;
-	  dbpwd  = Some $24;
-	  dbuser = Some $21;
-	};
-       c_notify_loc = $36;
-       c_notify_rem = $39;
-       c_log_level  =
-	  match $42 with
-	    | None -> Regular (* Regular is the default log_level *)
-	    | Some i ->
-		match i with
-		  | 0 -> Disabled
-		  | 1 -> Regular
-		  | 2 -> Debug
-		  | _       -> raise Parse_error
-      }
-    }
-  ;
-
-
-txt_list:
-| txt { [$1] }
-| txt_list PVIRGULE txt { $3::$1 }
+conf: watch mode mysql notify log EOF { 
+   {
+      c_watch = $1;
+      c_mode = $2;
+      c_mysql = $3;
+      c_notify = $4;
+      c_log = $5;
+   }
+}
 ;
 
-txt:
-| DQUOTE TXT DQUOTE { $2 }
+watch:
+| DIRECTORIES EQUAL txt_plus_list
+      {{
+       w_directories = $3;
+       w_ignore_directories = [];
+       w_ignore_users = [];
+     }}
+| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_star_list
+      {{
+       w_directories = $3;
+       w_ignore_directories = $6;
+       w_ignore_users = [];      	
+      }}	   	   
+| DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_star_list
+      {{
+       w_directories = $3;
+       w_ignore_directories = [];
+       w_ignore_users = $6;      	
+      }}
+| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_star_list IGNORE_USERS EQUAL txt_star_list
+      {{
+       w_directories = $3;
+       w_ignore_directories = $6;
+       w_ignore_users = $9;
+      }}
 ;
 
-digits:
-| DQUOTE DIGITS DQUOTE { $2 }
+
+mode:
+| SPECIFIED_PROGRAMS EQUAL txt_plus_list { (Specified_programs, $3) }
+| UNWANTED_PROGRAMS EQUAL txt_star_list { (Unwanted_programs, $3) }
 ;
 
-digits_int_option:
-| DQUOTE DQUOTE { None }
-| DQUOTE DIGITS DQUOTE { Some (int_of_string $2) }
+
+mysql:
+| SQL_LOGIN EQUAL txt_plus
+  SQL_PSWD EQUAL txt_plus
+  SQL_HOST EQUAL txt_plus
+  SQL_PORT EQUAL int_option
+  SQL_DBNAME EQUAL txt_plus
+      {{
+       dbhost = Some $9;
+       dbname = Some $15;
+       dbport = $12;
+       dbpwd  = Some $6;
+       dbuser = Some $3;
+      }}
+
+| SQL_LOGIN EQUAL txt_plus
+  SQL_PSWD EQUAL txt_plus
+  SQL_HOST EQUAL txt_plus
+  SQL_DBNAME EQUAL txt_plus
+      {{
+       dbhost = Some $9;
+       dbname = Some $12;
+       dbport = None;
+       dbpwd  = Some $6;
+       dbuser = Some $3;
+      }}
 ;
 
-txt_or_digits:
-| txt { $1 }
-| digits { $1 }
+notify:
+|  NOTIFY_LOCALLY EQUAL true_or_false
+   NOTIFY_REMOTELY EQUAL true_or_false
+      {{
+       n_locally = $3;
+       n_remotely = $6;
+      }}
+
+|  NOTIFY_REMOTELY EQUAL true_or_false
+   NOTIFY_LOCALLY EQUAL true_or_false
+      {{
+       n_locally = $6;
+       n_remotely = $3;
+      }}   
 ;
 
- mode:
-| DQUOTE SPEC DQUOTE { Specified_programs }
-| DQUOTE UNWANTED DQUOTE { Unwanted_programs }
+
+log:
+| LOG_LEVEL EQUAL int_option {
+   match $3 with
+   | None -> Regular
+   | Some level ->
+      match level with
+      | 0 -> Disabled
+      | 1 -> Regular
+      | 2 -> Debug
+      | _ -> raise Parse_error
+}
+
+txt_plus_list:
+| txt_plus { [$1] }
+| txt_plus_list PVIRGULE txt_plus { $3::$1 }
 ;
 
-txt_digits_list_star:
-| DQUOTE DQUOTE { [] }
-| txt_digits_list { $1 }
+
+txt_plus:
+| TXT { if String.length $1 > 0 then $1 else raise Parse_error}
 ;
 
-txt_digits_list:
-| txt_or_digits { [$1] }
-| txt_digits_list PVIRGULE txt_or_digits { $3::$1 }
+txt_star:
+| TXT { $1 }
 ;
 
-yes_or_no:
-| DQUOTE YES DQUOTE { true  }
-| DQUOTE NO DQUOTE  { false }
+txt_star_list:
+| txt_star { if (String.length $1) == 0 then [] else [$1] }
+| txt_star_list PVIRGULE txt_star { $3::$1 }
 ;
+
+true_or_false:
+| txt_plus {
+  match $1 with
+  | ("Y" | "y") -> true
+  | ("N" | "n") -> false
+  | _ -> raise Parse_error
+}
+;
+
+int_option:
+| txt_star {
+  if (String.length $1) = 0 then
+    None
+  else 
+    try
+      Some (int_of_string $1)
+    with
+      Failure _ -> raise Parse_error         
+}
+
+
+

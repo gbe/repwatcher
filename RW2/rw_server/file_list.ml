@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,17 +74,17 @@ let filter unfiltered_l =
   (* Remove all the files according to the specified or unwanted mode from the config file *)
   let lprogs_filtered =
     match conf.c_mode with
-      | Specified_programs ->
-	  List.filter (fun file -> List.mem file.f_prog_source conf.c_specified_programs) unfiltered_l
+    | (Specified_programs, specified_programs) ->
+	List.filter (fun file -> List.mem file.f_prog_source specified_programs) unfiltered_l
 	    
-      (* Remove all the unwanted_programs from the list *)
-      | Unwanted_programs ->	  	  
-	  List.filter (fun file -> if List.mem file.f_prog_source conf.c_unwanted_programs then false else true) unfiltered_l
+    (* Remove all the unwanted_programs from the list *)
+    | (Unwanted_programs, unwanted_programs) ->	  	  
+	List.filter (fun file -> if List.mem file.f_prog_source unwanted_programs then false else true) unfiltered_l
 	    
   in
     
     (* Remove all the files accessed by one of the ignored users *)
     List.filter (fun file ->
-		   not (List.mem file.f_login conf.c_ignore_users)
+		   not (List.mem file.f_login conf.c_watch.w_ignore_users)
 		) lprogs_filtered
 ;;	    

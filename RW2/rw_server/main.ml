@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ let load_and_watch_config () =
 
 
 (* Watch the directories from the config file *) 
-let watch_dirs conf_directories ignore_directories =   
+let watch_dirs directories ignore_directories =   
   
   let rem_slash l_directories = List.map (
     fun dir ->
@@ -63,10 +63,10 @@ let watch_dirs conf_directories ignore_directories =
    ) l_directories
   in
   
-  let directories                   = ref (rem_slash conf_directories)                  in
-  let ignore_directories_clean_name =     rem_slash ignore_directories                  in
-  
-  let regexp_ignore_directories     = List.map Str.regexp ignore_directories_clean_name in
+  let directories = ref (rem_slash directories) in
+  let ignore_directories_clean_name = rem_slash ignore_directories in
+
+  let regexp_ignore_directories = List.map Str.regexp ignore_directories_clean_name in
   
   
   (* Filter if the directory in the config file
@@ -133,7 +133,7 @@ let watch_dirs conf_directories ignore_directories =
 (* Fonction main *)
 let _ =
   
-  Printf.printf "\nRepwatcher  Copyright (C) 2009  Gregory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2010  Gregory Bellier
 This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
 This is free software, and you are welcome to redistribute it
 under certain conditions; for details read COPYING file\n\n";
@@ -166,10 +166,10 @@ under certain conditions; for details read COPYING file\n\n";
   end;
   
   (* watch the directories given in the config file *)
-  watch_dirs conf.c_directories conf.c_ignore_directories;
+  watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
 
   
-  let fd = match conf.c_notify_rem with
+  let fd = match conf.c_notify.n_remotely with
     | true  ->
 	Report.report (Log ("Start server for remote notifications", Normal_Extra)) ;
 	Unix.fork()
@@ -179,13 +179,13 @@ under certain conditions; for details read COPYING file\n\n";
      
     match fd with
       | 0 ->
-	  if conf.c_notify_rem then begin
+	  if conf.c_notify.n_remotely then begin
 	    Ssl_server.run Pipe.tor Pipe.tow2
 	  end
 
       | _ ->
 	  begin
-	  if conf.c_notify_rem then begin
+	  if conf.c_notify.n_remotely then begin
 	    ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
 	  end;
 	    

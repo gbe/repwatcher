@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ let ml2str = Mysql.ml2str;;
 
 let connect () =
   try
-    cid := Some (Mysql.connect (Config.get()).c_sql);
+    cid := Some (Mysql.connect (Config.get()).c_mysql);
     None
   with Mysql.Error error -> Some error
 ;;

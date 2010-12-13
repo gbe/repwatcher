@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,29 +16,38 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-type sql_db = Mysql.db = {
-  dbhost : string option ;
-  dbname : string option ;
-  dbport : int option    ;
-  dbpwd  : string option ;
-  dbuser : string option ;
+type watch = {
+    w_directories        : string list   ;
+    w_ignore_directories : string list   ; 
+    w_ignore_users       : string list   ;
 }
 
-type mode = Specified_programs | Unwanted_programs
+type mode_t =  Specified_programs | Unwanted_programs
+type mode = mode_t * string list
 
-type log_verbosity  = | Disabled
-		      | Regular
-		      | Debug
 
-type configuration={
-  c_directories        : string list   ;
-  c_ignore_directories : string list   ; 
-  c_ignore_users       : string list   ;
-  c_mode               : mode          ;
-  c_specified_programs : string list   ;
-  c_unwanted_programs  : string list   ;
-  c_sql                : sql_db        ;
-  c_notify_loc         : bool          ;
-  c_notify_rem         : bool          ;
-  c_log_level          : log_verbosity ;
+type sql_db = Mysql.db = {
+    dbhost : string option ;
+    dbname : string option ;
+    dbport : int option    ;
+    dbpwd  : string option ;
+    dbuser : string option ;
+}
+      
+type notify = {
+    n_locally  : bool;
+    n_remotely : bool;
+}
+
+type log_verbosity  =
+  | Disabled
+  | Regular
+  | Debug
+
+type configuration = {
+    c_watch : watch;
+    c_mode : mode;
+    c_mysql : sql_db;
+    c_notify : notify;
+    c_log : log_verbosity;
 }

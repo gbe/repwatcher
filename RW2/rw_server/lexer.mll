@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-
-
 {
   open Lexing
   open Parser
@@ -29,51 +27,32 @@
       { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum }
 }
 
-
-let alpha = ['a'-'z' 'A'-'Z'] | ['\xE0'-'\xFF']
-
-(*
-specialchars =
-  ! guillemet #$%&'()*+,-.
-  :;<=>?@
-  [\]^_`{|}~
-*)
-
-let specialchars = ['!'-'.' ':'-'@' '['-'`' '{'-'~'] (* Tout sauf le / *)
-
-let digit = ['0'-'9']
-
 let space = [' ' '\t']
 
-let comment = '#'(alpha | digit | ['/'] | space | specialchars)*
+let comment = '#'([^'\n'])*'\n'
 
-let txt = (alpha | digit | ['/'] | ['_'] | ['.'] | ['-'] | ['+'])+
+let txt = '\"' [^'\"']* '\"'
 
 
 rule nexttoken = parse
-  | comment               { nexttoken lexbuf }
-  | '\"'                  { DQUOTE }
+  | comment               { newline lexbuf; nexttoken lexbuf }
   | '='                   { EQUAL }
   | ';'                   { PVIRGULE }
   | "directories"         { DIRECTORIES }
   | "ignore_directories"  { IGNORE_DIRECTORIES }
   | "ignore_users"        { IGNORE_USERS }
-  | "mode"                { MODE }
-  | "specified_programs"  { SPEC }
-  | "unwanted_programs"   { UNWANTED }
+  | "specified_programs"  { SPECIFIED_PROGRAMS }
+  | "unwanted_programs"   { UNWANTED_PROGRAMS }
   | "sql_login"           { SQL_LOGIN }
   | "sql_pswd"            { SQL_PSWD }
-  | "sql_host"            { SQL_HOST } 
+  | "sql_host"            { SQL_HOST }
   | "sql_port"            { SQL_PORT }
   | "sql_dbname"          { SQL_DBNAME }
   | "notify_locally"      { NOTIFY_LOCALLY }
   | "notify_remotely"     { NOTIFY_REMOTELY }
-  | "log_level"           { LOG_LEVEL }
-  | "Y"                   { YES }
-  | "N"                   { NO }
+  | "log_level"           { LOG_LEVEL }  
   | eof                   { EOF }
   | '\n'                  { newline lexbuf; nexttoken lexbuf }
   | space+                { nexttoken lexbuf }
-  | digit+               { DIGITS(lexeme lexbuf) }
-  | txt                   { TXT(lexeme lexbuf) }
-  | _     { raise (Lexing_error (lexeme lexbuf)) }
+  | txt                   { let s = lexeme lexbuf in TXT (String.sub s 1 ((String.length s)-2) )}
+  | _                     { raise (Lexing_error (lexeme lexbuf)) }

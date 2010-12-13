@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ let parse config_file =
   let c = open_in config_file in
   let lb = Lexing.from_channel c in
     try
-      conf := Some (Parser.deb Lexer.nexttoken lb) ;
+      conf := Some (Parser.conf Lexer.nexttoken lb) ;
       close_in c;
       get()
     with
