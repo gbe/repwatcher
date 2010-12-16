@@ -51,7 +51,7 @@
 %%
 
 
-conf: watch mode mysql notify log EOF { 
+conf: watch mode mysql notify log EOF {
    {
       c_watch = $1;
       c_mode = $2;
@@ -141,6 +141,8 @@ notify:
 
 
 log:
+/* If the log part is commented then it means logging is disabled */
+| { Disabled }
 | LOG_LEVEL EQUAL int_option {
    match $3 with
    | None -> Regular
