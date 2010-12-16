@@ -38,6 +38,7 @@
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
 %token LOG_LEVEL
+%token MAIN_IDENTITY_FALLBACK
 %token <string>TXT
 %token EOF
 
@@ -51,13 +52,14 @@
 %%
 
 
-conf: watch mode mysql notify log EOF {
+conf: watch mode mysql notify log main_identity_fallback EOF {
    {
       c_watch = $1;
       c_mode = $2;
       c_mysql = $3;
       c_notify = $4;
       c_log = $5;
+      c_main_proc_id_fallback = $6;
    }
 }
 ;
@@ -152,7 +154,13 @@ log:
       | 1 -> Regular
       | 2 -> Debug
       | _ -> raise Parse_error
-}
+   }
+;
+
+main_identity_fallback:
+| { None }
+| MAIN_IDENTITY_FALLBACK EQUAL txt_plus { Some $3 }
+;
 
 txt_plus_list:
 | txt_plus { [$1] }
@@ -192,6 +200,4 @@ int_option:
     with
       Failure _ -> raise Parse_error         
 }
-
-
-
+;

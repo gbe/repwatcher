@@ -16,5 +16,3 @@ TO DO
 - Ajouter un message d'erreur et quitter si la ou les clés privées sont accessibles en lecture pour "others"
 - Tester de temps en temps si un client est toujours là toutes les 3 minutes. S'il ne répond pas au bout de 5 fois dans un interval de temps d'1 minute (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
 - Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
-- Identité du processus principal à changer s'il a été lancé en root (exemple d'utilisateur: 'repwatcher'). S'il n'a pas été lancé en root, conservé l'identité.
-- Identité du processus principal à sélectionner depuis le fichier de conf lors d'abandon des droits de root -> utilisateur.

@@ -144,6 +144,22 @@ under certain conditions; for details read COPYING file\n\n";
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
 
+  begin
+    match conf.c_main_proc_id_fallback with
+    | None -> ()
+    | Some new_identity ->
+	(* Drop privileges by changing the processus' identity if its current id is root *)
+	if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+	  begin
+	    try
+	      (* Check in the file /etc/passwd if the user "new_identity" exists *)
+	      let passwd_entry = Unix.getpwnam new_identity in
+	      setgid passwd_entry.pw_gid;
+	      setuid passwd_entry.pw_uid;
+	    with Not_found -> failwith ("Fatal error. User "^new_identity^" doesn't exist. The network process can't take this identity")
+	  end;
+  end;
+
 
   (* Test if we can successfully connect to the SGBD
    * if we don't, then we exit right now

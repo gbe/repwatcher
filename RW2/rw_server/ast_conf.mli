@@ -50,4 +50,5 @@ type configuration = {
     c_mysql : sql_db;
     c_notify : notify;
     c_log : log_verbosity;
+    c_main_proc_id_fallback : string option;
 }

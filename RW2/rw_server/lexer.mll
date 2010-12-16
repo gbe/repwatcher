@@ -35,24 +35,25 @@ let txt = '\"' [^'\"']* '\"'
 
 
 rule nexttoken = parse
-  | comment               { newline lexbuf; nexttoken lexbuf }
-  | '='                   { EQUAL }
-  | ';'                   { PVIRGULE }
-  | "directories"         { DIRECTORIES }
-  | "ignore_directories"  { IGNORE_DIRECTORIES }
-  | "ignore_users"        { IGNORE_USERS }
-  | "specified_programs"  { SPECIFIED_PROGRAMS }
-  | "unwanted_programs"   { UNWANTED_PROGRAMS }
-  | "sql_login"           { SQL_LOGIN }
-  | "sql_pswd"            { SQL_PSWD }
-  | "sql_host"            { SQL_HOST }
-  | "sql_port"            { SQL_PORT }
-  | "sql_dbname"          { SQL_DBNAME }
-  | "notify_locally"      { NOTIFY_LOCALLY }
-  | "notify_remotely"     { NOTIFY_REMOTELY }
-  | "log_level"           { LOG_LEVEL }  
-  | eof                   { EOF }
-  | '\n'                  { newline lexbuf; nexttoken lexbuf }
-  | space+                { nexttoken lexbuf }
-  | txt                   { let s = lexeme lexbuf in TXT (String.sub s 1 ((String.length s)-2) )}
-  | _                     { raise (Lexing_error (lexeme lexbuf)) }
+  | comment                            { newline lexbuf; nexttoken lexbuf }
+  | '='                                { EQUAL }
+  | ';'                                { PVIRGULE }
+  | "directories"                      { DIRECTORIES }
+  | "ignore_directories"               { IGNORE_DIRECTORIES }
+  | "ignore_users"                     { IGNORE_USERS }
+  | "specified_programs"               { SPECIFIED_PROGRAMS }
+  | "unwanted_programs"                { UNWANTED_PROGRAMS }
+  | "sql_login"                        { SQL_LOGIN }
+  | "sql_pswd"                         { SQL_PSWD }
+  | "sql_host"                         { SQL_HOST }
+  | "sql_port"                         { SQL_PORT }
+  | "sql_dbname"                       { SQL_DBNAME }
+  | "notify_locally"                   { NOTIFY_LOCALLY }
+  | "notify_remotely"                  { NOTIFY_REMOTELY }
+  | "log_level"                        { LOG_LEVEL }
+  | "main_process_identity_fallback"   { MAIN_IDENTITY_FALLBACK }
+  | eof                                { EOF }
+  | '\n'                               { newline lexbuf; nexttoken lexbuf }
+  | space+                             { nexttoken lexbuf }
+  | txt                                { let s = lexeme lexbuf in TXT (String.sub s 1 ((String.length s)-2) )}
+  | _                                  { raise (Lexing_error (lexeme lexbuf)) }
