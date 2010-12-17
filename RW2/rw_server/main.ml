@@ -162,9 +162,9 @@ under certain conditions; for details read COPYING file\n\n";
 
 
   (* Test if we can successfully connect to the SGBD
-   * if we don't, then we exit right now
-   * This is added because the program crashed long after starting running it
-   * at the very moment a SQL transaction was needed
+   * if we can't, then we exit right now
+   * This prevents the program to crash long after starting running it
+   * at the very moment a SQL query is needed.
    * With this, we know from the start if (at least this part) it goes right or wrong.
    * There is no need to add a try/with here because it's handled in Mysqldb.ml
    *)  
