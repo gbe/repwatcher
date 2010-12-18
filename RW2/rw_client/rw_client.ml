@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ let _ =
 
   let usage = "usage: rw_client host [-p port]" in
 
-  Printf.printf "\nRepwatcher  Copyright (C) 2009  Gregory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2010  Gregory Bellier
 This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
 This is free software, and you are welcome to redistribute it
 under certain conditions; for details read COPYING file\n\n";

@@ -30,11 +30,11 @@
 %token IGNORE_USERS
 %token SPECIFIED_PROGRAMS
 %token UNWANTED_PROGRAMS
-%token SQL_LOGIN
-%token SQL_PSWD
-%token SQL_HOST
-%token SQL_PORT
-%token SQL_DBNAME
+%token MYSQL_LOGIN
+%token MYSQL_PSWD
+%token MYSQL_HOST
+%token MYSQL_PORT
+%token MYSQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
 %token REMOTE_IDENTITY_FALLBACK
@@ -53,14 +53,14 @@
 %%
 
 
-conf: watch mode mysql notify log main_identity_fallback EOF {
+conf: watch mode main_identity_fallback mysql notify log EOF {
    {
       c_watch = $1;
       c_mode = $2;
-      c_mysql = $3;
-      c_notify = $4;
-      c_log = $5;
-      c_main_proc_id_fallback = $6;
+      c_main_proc_id_fallback = $3;
+      c_mysql = $4;
+      c_notify = $5;
+      c_log = $6;
    }
 }
 ;
@@ -72,19 +72,19 @@ watch:
        w_ignore_directories = [];
        w_ignore_users = [];
      }}
-| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_star_list
+| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_plus_list
       {{
        w_directories = $3;
        w_ignore_directories = $6;
        w_ignore_users = [];      	
       }}	   	   
-| DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_star_list
+| DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_plus_list
       {{
        w_directories = $3;
        w_ignore_directories = [];
        w_ignore_users = $6;      	
       }}
-| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_star_list IGNORE_USERS EQUAL txt_star_list
+| DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_plus_list
       {{
        w_directories = $3;
        w_ignore_directories = $6;
@@ -98,25 +98,29 @@ mode:
 | UNWANTED_PROGRAMS EQUAL txt_star_list { (Unwanted_programs, $3) }
 ;
 
+main_identity_fallback:
+| { None }
+| MAIN_IDENTITY_FALLBACK EQUAL txt_plus { Some $3 }
+;
 
 mysql:
-| SQL_LOGIN EQUAL txt_plus
-  SQL_PSWD EQUAL txt_plus
-  SQL_HOST EQUAL txt_plus
-  SQL_PORT EQUAL int_option
-  SQL_DBNAME EQUAL txt_plus
+| MYSQL_LOGIN EQUAL txt_plus
+  MYSQL_PSWD EQUAL txt_plus
+  MYSQL_HOST EQUAL txt_plus
+  MYSQL_PORT EQUAL int
+  MYSQL_DBNAME EQUAL txt_plus
       {{
        dbhost = Some $9;
        dbname = Some $15;
-       dbport = $12;
+       dbport = Some $12;
        dbpwd  = Some $6;
        dbuser = Some $3;
       }}
 
-| SQL_LOGIN EQUAL txt_plus
-  SQL_PSWD EQUAL txt_plus
-  SQL_HOST EQUAL txt_plus
-  SQL_DBNAME EQUAL txt_plus
+| MYSQL_LOGIN EQUAL txt_plus
+  MYSQL_PSWD EQUAL txt_plus
+  MYSQL_HOST EQUAL txt_plus
+  MYSQL_DBNAME EQUAL txt_plus
       {{
        dbhost = Some $9;
        dbname = Some $12;
@@ -152,21 +156,13 @@ notif_remote:
 log:
 /* If the log part is commented then it means logging is disabled */
 | { Disabled }
-| LOG_LEVEL EQUAL int_option {
-   match $3 with
-   | None -> Regular
-   | Some level ->
-      match level with
-      | 0 -> Disabled
-      | 1 -> Regular
-      | 2 -> Debug
-      | _ -> raise Parse_error
-   }
-;
-
-main_identity_fallback:
-| { None }
-| MAIN_IDENTITY_FALLBACK EQUAL txt_plus { Some $3 }
+| LOG_LEVEL EQUAL int {
+  match $3 with
+  | 0 -> Disabled
+  | 1 -> Regular
+  | 2 -> Debug
+  | _ -> raise Parse_error
+}
 ;
 
 txt_plus_list:
@@ -197,14 +193,10 @@ true_or_false:
 }
 ;
 
-int_option:
-| txt_star {
-  if (String.length $1) = 0 then
-    None
-  else 
-    try
-      Some (int_of_string $1)
-    with
-      Failure _ -> raise Parse_error         
+int:
+| txt_plus {
+  try
+    int_of_string $1
+  with Failure _ -> raise Parse_error
 }
 ;
