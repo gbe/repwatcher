@@ -33,10 +33,15 @@ type sql_db = Mysql.db = {
     dbpwd  : string option ;
     dbuser : string option ;
 }
+
+type remote = {
+    r_activate : bool;
+    r_process_identity : string option;
+  }
       
 type notify = {
     n_locally  : bool;
-    n_remotely : bool;
+    n_remotely : remote;
 }
 
 type log_verbosity  =

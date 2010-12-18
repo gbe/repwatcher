@@ -144,22 +144,6 @@ under certain conditions; for details read COPYING file\n\n";
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
 
-  begin
-    match conf.c_main_proc_id_fallback with
-    | None -> ()
-    | Some new_identity ->
-	(* Drop privileges by changing the processus' identity if its current id is root *)
-	if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-	  begin
-	    try
-	      (* Check in the file /etc/passwd if the user "new_identity" exists *)
-	      let passwd_entry = Unix.getpwnam new_identity in
-	      setgid passwd_entry.pw_gid;
-	      setuid passwd_entry.pw_uid;
-	    with Not_found -> failwith ("Fatal error. User "^new_identity^" doesn't exist. The network process can't take this identity")
-	  end;
-  end;
-
 
   (* Test if we can successfully connect to the SGBD
    * if we can't, then we exit right now
@@ -180,57 +164,109 @@ under certain conditions; for details read COPYING file\n\n";
 	    failwith error
 	| None -> ()
   end;
-  
-  (* watch the directories given in the config file *)
-  watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
 
-  
-  let fd = match conf.c_notify.n_remotely with
+  (* Check if the identity which should be taken by the main process exists (only if the current identity is root) *) 
+  begin
+    match conf.c_main_proc_id_fallback with
+    | None -> ()
+    | Some new_main_identity ->
+	if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+	  begin
+	    try
+	      (* Check in the file /etc/passwd if the user "new_main_identity" exists *)
+	      ignore (Unix.getpwnam new_main_identity);
+	    with Not_found -> failwith ("Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity")
+	  end;
+  end;
+
+
+
+
+
+ 
+(* Fork if remote notifications are activated *)
+  let fd =
+    match conf.c_notify.n_remotely.r_activate with
     | true  ->
+	
+        (* Check if the identity exists which should be taken by the remote process (only if the current identity is root) *) 
+	begin
+	  match conf.c_notify.n_remotely.r_process_identity with
+	  | None -> ()
+	  | Some new_remote_identity ->
+	      if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+		begin
+		  try
+		    (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
+		    ignore (Unix.getpwnam new_remote_identity);
+		  with Not_found -> failwith ("Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity")
+		end;
+	end;
+	
 	Report.report (Log ("Start server for remote notifications", Normal_Extra)) ;
 	Unix.fork()
     | false -> -1
   in
-      
-     
-    match fd with
-      | 0 ->
-	  if conf.c_notify.n_remotely then begin
-	    Ssl_server.run Pipe.tor Pipe.tow2
-	  end
-
-      | _ ->
-	  begin
-	  if conf.c_notify.n_remotely then begin
-	    ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
-	  end;
-	    
-	    Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
-	    Report.report ( Log   ("Repwatcher is watching youuu ! :)", Normal)        ) ;    
-
-	    
-            (* **************************** *)
-	    (* For interruptions *)
-	    let loop = ref true in
-	    
-	    let handle_interrupt i =
-	      loop := false
-	    in	    	    
-	    ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
-	    ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
-            (* **************************** *)	    
-	    
-	    while !loop do
-	      try
-		let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
-		let event_l = Inotify.read Core.fd in
-		List.iter (fun event -> Core.what_to_do event) event_l
-	      with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
-	    done;
-	    
-
-	    (* From this point, we close rw_server properly *)
-	    (* No need to handle SQL because each connection is closed immediately *)
-	    Unix.close Core.fd;	    
-	  end
+  
+  
+(* If the process has been forked *)   
+  match fd with
+  | 0 ->
+      if conf.c_notify.n_remotely.r_activate then
+	Ssl_server.run Pipe.tor Pipe.tow2 conf.c_notify.n_remotely.r_process_identity
+  | _ ->
+      begin
+	if conf.c_notify.n_remotely.r_activate then begin
+	  ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
+	end;
+	
+	
+	begin
+	  match conf.c_main_proc_id_fallback with
+	  | None -> ()
+	  | Some new_identity ->
+	      (* Drop privileges by changing the processus' identity if its current id is root *)
+	      if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+		begin
+		  try
+		    (* Check in the file /etc/passwd if the user "new_identity" exists *)
+		    let passwd_entry = Unix.getpwnam new_identity in
+		    setgid passwd_entry.pw_gid;
+		    setuid passwd_entry.pw_uid;
+		  with Not_found -> failwith ("Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity")
+		end;
+	end;
+	
+	
+	(* watch the directories given in the config file *)
+	watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
+	
+	Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
+	Report.report ( Log   ("Repwatcher is watching youuu ! :)", Normal)        ) ;    
+	
+	
+        (* **************************** *)
+	(* For interruptions *)
+	let loop = ref true in
+	
+	let handle_interrupt i =
+	  loop := false
+	in	    	    
+	ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+	ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+        (* **************************** *)	    
+	
+	while !loop do
+	  try
+	    let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+	    let event_l = Inotify.read Core.fd in
+	    List.iter (fun event -> Core.what_to_do event) event_l
+	  with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
+	done;
+	
+	
+	(* From this point, we close rw_server properly *)
+	(* No need to handle SQL because each connection is closed immediately *)
+	Unix.close Core.fd;	    
+      end
 ;;

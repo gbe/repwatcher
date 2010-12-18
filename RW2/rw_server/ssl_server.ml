@@ -1,4 +1,4 @@
-(*
+3(*
     Repwatcher
     Copyright (C) 2009  Gregory Bellier
 
@@ -61,17 +61,20 @@ let get_common_name cert =
 ;;
 
 
-let run tor tow2 =
+let run tor tow2 remote_identity_opt =
 
   (* Drop privileges by changing the processus' identity if its current id is root *)
   if Unix.geteuid() = 0 && Unix.getegid() = 0 then
     begin
-      try
-	(* Check in the file /etc/passwd if the user "nobody" exists *)
-	let passwd_entry = Unix.getpwnam "nobody" in
-	  setgid passwd_entry.pw_gid;
-	  setuid passwd_entry.pw_uid;	
-      with Not_found -> failwith "Fatal error. User 'nobody' doesn't exist. The network process can't take this identity"
+      match remote_identity_opt with
+      | None -> ()
+      | Some new_remote_id -> 
+	  try
+	    (* Check in the file /etc/passwd if the user "nobody" exists *)
+	    let passwd_entry = Unix.getpwnam new_remote_id in
+	    setgid passwd_entry.pw_gid;
+	    setuid passwd_entry.pw_uid;	
+	  with Not_found -> failwith ("Fatal error. User "^new_remote_id^" doesn't exist. The network process can't take this identity")
     end;
 
   let connected_clients = ref [] in

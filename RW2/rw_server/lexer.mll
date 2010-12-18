@@ -50,6 +50,7 @@ rule nexttoken = parse
   | "sql_dbname"                       { SQL_DBNAME }
   | "notify_locally"                   { NOTIFY_LOCALLY }
   | "notify_remotely"                  { NOTIFY_REMOTELY }
+  | "notify_remote_process_identity"   { REMOTE_IDENTITY_FALLBACK }
   | "log_level"                        { LOG_LEVEL }
   | "main_process_identity_fallback"   { MAIN_IDENTITY_FALLBACK }
   | eof                                { EOF }

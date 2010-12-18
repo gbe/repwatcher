@@ -155,7 +155,7 @@ let notify notification =
 	      dbus "nobody" "Repwatcher" dbus_notif		
 	  end ;
 
-	if conf.c_notify.n_remotely then
+	if conf.c_notify.n_remotely.r_activate then
 	  try
                
 	    let str_new_dl = Marshal.to_string ( New_notif (login, filename_escaped, filestate) ) [Marshal.No_sharing] in
@@ -179,7 +179,7 @@ let notify notification =
 	    dbus "nobody" "Repwatcher" info_escaped
 	  end ;
 
-	if conf.c_notify.n_remotely then
+	if conf.c_notify.n_remotely.r_activate then
 	  try
             
 	    let str_info = Marshal.to_string ( Info_notif info_escaped ) [Marshal.No_sharing] in

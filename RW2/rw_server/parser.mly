@@ -37,6 +37,7 @@
 %token SQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
+%token REMOTE_IDENTITY_FALLBACK
 %token LOG_LEVEL
 %token MAIN_IDENTITY_FALLBACK
 %token <string>TXT
@@ -126,19 +127,25 @@ mysql:
 ;
 
 notify:
-|  NOTIFY_LOCALLY EQUAL true_or_false
-   NOTIFY_REMOTELY EQUAL true_or_false
-      {{
-       n_locally = $3;
-       n_remotely = $6;
-      }}
+|  NOTIFY_LOCALLY EQUAL true_or_false notif_remote
+    {{
+     n_locally = $3;
+     n_remotely = $4;
+   }}
+;
 
-|  NOTIFY_REMOTELY EQUAL true_or_false
-   NOTIFY_LOCALLY EQUAL true_or_false
+notif_remote:
+|   NOTIFY_REMOTELY EQUAL true_or_false
+    REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
       {{
-       n_locally = $6;
-       n_remotely = $3;
-      }}   
+       r_activate = $3;
+       r_process_identity = Some $6;
+      }}
+|   NOTIFY_REMOTELY EQUAL true_or_false
+      {{
+       r_activate = $3;
+       r_process_identity = None;
+      }}
 ;
 
 
