@@ -35,6 +35,12 @@ let backlog      = 15
 
 let reg          = Str.regexp "\n"
 
+let m = Mutex.create () 
+let connected_clients = ref []
+
+
+
+
 (* Return the IP from the socket *)
 let get_ip sockaddr_cli =
   let inet_addr_of_sockaddr = function
@@ -42,74 +48,141 @@ let get_ip sockaddr_cli =
     | Unix.ADDR_UNIX _ -> Unix.inet_addr_any
   in
   let inet_addr = inet_addr_of_sockaddr sockaddr_cli  in
-    Unix.string_of_inet_addr inet_addr
+  Unix.string_of_inet_addr inet_addr
 ;;
 
 let get_common_name cert =
   let pat = Str.regexp "/" in	
   let cn = Str.regexp "CN=" in
-
+  
   let rec loop = function
     | [] -> "Unknown user"
     | h :: q ->
 	if Str.string_match cn h 0 then
 	  let lastpos = Str.match_end() in
-	    String.sub h lastpos ((String.length h)-lastpos)
+	  String.sub h lastpos ((String.length h)-lastpos)
 	else
 	  loop q
   in
-    loop (Str.split pat cert)
+  loop (Str.split pat cert)
 ;;
+
+
+
+(* Send the notification to one or several clients *)
+let send ser_txt sock_opt =
+  
+  let do_it (ssl_s, sockaddr_cli, common_name) =
+    try 
+      Ssl.output_string ssl_s ser_txt	      
+    with Ssl.Write_error _ ->
+      Report.report (Log ("SSL write error\n", Error))
+  in
+  
+  (* If sock is not given then it means the
+   * notification must be sent to every one *)
+  match sock_opt with
+  | None ->
+      Mutex.lock m ;
+      List.iter do_it !connected_clients;
+      Mutex.unlock m
+  | Some sock' -> do_it sock'
+;;
+
+
+(* Listen for new notifications *)
+let pipe_waits_for_notifications tor =
+  let bufsize = 2048 in
+  let buf = String.create bufsize in
+  
+  while true do
+    let recv = Unix.read tor buf 0 bufsize in
+    if recv > 0 then
+      begin
+	let data = String.sub buf 0 recv in
+	let notif = (Marshal.from_string data 0 : Ast.notification) in
+        match notif with
+        | (New_notif _ | Info_notif _ ) -> send data None
+        | Old_notif _ -> send data (Some (List.hd !connected_clients))
+      end
+  done
+;;
+
+
+
+(* Remove the client from the connected clients list *)
+let client_quit sock_cli =
+  
+  Mutex.lock m ;
+  let (l_clients_left, l_client) =
+    List.partition (
+    fun (s,_,_) -> s != sock_cli
+   ) !connected_clients
+  in
+  connected_clients := l_clients_left ;
+  Mutex.unlock m ;
+  
+  let (_,sockaddr_cli,common_name) = List.hd l_client in
+  let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
+  Report.report ( Log (log_msg, Normal) );
+  Ssl.shutdown sock_cli
+;;
+
+
+
+
+(* This is where a new connection is processed *)
+(* This function runs in a dedicated thread *)
+let handle_connection (ssl_s, sockaddr_cli, tow2) =
+  
+  let cert = Ssl.get_certificate ssl_s in
+  let subj = Ssl.get_subject cert in	
+  let common_name = get_common_name subj in
+  
+  let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
+  print_endline new_client;
+  Report.report ( Log (new_client, Normal) );
+  
+  Mutex.lock m ;
+  connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
+  Mutex.unlock m ;
+  
+  let ser_info = Marshal.to_string (Info_notif "rw_server_con_ok") [Marshal.No_sharing] in
+  send ser_info (Some(ssl_s, sockaddr_cli, common_name));
+  
+  let msg_new_client = "ask_current_dls" in
+  ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
+  
+  let loop = ref true in	
+  
+  try  
+    (* Wait for client exit *)	
+    while !loop do
+      let msg = Ssl.input_string ssl_s in
+      
+      if msg = "rw_client_exit" then
+	begin
+	  client_quit ssl_s;
+	  loop := false
+	end 
+    done
+  with Ssl.Read_error _ -> client_quit ssl_s
+;;
+
+
+
 
 
 let run tor tow2 remote_config =
 
-  (* If the processus' identity is root *)
-  if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-    begin
-      
-      (* Check needs to be done before chrooting *)
-      let check_identity identity =
-	match identity with
-	| None -> None
-	| Some new_remote_id ->
-	    try
-	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
-	      Some (Unix.getpwnam new_remote_id)
-	    with Not_found -> failwith ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity")
-      in
-      let passwd_entry_opt = check_identity remote_config.r_process_identity in
-      
-      (* Chroot the process *)
-      begin
-	try
-	  match remote_config.r_chroot with
-	  | None -> ()
-	  | Some dir -> Unix.chroot dir
-	with Unix_error (error,_,s2) -> failwith ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error))
-      end;
 
-      (* Change the effective uid and gid after the chroot *)
-      begin
-	match passwd_entry_opt with
-	| None -> ()
-	| Some passwd_entry -> 
-	    setgid passwd_entry.pw_gid;
-	    setuid passwd_entry.pw_uid;
-      end;
-    end;
-
-  let connected_clients = ref [] in
-  let m = Mutex.create () in
-
+  
+(* Initialize SSL in this area while the chroot
+   has not been done yet so we can access the certificate and
+   private key
+ *)
   Ssl_threads.init ();
   Ssl.init ();
-
-  let sock = Unix.socket PF_INET SOCK_STREAM 0 in
-  Unix.bind sock (ADDR_INET (inet_addr_any, !port));
-  Unix.setsockopt sock Unix.SO_REUSEADDR true;
-  Unix.listen sock backlog;
-
 
   let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Server_context in
 
@@ -131,139 +204,112 @@ let run tor tow2 remote_config =
        Ssl.load_verify_locations ctx ca (Filename.dirname ca)
      with Invalid_argument e -> failwith ("Error_load_verify_locations: "^e))
     ;
+(* ********************** *)
 
 
-    let send ser_txt socks =
+
+
+
+
+
+  (* Operations on the process itself *)
+  
+  (* If the processus' identity is root *)
+  if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+    begin
       
-      let do_it (ssl_s, sockaddr_cli, common_name) =
-
-	try 
-	  Ssl.output_string ssl_s ser_txt	      
-	with Ssl.Write_error _ ->
-	  Report.report (Log ("SSL write error\n", Error))
+      (* Check needs to be done before chrooting *)
+      let check_identity identity =
+	match identity with
+	| None -> None
+	| Some new_remote_id ->
+	    try
+	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
+	      Some (Unix.getpwnam new_remote_id)
+	    with Not_found -> failwith ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity")
       in
+      let passwd_entry_opt = check_identity remote_config.r_process_identity in
+      
+      (* Chroot the process *)
+      begin
+	try
+	  match remote_config.r_chroot with
+	  | None -> ()
+	  | Some dir -> Unix.chdir dir ; Unix.chroot "."
+	with Unix_error (error,_,s2) -> failwith ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error))
+      end;
 
-	match socks with
-	  | None ->
-	      Mutex.lock m ;
-	      List.iter do_it !connected_clients;
-	      Mutex.unlock m
-	  | Some sock' -> do_it sock'
-    in
+      (* Change the effective uid and gid after the chroot *)
+      begin
+	match passwd_entry_opt with
+	| None -> ()
+	| Some passwd_entry -> 
+	    setgid passwd_entry.pw_gid;
+	    setuid passwd_entry.pw_uid;
+      end;
+    end;
 
-      
-    let handle_interrupt i = 
+  (* *********************** *)
 
-      let ser_info = Marshal.to_string (Info_notif "rw_server_exit") [Marshal.No_sharing] in      
-      send ser_info None;
-      
-      Mutex.lock m ;
-      (* Close the clients' sockets *)
-      List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
-      Mutex.unlock m ;
-      Unix.shutdown sock SHUTDOWN_ALL;
-      exit 0
-    in
-      
-     
-      
-    let pipe_waits_for_notifications () =
-      let bufsize = 2048 in
-      let buf = String.create bufsize in
-	
-      while true do
-	let recv = Unix.read tor buf 0 bufsize in
-	if recv > 0 then
-	  begin
-	    let data = String.sub buf 0 recv in
-	    let notif = (Marshal.from_string data 0 : Ast.notification) in
-            match notif with
-               | (New_notif _ | Info_notif _ ) -> send data None
-               | Old_notif _ -> send data (Some (List.hd !connected_clients))
-	  end
-      done
-    in
-      
 
-      
-    let client_quit sock_cli =
-      
-      Mutex.lock m ;
-      let (l_clients_left, l_client) = List.partition ( fun (s,_,_) ->
-							  s != sock_cli
-						      ) !connected_clients
-      in
-	connected_clients := l_clients_left ;
-	Mutex.unlock m ;
 
-	let (_,sockaddr_cli,common_name) = List.hd l_client in
-	let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
-	  Report.report ( Log (log_msg, Normal) );
-	  Ssl.shutdown sock_cli
-    in
-      
 
-    let handle_connection (ssl_s, sockaddr_cli) =
-      
-      let cert = Ssl.get_certificate ssl_s in
-      let subj = Ssl.get_subject cert in	
-      let common_name = get_common_name subj in
 
-      let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
-      print_endline new_client;
-      Report.report ( Log (new_client, Normal) );
-      
-      Mutex.lock m ;
-      connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
-      Mutex.unlock m ;
+  (* Initialize Unix socket *)
+  let sock = Unix.socket PF_INET SOCK_STREAM 0 in
+  Unix.bind sock (ADDR_INET (inet_addr_any, !port));
+  Unix.setsockopt sock Unix.SO_REUSEADDR true;
+  Unix.listen sock backlog;
+  (* ********************** *)
 
-      let ser_info = Marshal.to_string (Info_notif "rw_server_con_ok") [Marshal.No_sharing] in
-      send ser_info (Some(ssl_s, sockaddr_cli, common_name));
 
-      let msg_new_client = "ask_current_dls" in
-      ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
 
-      let loop = ref true in	
-	
-	try  
-	  (* Wait for client exit *)	
-	  while !loop do
-	    let msg = Ssl.input_string ssl_s in
-	      
-	      if msg = "rw_client_exit" then
-		begin
-	          client_quit ssl_s;
-		  loop := false
-		end 
-	  done
-	with Ssl.Read_error _ -> client_quit ssl_s
-    in
-      
-      
-    ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
-    ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+
+
+  (* Handle the interruptions *)
+  let handle_interrupt i = 
     
+    let ser_info = Marshal.to_string (Info_notif "rw_server_exit") [Marshal.No_sharing] in      
+    send ser_info None;
+    
+    Mutex.lock m ;
+    (* Close the clients' sockets *)
+    List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
+    Mutex.unlock m ;
+    Unix.shutdown sock SHUTDOWN_ALL;
+    exit 0
+  in
+  
+  ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+  ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+  
+  (* *********************** *)
+  
+
+
+
       
-    ignore (Thread.create pipe_waits_for_notifications ());
-      
-    Printf.printf "Waiting for connections...\n";
-    Pervasives.flush Pervasives.stdout;
-      
-    while true do
-      
-      let (s_cli, sockaddr_cli) = Unix.accept sock in
-      let ssl_s = Ssl.embed_socket s_cli ctx in
-      
-      try
-	Ssl.accept ssl_s;
-	ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
-      with
-      | Invalid_argument _ ->
-	  prerr_endline "Error in the thread, server-side.)" ;
-	  Pervasives.flush Pervasives.stdout
-      | Ssl.Accept_error _ ->
-	  prerr_endline "A connection failed"
-    done
-	
+  ignore (Thread.create pipe_waits_for_notifications tor);
+  
+  Printf.printf "Waiting for connections...\n";
+  Pervasives.flush Pervasives.stdout;
+  
+  while true do
+    
+    let (s_cli, sockaddr_cli) = Unix.accept sock in
+    let ssl_s = Ssl.embed_socket s_cli ctx in
+    
+    try
+      Ssl.accept ssl_s;
+      ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli, tow2) )
+    with
+    | Invalid_argument _ ->
+	prerr_endline "Error in the thread, server-side." ;
+	Pervasives.flush Pervasives.stdout
+    | Ssl.Accept_error _ ->
+	prerr_endline "A connection failed" ;
+	Pervasives.flush Pervasives.stdout
+  done
+;;
 	
 

@@ -16,4 +16,4 @@ TO DO
 - Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
 - Ajouter le nom du dossier aux notifications et permettre le nombre de dossiers parents à afficher
 - Revoir l'organisation du code pour le serveur ssl
-- Chroot à compléter. Si le chroot est accompli, le serveur n'a plus accès aux certificats et clés (les précharger avant ?). Et les log ?
+- Chroot: problème avec les logs à étudier. Même si le log est désactivé, ça bloque le programme.
