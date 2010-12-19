@@ -1,6 +1,6 @@
 3(*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 open Unix
 open Ast
+open Ast_conf
 open Report
 
 
@@ -61,20 +62,41 @@ let get_common_name cert =
 ;;
 
 
-let run tor tow2 remote_identity_opt =
+let run tor tow2 remote_config =
 
-  (* Drop privileges by changing the processus' identity if its current id is root *)
+  (* If the processus' identity is root *)
   if Unix.geteuid() = 0 && Unix.getegid() = 0 then
     begin
-      match remote_identity_opt with
-      | None -> ()
-      | Some new_remote_id -> 
-	  try
-	    (* Check in the file /etc/passwd if the user "nobody" exists *)
-	    let passwd_entry = Unix.getpwnam new_remote_id in
+      
+      (* Check needs to be done before chrooting *)
+      let check_identity identity =
+	match identity with
+	| None -> None
+	| Some new_remote_id ->
+	    try
+	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
+	      Some (Unix.getpwnam new_remote_id)
+	    with Not_found -> failwith ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity")
+      in
+      let passwd_entry_opt = check_identity remote_config.r_process_identity in
+      
+      (* Chroot the process *)
+      begin
+	try
+	  match remote_config.r_chroot with
+	  | None -> ()
+	  | Some dir -> Unix.chroot dir
+	with Unix_error (error,_,s2) -> failwith ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error))
+      end;
+
+      (* Change the effective uid and gid after the chroot *)
+      begin
+	match passwd_entry_opt with
+	| None -> ()
+	| Some passwd_entry -> 
 	    setgid passwd_entry.pw_gid;
-	    setuid passwd_entry.pw_uid;	
-	  with Not_found -> failwith ("Fatal error. User "^new_remote_id^" doesn't exist. The network process can't take this identity")
+	    setuid passwd_entry.pw_uid;
+      end;
     end;
 
   let connected_clients = ref [] in
@@ -237,7 +259,7 @@ let run tor tow2 remote_identity_opt =
 	ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
       with
       | Invalid_argument _ ->
-	  prerr_endline "Erreur dans le thread cote serveur!! ;o)" ;
+	  prerr_endline "Error in the thread, server-side.)" ;
 	  Pervasives.flush Pervasives.stdout
       | Ssl.Accept_error _ ->
 	  prerr_endline "A connection failed"

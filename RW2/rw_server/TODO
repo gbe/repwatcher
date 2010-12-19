@@ -10,8 +10,10 @@ TO DO
 - Voir pour mettre en place une base Postgresql (et linker à la compilation, en cas de besoin sur MySQL ou Postgresql mais pas les 2)
 - Voir pour mettre en place du sqlite
 - Processus fils pour serveur SSL à chrooter. Utiliser la fonction Sys.is_directory pour tester que le dossier chroot existe. S'il n'existe pas, le processus fils doit quitter et doit entraîner son père avec lui
-- Le fichier de conf doit permettre de choisir le dossier où l'on veut chrooter le processus réseau.
 - Ajouter un message d'erreur et quitter si le fichier de conf est en lecture pour "others" (droits unix)
 - Ajouter un message d'erreur et quitter si la ou les clés privées sont accessibles en lecture pour "others"
 - Tester de temps en temps si un client est toujours là toutes les 3 minutes. S'il ne répond pas au bout de 5 fois dans un interval de temps d'1 minute (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
 - Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
+- Ajouter le nom du dossier aux notifications et permettre le nombre de dossiers parents à afficher
+- Revoir l'organisation du code pour le serveur ssl
+- Chroot à compléter. Si le chroot est accompli, le serveur n'a plus accès aux certificats et clés (les précharger avant ?). Et les log ?

@@ -180,6 +180,20 @@ under certain conditions; for details read COPYING file\n\n";
   end;
 
 
+(* Check if the directory to chroot the network process exists *)
+if conf.c_notify.n_remotely.r_activate then
+  begin
+    match conf.c_notify.n_remotely.r_chroot with
+    | None -> ()
+    | Some dir ->
+	try
+	  match Sys.is_directory dir with
+	  | true -> ()
+	  | false -> failwith (dir^" is not a directory")
+	with Sys_error err -> failwith ("It's not possible to use this directory to chroot. "^err)
+  end;
+
+
 
 
 
@@ -213,7 +227,7 @@ under certain conditions; for details read COPYING file\n\n";
   match fd with
   | 0 ->
       if conf.c_notify.n_remotely.r_activate then
-	Ssl_server.run Pipe.tor Pipe.tow2 conf.c_notify.n_remotely.r_process_identity
+	Ssl_server.run Pipe.tor Pipe.tow2 conf.c_notify.n_remotely
   | _ ->
       begin
 	if conf.c_notify.n_remotely.r_activate then begin

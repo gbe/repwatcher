@@ -37,6 +37,7 @@ type sql_db = Mysql.db = {
 type remote = {
     r_activate : bool;
     r_process_identity : string option;
+    r_chroot : string option;
   }
       
 type notify = {
