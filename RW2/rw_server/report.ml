@@ -135,10 +135,10 @@ let dbus img title txt =
 let notify notification =  
   
   match notification with
-  | New_notif (login, filename, filestate) ->
+  | New_notif (file, filestate) ->
       begin
 
-	let filename_escaped = Txt_operations.escape_for_notify filename in
+	let filename_escaped = Txt_operations.escape_for_notify file.f_name in
 	let conf             = Config.get() in  
 
 	if conf.c_notify.n_locally then
@@ -151,14 +151,14 @@ let notify notification =
 (*	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
 	      ignore (system call)
 *)		
-	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename_escaped in
+	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped in
 	      dbus "nobody" "Repwatcher" dbus_notif		
 	  end ;
 
 	if conf.c_notify.n_remotely.r_activate then
 	  try
                
-	    let str_new_dl = Marshal.to_string ( New_notif (login, filename_escaped, filestate) ) [Marshal.No_sharing] in
+	    let str_new_dl = Marshal.to_string ( New_notif ({file with f_name = filename_escaped}, filestate) ) [Marshal.No_sharing] in
 	    
 	    (* Send in the pipe for the server to send to the clients *)
 	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )

@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -284,7 +284,7 @@ let what_to_do event =
 						     (*  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name; *)
 						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Normal  )  ) ;
 						     Report.report ( Sql (file, File_Opened)                                       ) ;
-						     Report.report ( Notify (New_notif (file.f_login, file.f_name, File_Opened ))  ) ;
+						     Report.report ( Notify (New_notif (file, File_Opened ))  ) ;
 						     Hashtbl.add Files_progress.ht (wd,file) (Date.date())
 						   end
 					      ) l_filtered
@@ -339,7 +339,7 @@ let what_to_do event =
                                                 Hashtbl.remove Files_progress.ht (wd2, f_file);
 						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Normal)  ) ;
 						Report.report ( Sql    (f_file, File_Closed)                                             ) ;
-						Report.report ( Notify (New_notif (f_file.f_login, f_file.f_name, File_Closed)        )  ) ;
+						Report.report ( Notify (New_notif (f_file, File_Closed)        )  ) ;
 					     ) l_stop
 		    			end
 

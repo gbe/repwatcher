@@ -119,7 +119,7 @@ under certain conditions; for details read COPYING file\n\n";
 		      assert false
 		end
 		  
-	    | New_notif (login, filename, filestate) -> 
+	    | New_notif (file, filestate) -> 
 
 		let (str_of_state, msg_state) =
 		  match filestate with
@@ -127,9 +127,9 @@ under certain conditions; for details read COPYING file\n\n";
 		  | File_Closed -> ("File_Closed", "finished downloading")
 		in
 
-		Printf.printf "Recu new_notif: '%s', '%s' et %s\n" login filename str_of_state;
+		Printf.printf "Recu new_notif: '%s', '%s' et %s\n" file.f_login file.f_name str_of_state;
 		Pervasives.flush Pervasives.stdout;
-		let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename in
+		let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f_login msg_state file.f_name in
 		ignore (Unix.system call)
 
 (*		let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename in
@@ -137,8 +137,8 @@ under certain conditions; for details read COPYING file\n\n";
 *)		  
 	    | Old_notif dls_l ->
 		List.iter (
-		fun (login, filename, date) ->
-		  Printf.printf "Recu Old_notif: '%s', '%s' et '%s'\n" login filename date;
+		fun (file, date) ->
+		  Printf.printf "Recu Old_notif: '%s', '%s' et '%s'\n" file.f_login file.f_name date;
 		  Pervasives.flush Pervasives.stdout;
 
 		  let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
@@ -146,7 +146,7 @@ under certain conditions; for details read COPYING file\n\n";
 		    let hms_l = Str.split regexp_dot h_m_s in
 		    (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		  in
-		  let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m login filename in
+		  let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m file.f_login file.f_name in
 		    ignore (Unix.system call)
 		     
 (*		  let dbus_notif = Printf.sprintf "<b>%s</b> started downloading\n%s" login filename in

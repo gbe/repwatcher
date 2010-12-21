@@ -17,15 +17,23 @@
 *)
 
 
-(* New of login * filename
- * Old of login * filename * date) list
- * Info of message (such as Repwatcher is watching you)
-*)
+type f_file = {
+  f_name        : string ;
+  f_path        : string ;
+  f_login       : string ;
+  f_filesize    : int64  ;
+  f_prog_source : string ;
+}
 
 type file_state = File_Opened | File_Closed;;
 
+(* New of file
+ * Old of file * date) list
+ * Info of message (such as Repwatcher is watching you)
+*)
+
 type notification =
-  | New_notif  of string * string * file_state
-  | Old_notif  of (string * string * string) list
+  | New_notif  of f_file * file_state
+  | Old_notif  of (f_file * string) list
   | Info_notif of string
 ;;

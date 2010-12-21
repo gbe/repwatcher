@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ let wait_pipe_from_child_process () =
 	match String.sub buf 0 recv with
 	| "ask_current_dls" ->
 
-	    let l_current_dls = Hashtbl.fold (fun (_,file) date ret -> ret@[(file.f_login, (Txt_operations.escape_for_notify file.f_name), date)] ) Files_progress.ht [] in
+	    let l_current_dls = Hashtbl.fold (fun (_,file) date ret -> ret@[( {file with f_name = (Txt_operations.escape_for_notify file.f_name)}, date)] ) Files_progress.ht [] in
 	    
 	    (* We go through the pipe only if it's necessary *)
 	    if List.length l_current_dls > 0 then

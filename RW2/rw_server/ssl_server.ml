@@ -101,6 +101,7 @@ let pipe_waits_for_notifications tor =
       begin
 	let data = String.sub buf 0 recv in
 	let notif = (Marshal.from_string data 0 : Ast.notification) in
+	(* Resend the data already serialized to the clients *)
         match notif with
         | (New_notif _ | Info_notif _ ) -> send data None
         | Old_notif _ -> send data (Some (List.hd !connected_clients))
@@ -147,9 +148,11 @@ let handle_connection (ssl_s, sockaddr_cli, tow2) =
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
   Mutex.unlock m ;
   
+  (* Tell the new client that it is authorized *)
   let ser_info = Marshal.to_string (Info_notif "rw_server_con_ok") [Marshal.No_sharing] in
   send ser_info (Some(ssl_s, sockaddr_cli, common_name));
   
+  (* Ask father's process for the current downloads to send them to the new client *)
   let msg_new_client = "ask_current_dls" in
   ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
   

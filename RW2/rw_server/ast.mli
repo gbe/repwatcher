@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2010  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,23 +27,21 @@ type f_file = {
 
 type file_state = File_Opened | File_Closed
 
-(*
-New log_level type
-*)
+(* New log_level type *)
 type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
 
 
-(* New of login * filename
- * Old of login * filename * date) list
+(* New of file
+ * Old of file * date) list
  * Info of message (such as Repwatcher is watching you)
 *)
 
 type notification =
-  | New_notif  of string * string * file_state
-  | Old_notif  of (string * string * string) list
+  | New_notif  of f_file * file_state
+  | Old_notif  of (f_file * string) list
   | Info_notif of string
 
 type report = | Notify of notification
