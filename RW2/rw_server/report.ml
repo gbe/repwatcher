@@ -124,7 +124,7 @@ let dbus img title txt =
     DBus.String txt; (* The content *)
     DBus.Array (DBus.Strings []);
     DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
-    DBus.Int32 8000l; (* seems to be the milliseconds the notification must be seen *)
+    DBus.Int32 15000l; (* seems to be the milliseconds the notification must be seen *)
   ] in	
     ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
 ;;
@@ -190,7 +190,12 @@ let notify notification =
       end
 
 
-  | _ -> assert false (* Old_notif is not allowed here *)
+  | Old_notif l_current_dls ->
+      (* Txt_operations.escape_for_notify has already been done on f_name *)
+      let str_current_dls = Marshal.to_string (Old_notif l_current_dls) [Marshal.No_sharing] in
+
+      (* send though the pipe to be processed by the server *)
+      ignore (Unix.write Pipe.tow str_current_dls 0 (String.length str_current_dls))
 ;;
 
 

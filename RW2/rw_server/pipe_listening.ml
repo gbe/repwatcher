@@ -27,20 +27,18 @@ let wait_pipe_from_child_process () =
   
   while true do
     let recv = Unix.read Pipe.tor2 buf 0 bufsize in
-
+    
     if recv > 0 then
       begin
 	match String.sub buf 0 recv with
 	| "ask_current_dls" ->
-
+	    
 	    let l_current_dls = Hashtbl.fold (fun (_,file) date ret -> ret@[( {file with f_name = (Txt_operations.escape_for_notify file.f_name)}, date)] ) Files_progress.ht [] in
 	    
-	    (* We go through the pipe only if it's necessary *)
+	    (* We sent to Report.notify only if necessary *)
 	    if List.length l_current_dls > 0 then
-	      begin
-		let str_current_dls = Marshal.to_string (Old_notif l_current_dls) [Marshal.No_sharing] in
-		ignore (Unix.write Pipe.tow str_current_dls 0 (String.length str_current_dls))
-	      end
+	      Report.report (Notify (Old_notif l_current_dls))
+		
 	| _ -> Report.report (Log ("Err. The server received an unknown command", Error))
       end;
   done
