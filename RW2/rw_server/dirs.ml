@@ -1,3 +1,6 @@
+open Ast;;
+
+
 (* List the subfolders of a folder.
  * The head of the list returned is the folder given in arg *)
 let rec ls folder =
@@ -35,7 +38,11 @@ let rec ls folder =
 	    with Sys_error err -> print_endline err
 		
 	  done;
-	with End_of_file -> Unix.closedir dh
+	with
+	| End_of_file -> Unix.closedir dh
+	| Unix.Unix_error (_,function',file_or_dir) ->
+	    Report.Report.report (
+	    Log (("Unix error: "^function'^", "^file_or_dir), Error) )
       end;
       !l
 ;;
