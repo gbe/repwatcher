@@ -1,6 +1,6 @@
 3(*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 open Unix
 open Ast
 open Ast_conf
-open Report
 
 
 let certfile = ref "cert/rw_serv.crt"
@@ -38,7 +37,15 @@ let reg          = Str.regexp "\n"
 let m = Mutex.create () 
 let connected_clients = ref []
 
-
+(*
+ * Probably because of marshalling, com type is 'a.
+ * This caused some problems discovered at run time.
+ * It's better to fix the type so the compiler can check if everything is ok.
+ *) 
+let tellserver (com : com_net2main) =
+  let str_com = Marshal.to_string com [Marshal.No_sharing] in
+  ignore (Unix.write Pipe.tow2 str_com 0 (String.length str_com))
+;;
 
 
 (* Return the IP from the socket *)
@@ -76,7 +83,7 @@ let send ser_txt sock_opt =
     try 
       Ssl.output_string ssl_s ser_txt	      
     with Ssl.Write_error _ ->
-      Report.report (Log ("SSL write error\n", Error))
+      tellserver (Report (Log ("SSL write error\n", Error)))
   in
   
   (* If sock is not given then it means the
@@ -125,7 +132,7 @@ let client_quit sock_cli =
   
   let (_,sockaddr_cli,common_name) = List.hd l_client in
   let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
-  Report.report ( Log (log_msg, Normal) );
+  tellserver ( Report (Log (log_msg, Normal) ));
   Ssl.shutdown sock_cli
 ;;
 
@@ -142,7 +149,8 @@ let handle_connection (ssl_s, sockaddr_cli, tow2) =
   
   let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
   print_endline new_client;
-  Report.report ( Log (new_client, Normal) );
+(*  tellserver ( Report (Log (new_client, Normal)) );*)
+  tellserver (Report (Log (new_client, Normal)) ) ;
   
   Mutex.lock m ;
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
@@ -153,8 +161,7 @@ let handle_connection (ssl_s, sockaddr_cli, tow2) =
   send ser_info (Some(ssl_s, sockaddr_cli, common_name));
   
   (* Ask father's process for the current downloads to send them to the new client *)
-  let msg_new_client = "ask_current_dls" in
-  ignore (Unix.write tow2 msg_new_client 0 (String.length msg_new_client));
+  tellserver Ask_current_dls;
   
   let loop = ref true in	
   
@@ -197,7 +204,7 @@ let run tor tow2 remote_config =
       Ssl.use_certificate ctx !certfile !privkey;
     with Ssl.Private_key_error ->
       let error = "Err. Ssl_server: wrong private key password" in
-      Report.report (Log (error, Error)) ;
+      tellserver ( Report (Log (error, Error))) ;
       failwith error
   end;
   

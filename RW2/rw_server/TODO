@@ -13,7 +13,7 @@ TO DO
 - Ajouter un message d'erreur et quitter si la ou les clés privées sont accessibles en lecture pour "others"
 - Tester de temps en temps si un client est toujours là toutes les 3 minutes. S'il ne répond pas au bout de 5 fois dans un interval de temps d'1 minute (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
 - Dans les communications entre le client et le serveur, remplacer les chaînes de caractères comme "rw_server_con_ok" par un type.
+- Logguer les erreurs que peut avoir chroot. De même, logguer des erreurs SSL qui ne le sont pas.
 - Ajouter le nom du dossier aux notifications et permettre le nombre de dossiers parents à afficher
-- Chroot: problème avec les logs à étudier. Même si le log est désactivé, ça bloque le programme.
 - Le client devrait tester de temps en temps si le serveur est là
 - Le pipe vers le processus fiston devrait être accessible que par report et plus dans pipe.ml comme maintenant

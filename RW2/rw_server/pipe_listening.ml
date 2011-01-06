@@ -30,16 +30,27 @@ let wait_pipe_from_child_process () =
     
     if recv > 0 then
       begin
-	match String.sub buf 0 recv with
-	| "ask_current_dls" ->
+	let data = String.sub buf 0 recv in
+	let com = (Marshal.from_string data 0 : Ast.com_net2main) in
+	match com with
+	| Ask_current_dls ->
 	    
 	    let l_current_dls = Hashtbl.fold (fun (_,file) date ret -> ret@[( {file with f_name = (Txt_operations.escape_for_notify file.f_name)}, date)] ) Files_progress.ht [] in
 	    
 	    (* We sent to Report.notify only if necessary *)
 	    if List.length l_current_dls > 0 then
 	      Report.report (Notify (Old_notif l_current_dls))
+
+	| Report rep ->
+	    begin
+	      match rep with
+	      | (Notify _ | Sql _) ->
+		  Report.report (Log ("Err. The server received an unauthorized command from network process", Error))
+	      | Log msg -> Report.report (Log msg)
+	    end
 		
-	| _ -> Report.report (Log ("Err. The server received an unknown command", Error))
+(*	| _  -> Report.report (Log ("Err. The server received an unknown command from network process", Error))
+*)
       end;
   done
 ;;

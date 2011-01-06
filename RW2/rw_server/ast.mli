@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -47,6 +47,11 @@ type notification =
 type report = | Notify of notification
 	      | Log    of (string * log_level)
 	      | Sql    of (f_file * file_state)
+
+
+type com_net2main =
+  | Report of report
+  | Ask_current_dls
 
 type 'a query_result = 
   | QueryOK    of 'a
