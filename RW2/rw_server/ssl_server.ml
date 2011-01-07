@@ -32,8 +32,6 @@ let ca = "CA/CA.crt"
 let port         = ref 9292
 let backlog      = 15
 
-let reg          = Str.regexp "\n"
-
 let m = Mutex.create () 
 let connected_clients = ref []
 
@@ -141,7 +139,7 @@ let client_quit sock_cli =
 
 (* This is where a new connection is processed *)
 (* This function runs in a dedicated thread *)
-let handle_connection (ssl_s, sockaddr_cli, tow2) =
+let handle_connection (ssl_s, sockaddr_cli) =
   
   let cert = Ssl.get_certificate ssl_s in
   let subj = Ssl.get_subject cert in	
@@ -149,7 +147,6 @@ let handle_connection (ssl_s, sockaddr_cli, tow2) =
   
   let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
   print_endline new_client;
-(*  tellserver ( Report (Log (new_client, Normal)) );*)
   tellserver (Report (Log (new_client, Normal)) ) ;
   
   Mutex.lock m ;
@@ -183,14 +180,13 @@ let handle_connection (ssl_s, sockaddr_cli, tow2) =
 
 
 
-let run tor tow2 remote_config =
+let run tor remote_config =
 
 
   
 (* Initialize SSL in this area while the chroot
    has not been done yet so we can access the certificate and
-   private key
- *)
+   private key *)
   Ssl_threads.init ();
   Ssl.init ();
 
@@ -208,15 +204,17 @@ let run tor tow2 remote_config =
       failwith error
   end;
   
-    Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
-
-    (try
-       Ssl.load_verify_locations ctx ca (Filename.dirname ca)
-     with Invalid_argument e -> failwith ("Error_load_verify_locations: "^e))
-    ;
+  Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
+  
+  begin
+    try
+      Ssl.load_verify_locations ctx ca (Filename.dirname ca)
+    with Invalid_argument e ->
+      let error = ("Error_load_verify_locations: "^e) in
+      tellserver ( Report (Log (error, Error))) ;
+      failwith error
+  end;
 (* ********************** *)
-
-
 
 
 
@@ -236,7 +234,10 @@ let run tor tow2 remote_config =
 	    try
 	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
 	      Some (Unix.getpwnam new_remote_id)
-	    with Not_found -> failwith ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity")
+	    with Not_found ->
+	      let error = ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity") in
+	      tellserver (Report (Log (error, Error)));
+	      failwith error
       in
       let passwd_entry_opt = check_identity remote_config.r_process_identity in
       
@@ -245,8 +246,13 @@ let run tor tow2 remote_config =
 	try
 	  match remote_config.r_chroot with
 	  | None -> ()
-	  | Some dir -> Unix.chdir dir ; Unix.chroot "."
-	with Unix_error (error,_,s2) -> failwith ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error))
+	  | Some dir ->
+	      Unix.chdir dir ; Unix.chroot "." ;
+	      tellserver (Report (Log (("Network process chrooted in "^dir), Normal_Extra)))
+	with Unix_error (error,_,s2) ->
+	  let error = ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error)) in
+	  tellserver (Report (Log (error, Error)));
+	  failwith error
       end;
 
       (* Change the effective uid and gid after the chroot *)
@@ -256,6 +262,11 @@ let run tor tow2 remote_config =
 	| Some passwd_entry -> 
 	    setgid passwd_entry.pw_gid;
 	    setuid passwd_entry.pw_uid;
+	    
+	    begin match remote_config.r_process_identity with
+	    | None -> assert false
+	    | Some new_remote_id -> tellserver (Report (Log (("Network process identity changed to "^new_remote_id), Normal_Extra)))
+	    end;
       end;
     end;
 
@@ -296,13 +307,10 @@ let run tor tow2 remote_config =
   (* *********************** *)
   
 
-
-
-      
+    
   ignore (Thread.create pipe_waits_for_notifications tor);
-  
-  Printf.printf "Waiting for connections...\n";
-  Pervasives.flush Pervasives.stdout;
+
+  print_endline "Waiting for connections...";
   
   while true do
     
@@ -311,7 +319,7 @@ let run tor tow2 remote_config =
     
     try
       Ssl.accept ssl_s;
-      ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli, tow2) )
+      ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
     with
     | Invalid_argument _ ->
 	prerr_endline "Error in the thread, server-side." ;

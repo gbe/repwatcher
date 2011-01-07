@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -227,7 +227,7 @@ if conf.c_notify.n_remotely.r_activate then
   match fd with
   | 0 ->
       if conf.c_notify.n_remotely.r_activate then
-	Ssl_server.run Pipe.tor Pipe.tow2 conf.c_notify.n_remotely
+	Ssl_server.run Pipe.tor conf.c_notify.n_remotely
   | _ ->
       begin
 	if conf.c_notify.n_remotely.r_activate then begin
