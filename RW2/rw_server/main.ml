@@ -255,7 +255,7 @@ if conf.c_notify.n_remotely.r_activate then
 	(* watch the directories given in the config file *)
 	watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
 	
-	Report.report ( Notify ( Info_notif "Repwatcher is watching youuu ! :)" )  ) ;
+	Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" )  ) ;
 	Report.report ( Log   ("Repwatcher is watching youuu ! :)", Normal)        ) ;    
 	
 	

@@ -42,7 +42,7 @@ type log_level = | Normal
 type notification =
   | New_notif  of f_file * file_state
   | Old_notif  of (f_file * string) list
-  | Info_notif of string
+  | Local_notif of string
 
 type report = | Notify of notification
 	      | Log    of (string * log_level)
@@ -52,6 +52,11 @@ type report = | Notify of notification
 type com_net2main =
   | Report of report
   | Ask_current_dls
+
+type com_server2clients =
+  | Notification of notification
+  | RW_server_exited
+  | RW_server_con_ok
 
 type 'a query_result = 
   | QueryOK    of 'a

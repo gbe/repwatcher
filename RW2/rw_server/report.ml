@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -166,28 +166,17 @@ let notify notification =
 	      
       end
 
-  | Info_notif info ->
-      begin
-      	let info_escaped = Txt_operations.escape_for_notify info in
-	let conf         = Config.get() in
-	if conf.c_notify.n_locally then
-	  begin
+  | Local_notif info ->
+      let info_escaped = Txt_operations.escape_for_notify info in
+      let conf         = Config.get() in
+      if conf.c_notify.n_locally then
+	begin
 (*
-	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
-	    ignore (system call)
-*)
-	    dbus "nobody" "Repwatcher" info_escaped
-	  end ;
-
-	if conf.c_notify.n_remotely.r_activate then
-	  try
-            
-	    let str_info = Marshal.to_string ( Info_notif info_escaped ) [Marshal.No_sharing] in
-	    
-	    (* Send in the pipe for the server to send to the clients *)
-	    ignore ( Unix.write Pipe.tow str_info 0 (String.length str_info) )
-	  with _ -> log ("An error occured trying to send in the pipe the notification", Error)
-      end
+  let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
+  ignore (system call)
+ *)
+	  dbus "nobody" "Repwatcher" info_escaped
+	end
 
 
   | Old_notif l_current_dls ->

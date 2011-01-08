@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,5 +35,10 @@ type file_state = File_Opened | File_Closed;;
 type notification =
   | New_notif  of f_file * file_state
   | Old_notif  of (f_file * string) list
-  | Info_notif of string
+  | Local_notif of string
+
+type com_server2clients =
+  | Notification of notification
+  | RW_server_exited
+  | RW_server_con_ok
 ;;

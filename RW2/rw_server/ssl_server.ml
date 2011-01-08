@@ -1,4 +1,4 @@
-3(*
+(*
     Repwatcher
     Copyright (C) 2009-2011  Gregory Bellier
 
@@ -75,11 +75,13 @@ let get_common_name cert =
 
 
 (* Send the notification to one or several clients *)
-let send ser_txt sock_opt =
+let send (com : com_server2clients) sock_opt =
   
+  let ser_com = Marshal.to_string com [Marshal.No_sharing] in
+
   let do_it (ssl_s, sockaddr_cli, common_name) =
     try 
-      Ssl.output_string ssl_s ser_txt	      
+      Ssl.output_string ssl_s ser_com
     with Ssl.Write_error _ ->
       tellserver (Report (Log ("SSL write error\n", Error)))
   in
@@ -108,8 +110,9 @@ let pipe_waits_for_notifications tor =
 	let notif = (Marshal.from_string data 0 : Ast.notification) in
 	(* Resend the data already serialized to the clients *)
         match notif with
-        | (New_notif _ | Info_notif _ ) -> send data None
-        | Old_notif _ -> send data (Some (List.hd !connected_clients))
+	| Local_notif _ -> assert false
+        | New_notif _   -> send (Notification notif) None
+        | Old_notif _   -> send (Notification notif) (Some (List.hd !connected_clients))
       end
   done
 ;;
@@ -153,9 +156,8 @@ let handle_connection (ssl_s, sockaddr_cli) =
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
   Mutex.unlock m ;
   
-  (* Tell the new client that it is authorized *)
-  let ser_info = Marshal.to_string (Info_notif "rw_server_con_ok") [Marshal.No_sharing] in
-  send ser_info (Some(ssl_s, sockaddr_cli, common_name));
+  (* Tell the new client that he is authorized *)
+  send RW_server_con_ok (Some(ssl_s, sockaddr_cli, common_name));
   
   (* Ask father's process for the current downloads to send them to the new client *)
   tellserver Ask_current_dls;
@@ -290,8 +292,7 @@ let run tor remote_config =
   (* Handle the interruptions *)
   let handle_interrupt i = 
     
-    let ser_info = Marshal.to_string (Info_notif "rw_server_exit") [Marshal.No_sharing] in      
-    send ser_info None;
+    send RW_server_exited None;
     
     Mutex.lock m ;
     (* Close the clients' sockets *)
