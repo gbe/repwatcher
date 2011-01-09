@@ -366,7 +366,7 @@ let what_to_do event =
 					   
 					   | Some value ->
 					       let folder = (value.path)^"/"^name in
-		                               let children = List.tl (Dirs.ls folder) in
+		                               let children = List.tl (Dirs.ls folder []) in
 
 					       (* Watch the new folder *)
                                		       add_watch folder (Some wd) false ;

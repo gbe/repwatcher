@@ -64,58 +64,59 @@ let watch_dirs directories ignore_directories =
   in
   
   let directories = ref (rem_slash directories) in
-  let ignore_directories_clean_name = rem_slash ignore_directories in
-
-  let regexp_ignore_directories = List.map Str.regexp ignore_directories_clean_name in
   
-  
-  (* Filter if the directory in the config file
-   * - exists
-   * - is set to be watched BUT also ignored. Only someone stupid can do that
-   *)
-  directories := List.filter (
+  let filter directories l_regexp =
+    List.filter (
     fun dir ->
       try
 	if Sys.is_directory dir then						
 	  try
-	    ignore (List.find (fun reg  -> Str.string_match reg dir 0) regexp_ignore_directories);
-	    false
+	    ignore (List.find (fun reg  -> Str.string_match reg dir 0) l_regexp);
+	    false (* false= take off the list *)
 	  with Not_found -> true
 	else
 	  false
 	    
-      (* No such file or directory *)
+	    (* No such file or directory *)
       with Sys_error e ->
 	let error = "Error: "^e in 
-	  prerr_endline error ;
-	  Report.report (Log (error, Error));
-	  false
-  ) !directories
-    ;
-  
+	prerr_endline error ;
+	Report.report (Log (error, Error));
+	false
+   ) directories
+  in
+
+
+  (*
+   * Filter
+   * - if it doesn't exist
+   * - the subdirectories of an ignored one like /home/dest/ignored/dir (set to be watched) and /home/dest/Ftp/ignored (set to be ignored)
+   * /home/dest/ignored/dir is taken off the list
+   *)
+  let ignore_directories_slash = List.map (fun s -> s^"/") (rem_slash ignore_directories) in
+  let regexp_ignore_directories_slash = List.map Str.regexp ignore_directories_slash in
+
+  directories := filter !directories regexp_ignore_directories_slash;
+
+  (* This dollar is used for the regexp to keep *only* the folder "test - etc" (derivative names) in the following example :
+     - /home/dest/test - etc
+     - /home/dest/test      <---  this one is the ignored folder
+   * Without it both directories would be ignored
+   *
+   * This regexp also takes off the list an entry which is the exact same one if it's set to be watched and ignored (what stupid people can do) :
+     - to be watched: /home/dest/Ftp
+     - to be ignored: /home/dest/Ftp
+   *)
+  let ignore_directories_dollar = List.map (fun s -> s^"$") (rem_slash ignore_directories) in
+  let regexp_ignore_directories_dollar = List.map Str.regexp ignore_directories_dollar in
+
+  directories := filter !directories regexp_ignore_directories_dollar;
   
   let children =
     List.fold_left (
     fun dirs2watch dir ->
-      
-      let dir_children = List.tl (Dirs.ls dir) in
-      let dir_children_without_ignored_ones = 
-	List.filter (
-	fun dir_child ->
-	  (* - if the exception is triggered, then it means that the directories ignored
-	   * have nothing to do with this one
-	   * 
-	   * - This code is the same than above but without the test Sys.is_directory because I consider that the answer is true.
-	   * I trust the result from "ls" therefore I skip a test for efficency.
-	   *)
-	  try
-	    ignore (List.find (fun reg  -> Str.string_match reg dir_child 0) regexp_ignore_directories);
-	    false
-	  with Not_found -> true
-       ) dir_children
-      in
-      dir_children_without_ignored_ones@dirs2watch
- 					   
+      let children_of_a_branch = List.tl (Dirs.ls dir regexp_ignore_directories_dollar) in
+      children_of_a_branch@dirs2watch
    ) [] !directories
   in
   

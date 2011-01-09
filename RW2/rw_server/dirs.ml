@@ -16,13 +16,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-
 open Ast;;
 
-
 (* List the subfolders of a folder.
- * The head of the list returned is the folder given in arg *)
-let rec ls folder =
+ * The head of the list returned is the folder given in arg
+ * Sub branches not parsed if they're ignored
+ *)
+let rec ls folder ignored_directories =
   
   let dh_opt = ref None in
   
@@ -45,13 +45,25 @@ let rec ls folder =
 	    let entry = Unix.readdir dh in
 	    try
 	      let fullpath = (folder^"/"^entry) in
+
 	      (* Test if it's a file or a folder *)
 	      match Sys.is_directory fullpath with
 	      | true ->
 		  begin
 		    match entry with
 		    | ("." | "..") -> ()
-		    | _            -> l := (!l)@(ls fullpath)
+		    | _            ->
+			(* Stop browsing the subdirectories if they're ignored *)
+			let to_be_ignored =
+			  try
+			    ignore (List.find (fun ign_dir_reg -> Str.string_match ign_dir_reg fullpath 0) ignored_directories);
+			    true
+			  with Not_found -> false
+			in
+			match to_be_ignored with
+			| true -> () (* ignored *)
+			| false -> l := (!l)@(ls fullpath ignored_directories)
+
 		  end
 	      | false -> ()
 	    with Sys_error err -> print_endline err
@@ -61,7 +73,7 @@ let rec ls folder =
 	| End_of_file -> Unix.closedir dh
 	| Unix.Unix_error (_,function',file_or_dir) ->
 	    Report.Report.report (
-	    Log (("Unix error: "^function'^", "^file_or_dir), Error) )
+            Log (("Unix error: "^function'^", "^file_or_dir), Error) )
       end;
       !l
 ;;
