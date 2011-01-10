@@ -91,10 +91,12 @@ let is_config_file wd =
 
 
 let del_watch wd =
-  
-  printf "CONNARD à supprimer: %d\n" (int_of_wd wd);
-  Pervasives.flush Pervasives.stdout;
-  
+  if debug_event then
+    begin
+      printf "To be deleted: %d\n" (int_of_wd wd);
+      Pervasives.flush Pervasives.stdout
+    end;
+
   (* Check if the wd is still in the hashtable *)
   if Hashtbl.mem ht_iwatched wd then
     try
