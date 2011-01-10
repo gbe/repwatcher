@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ open Inotify
 open Ast
 open Ast_conf
 open Report
+
+let debug_event = false;;
 
 type w_info = {
   conf         : bool;
@@ -244,9 +246,11 @@ let what_to_do event =
 	[] -> ()
       | type_event::q -> 
 	  
-	  if not (string_of_event type_event = "ACCESS") then
-	    printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
-	  ;
+	  if debug_event then
+	    begin
+	      if not (string_of_event type_event = "ACCESS") then
+		printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n" (string_of_event type_event) (string_of_bool is_folder) name (int_of_wd wd)
+	    end;
 	  
 	  begin	  
 	    match type_event, is_folder with
@@ -265,7 +269,9 @@ let what_to_do event =
 					   | Some value ->
 					       let folder = Filename.quote value.path in
 					       
-					       Printf.printf " [II] Folder: %s\n" folder;
+					       if debug_event then
+						 Printf.printf "[II] Folder: %s\n" folder
+					       ;
 					       
 					       let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
 					       let l_opened_files = File_list.get chan in					       
@@ -273,7 +279,9 @@ let what_to_do event =
 					       
 					       let l_filtered = File_list.filter l_opened_files in
 					       
-					       Printf.printf "[II] Opened : %d\tFiltered : %d\n" (List.length l_opened_files) (List.length l_filtered);
+					       if debug_event then
+						 Printf.printf "[II] Opened : %d\tFiltered : %d\n" (List.length l_opened_files) (List.length l_filtered)
+					       ;
 					       
 					       List.iter (
 					       fun file ->
@@ -281,11 +289,15 @@ let what_to_do event =
 						 (* This test is here because without it we could be notified 3 times for the same thing *)
 						 if not (Hashtbl.mem Files_progress.ht (wd,file)) then
 						   begin
-						     (*  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name; *)
-						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Normal  )  ) ;
-						     Report.report ( Sql (file, File_Opened)                                       ) ;
-						     Report.report ( Notify (New_notif (file, File_Opened ))  ) ;
-						     Hashtbl.add Files_progress.ht (wd,file) (Date.date())
+						     if debug_event then
+						       printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name
+						     ;
+						     let date = Date.date() in
+						     print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
+						     Report.report ( Log (file.f_login^" is downloading: "^file.f_name, Normal ));
+						     Report.report ( Sql (file, File_Opened, date) );
+						     Report.report ( Notify (New_notif (file, File_Opened)) );
+						     Hashtbl.add Files_progress.ht (wd,file) date
 						   end
 					      ) l_filtered
 					 end
@@ -314,7 +326,9 @@ let what_to_do event =
 					  | Some value ->
 					      let folder = Filename.quote value.path in
 					      
-					      Printf.printf " [II] Folder: %s\n" folder;
+					      if debug_event then
+						Printf.printf " [II] Folder: %s\n" folder
+					      ;
 					      
 					      (* Call lsof to know which file stopped being accessed *)					      
 					      let chan = Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG") in
@@ -337,9 +351,11 @@ let what_to_do event =
 					      List.iter (
 					      fun (wd2, f_file) ->
                                                 Hashtbl.remove Files_progress.ht (wd2, f_file);
-						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Normal)  ) ;
-						Report.report ( Sql    (f_file, File_Closed)                                             ) ;
-						Report.report ( Notify (New_notif (f_file, File_Closed)        )  ) ;
+						let date = Date.date() in
+						print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
+						Report.report ( Log    (f_file.f_login^" finished downloading: "^f_file.f_name, Normal) ) ;
+						Report.report ( Sql    (f_file, File_Closed, date) ) ;
+						Report.report ( Notify (New_notif (f_file, File_Closed) )) ;
 					     ) l_stop
 		    			end
 

@@ -134,7 +134,7 @@ let watch_dirs directories ignore_directories =
 (* Fonction main *)
 let _ =
   
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2010  Gregory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Gregory Bellier
 This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
 This is free software, and you are welcome to redistribute it
 under certain conditions; for details read COPYING file\n\n";

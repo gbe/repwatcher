@@ -190,7 +190,7 @@ let notify notification =
 
 
 
-let sql (f, state) =
+let sql (f, state, date) =
     
     match state with
       | File_Opened  ->	  
@@ -201,7 +201,7 @@ let sql (f, state) =
 	    (Mysqldb.ml2str f.f_path)
 	    (Mysqldb.ml2str f.f_name)
 	    (Mysqldb.ml2str (Int64.to_string f.f_filesize))
-	    (Mysqldb.ml2str (Date.date()))
+	    (Mysqldb.ml2str date)
 	  in
 
 	  begin
@@ -259,7 +259,7 @@ let sql (f, state) =
 			| None -> assert false
 			| Some id ->
 			    let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = %s WHERE ID = %s"
-				(Mysqldb.ml2str (Date.date()))
+				(Mysqldb.ml2str date)
 				(Mysqldb.ml2str id) in
 
 			    log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
@@ -283,8 +283,8 @@ module Report =
 struct
   
   let report = function
-    | Sql    (file, state)    -> sql (file, state)
-    | Notify notification     -> notify notification
-    | Log    (txt, log_level) -> log (txt, log_level)
+    | Sql    (file, state, date)    -> sql (file, state, date)
+    | Notify notification             -> notify notification
+    | Log    (txt, log_level)         -> log (txt, log_level)
 ;;
 end;;

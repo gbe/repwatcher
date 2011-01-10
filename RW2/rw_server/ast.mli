@@ -46,7 +46,7 @@ type notification =
 
 type report = | Notify of notification
 	      | Log    of (string * log_level)
-	      | Sql    of (f_file * file_state)
+	      | Sql    of (f_file * file_state * string)
 
 
 type com_net2main =
