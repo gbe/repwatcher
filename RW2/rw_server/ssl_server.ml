@@ -19,8 +19,8 @@
 
 
 open Unix
-open Ast
-open Ast_conf
+open Types
+open Types_conf
 
 
 let certfile = ref "cert/rw_serv.crt"
@@ -107,7 +107,7 @@ let pipe_waits_for_notifications tor =
     if recv > 0 then
       begin
 	let data = String.sub buf 0 recv in
-	let notif = (Marshal.from_string data 0 : Ast.notification) in
+	let notif = (Marshal.from_string data 0 : Types.notification) in
 	(* Resend the data already serialized to the clients *)
         match notif with
 	| Local_notif _ -> assert false

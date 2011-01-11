@@ -18,8 +18,8 @@
 
 
 open Unix
-open Ast
-open Ast_conf
+open Types
+open Types_conf
 
 let log (txt, log_level) =
 

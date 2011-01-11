@@ -21,8 +21,8 @@
 open Unix
 open Printf
 
-open Ast
-open Ast_conf
+open Types
+open Types_conf
 open Core
 open Report
 

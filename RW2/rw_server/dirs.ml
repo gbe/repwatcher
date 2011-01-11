@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-open Ast;;
+open Types;;
 
 (* List the subfolders of a folder.
  * The head of the list returned is the folder given in arg

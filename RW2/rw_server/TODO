@@ -14,5 +14,4 @@ TO DO
 - Ajouter le nom du dossier aux notifications et permettre le nombre de dossiers parents à afficher
 - Le client devrait tester de temps en temps si le serveur est là
 - Le pipe vers le processus fiston devrait être accessible que par report et plus dans pipe.ml comme maintenant
-- Ajouter des flush pour les print de debug_event
 - Faire une recherche récursive lors de chaque création de dossiers (bug du mkdir -p)

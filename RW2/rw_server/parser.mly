@@ -1,6 +1,6 @@
 /*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 
 %{
-   open Ast_conf 
+   open Types_conf 
 %}
   
 
@@ -49,7 +49,7 @@
 %start conf
   
 /* Type des valeurs retournées par l'analyseur syntaxique */
-%type <Ast_conf.configuration> conf
+%type <Types_conf.configuration> conf
   
 %%
 

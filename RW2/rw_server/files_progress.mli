@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,5 +16,5 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-val ht : (Inotify.wd * Ast.f_file, string) Hashtbl.t
+val ht : (Inotify.wd * Types.f_file, string) Hashtbl.t
 (* The string here is the date when the file has been accessed *)

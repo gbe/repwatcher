@@ -21,8 +21,8 @@
 open Printf
 open Inotify
 
-open Ast
-open Ast_conf
+open Types
+open Types_conf
 open Report
 
 let debug_event = false;;
@@ -329,7 +329,7 @@ let what_to_do event =
 					      let folder = Filename.quote value.path in
 					      
 					      if debug_event then
-						Printf.printf " [II] Folder: %s\n" folder
+						Printf.printf "[II] Folder: %s\n" folder
 					      ;
 					      
 					      (* Call lsof to know which file stopped being accessed *)					      
@@ -480,8 +480,9 @@ let what_to_do event =
 	  end
   
   in
-    action tel false;
-;;
+  action tel false;
+  Pervasives.flush Pervasives.stdout
+;; (* eo what_to_do *)
 
 
 end;; (* eo module *)

@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,5 +20,5 @@
 
 module Report :
 sig
-	val report       : Ast.report -> unit
+	val report       : Types.report -> unit
 end
