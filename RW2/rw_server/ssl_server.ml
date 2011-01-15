@@ -155,9 +155,12 @@ let handle_connection (ssl_s, sockaddr_cli) =
   Mutex.lock m ;
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
   Mutex.unlock m ;
+
+(* To be moved from there *)
+  let conf = Config.get() in
   
-  (* Tell the new client that he is authorized *)
-  send RW_server_con_ok (Some(ssl_s, sockaddr_cli, common_name));
+  (* Tell the new client that he is authorized and send him at the same time the number of last folders to display set in the config file*)
+  send (RW_server_con_ok conf.c_notify.n_parent_folders) (Some(ssl_s, sockaddr_cli, common_name));
   
   (* Ask father's process for the current downloads to send them to the new client *)
   tellserver Ask_current_dls;

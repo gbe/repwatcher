@@ -39,6 +39,7 @@
 %token NOTIFY_REMOTELY
 %token REMOTE_IDENTITY_FALLBACK
 %token REMOTE_CHROOT
+%token PARENT_FOLDERS
 %token LOG_LEVEL
 %token MAIN_IDENTITY_FALLBACK
 %token <string>TXT
@@ -132,11 +133,20 @@ mysql:
 ;
 
 notify:
-|  NOTIFY_LOCALLY EQUAL true_or_false notif_remote
-    {{
-     n_locally = $3;
-     n_remotely = $4;
-   }}
+|  NOTIFY_LOCALLY EQUAL true_or_false notif_remote PARENT_FOLDERS EQUAL txt_plus
+    {
+     try
+       let nb = int_of_string $7 in
+       begin if nb <= 0 then
+	 raise Parse_error
+       end;
+       {
+	n_locally = $3;
+	n_remotely = $4;
+	n_parent_folders = nb;
+      }
+     with Failure "int_of_string" -> raise Parse_error
+   }
 ;
 
 notif_remote:

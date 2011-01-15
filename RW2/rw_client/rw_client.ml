@@ -25,13 +25,14 @@ let _ =
 
   let port = ref 9292 in
   let host = ref "" in
+  let nb_parent_folders = ref None in
   
   let password = ref "coco" in
   let certfile = ref "cert/rw_client.crt" in
   let privkey  = ref "cert/rw_client.key" in
   let ca = "CA/CA.crt" in
   
-  let usage = "usage: rw_client host [-p port]" in
+  let usage = "usage: rw_client host [-p port] [-n Folders_nb_for_notifications]" in
   
   Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Gregory Bellier
 This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
@@ -39,14 +40,17 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; for details read COPYING file\n\n";
   Pervasives.flush Pervasives.stdout;
 
+  let regexp = Str.regexp "/" in
+
   Arg.parse
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
+     "-n", Arg.Int (fun n -> if n <= 0 then raise (Arg.Bad ("wrong argument `"^(string_of_int n)^"'; option `-n' expects an unsigned integer")) else nb_parent_folders := Some n), "\tFolders_Number_For_Notifications";
     ]
     (fun s -> host := s) usage;
   
   if !host = "" then (Printf.printf "%s\n\n" usage; exit 1);
-  
+ 
   Ssl_threads.init ();
   Ssl.init ();
 
@@ -62,7 +66,7 @@ under certain conditions; for details read COPYING file\n\n";
   let sockaddr = ADDR_INET(he.h_addr_list.(0), !port) in
   let loop = ref true in
   let bufsize = 1024 in
-  let buf = String.create bufsize in 
+  let buf = String.create bufsize in
   
   let ssl =
     let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
@@ -94,6 +98,24 @@ under certain conditions; for details read COPYING file\n\n";
       
   ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
   ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+
+  let rec n_last_elements l =
+
+    let n =
+      match !nb_parent_folders with
+      | None -> assert false
+      | Some n -> n
+    in
+
+    match l with
+    | [] -> "./"
+    | [t] -> t^"/"
+    | t::q ->
+	if List.length q < n then
+	  t^"/"^(n_last_elements q)
+	else
+	  n_last_elements q
+  in
   
   begin try
     while !loop do
@@ -105,7 +127,13 @@ under certain conditions; for details read COPYING file\n\n";
 	
 	match com with
 	| RW_server_exited -> loop := false
-	| RW_server_con_ok -> ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""))
+	| RW_server_con_ok nb_parent_folders' -> 
+	    begin
+	      match !nb_parent_folders with
+	      | Some _ -> () (* It has been set by the client on the command line. *)
+	      | None -> nb_parent_folders := Some nb_parent_folders' (* Otherwise, we take the server's choice *)
+	    end;
+	    ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""))
 (*	    | RW_server_con_ok -> dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host)) *)
 	      
 	| Notification notif ->
@@ -124,7 +152,9 @@ under certain conditions; for details read COPYING file\n\n";
 		  
 		  Printf.printf "Recu new_notif: '%s', '%s' et %s\n" file.f_login file.f_name str_of_state;
 		  Pervasives.flush Pervasives.stdout;
-		  let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f_login msg_state file.f_name in
+
+		  let l_folders = Str.split regexp file.f_path in
+		  let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f_login msg_state (n_last_elements l_folders) file.f_name in
 		  ignore (Unix.system call)
 		    
 (*		let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename in
@@ -145,7 +175,10 @@ under certain conditions; for details read COPYING file\n\n";
 		      let hms_l = Str.split regexp_dot h_m_s in
 		      (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		    in
-		    let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m file.f_login file.f_name in
+
+		    let l_folders = Str.split regexp file.f_path in
+
+		    let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name in
 		    ignore (Unix.system call)
 		      
 (*		  let dbus_notif = Printf.sprintf "<b>%s</b> started downloading\n%s" login filename in

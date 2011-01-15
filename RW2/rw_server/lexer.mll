@@ -52,6 +52,7 @@ rule nexttoken = parse
   | "notify_remotely"                  { NOTIFY_REMOTELY }
   | "notify_remote_process_identity"   { REMOTE_IDENTITY_FALLBACK }
   | "notify_remote_process_chroot"     { REMOTE_CHROOT }
+  | "notify_parent_folders"            { PARENT_FOLDERS }
   | "log_level"                        { LOG_LEVEL }
   | "main_process_identity_fallback"   { MAIN_IDENTITY_FALLBACK }
   | eof                                { EOF }

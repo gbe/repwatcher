@@ -148,10 +148,29 @@ let notify notification =
 	      | File_Opened -> "is downloading"
 	      | File_Closed -> "finished downloading"
 	    in
+
+	    (* Return the n last folders *)
+	    let rec n_last_elements l n =
+	      match l with
+	      | [] -> "./"
+	      | [t] -> t^"/"
+	      | t::q ->
+		  if List.length q < n then
+		    t^"/"^(n_last_elements q n)
+		  else
+		    n_last_elements q n
+	    in
+
 (*	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
 	      ignore (system call)
-*)		
-	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped in
+*)	
+
+	    
+	    let r = Str.regexp "/" in
+	    let l_folders = Str.split r file.f_path in
+
+	
+	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s%s" file.f_login msg_state (n_last_elements l_folders conf.c_notify.n_parent_folders) filename_escaped in
 	      dbus "nobody" "Repwatcher" dbus_notif		
 	  end ;
 
