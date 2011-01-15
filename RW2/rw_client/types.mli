@@ -40,5 +40,5 @@ type notification =
 type com_server2clients =
   | Notification of notification
   | RW_server_exited
-  | RW_server_con_ok of int (* int is the notify_parent_folders value from the config file *)
+  | RW_server_con_ok of int option (* int is the notify_parent_folders value from the config file *)
 ;;

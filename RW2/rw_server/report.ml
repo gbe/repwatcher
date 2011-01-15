@@ -170,8 +170,14 @@ let notify notification =
 	    let l_folders = Str.split r file.f_path in
 
 	
-	    let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s%s" file.f_login msg_state (n_last_elements l_folders conf.c_notify.n_parent_folders) filename_escaped in
-	      dbus "nobody" "Repwatcher" dbus_notif		
+	    let dbus_notif =
+	      match conf.c_notify.n_parent_folders with
+		| None -> Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
+		| Some parent_folders ->
+		  Printf.sprintf "<b>%s</b> %s\n%s%s" file.f_login msg_state (n_last_elements l_folders parent_folders) filename_escaped
+	    in
+	    dbus "nobody" "Repwatcher" dbus_notif
+
 	  end ;
 
 	if conf.c_notify.n_remotely.r_activate then

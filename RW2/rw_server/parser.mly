@@ -136,10 +136,16 @@ notify:
 |  NOTIFY_LOCALLY EQUAL true_or_false notif_remote PARENT_FOLDERS EQUAL txt_plus
     {
      try
-       let nb = int_of_string $7 in
-       begin if nb <= 0 then
-	 raise Parse_error
-       end;
+       let nb =
+
+	 let i = int_of_string $7 in	 
+	 if i < 0 then
+	     raise Parse_error
+	 else if i = 0 then
+	   None
+	 else
+	   Some i
+       in
        {
 	n_locally = $3;
 	n_remotely = $4;
@@ -147,6 +153,12 @@ notify:
       }
      with Failure "int_of_string" -> raise Parse_error
    }
+| NOTIFY_LOCALLY EQUAL true_or_false notif_remote
+	{{
+	  n_locally = $3;
+	  n_remotely = $4;
+	  n_parent_folders = None;
+	}}
 ;
 
 notif_remote:

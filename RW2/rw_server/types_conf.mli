@@ -43,7 +43,7 @@ type remote = {
 type notify = {
     n_locally  : bool;
     n_remotely : remote;
-    n_parent_folders : int;
+    n_parent_folders : int option;
 }
 
 type log_verbosity  =

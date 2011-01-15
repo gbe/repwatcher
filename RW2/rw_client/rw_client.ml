@@ -21,11 +21,13 @@ open Unix
 (* open Dbus_call *)
 
 
+
+
 let _ =
 
   let port = ref 9292 in
   let host = ref "" in
-  let nb_parent_folders = ref None in
+  let nb_parent_folders = ref (-1) in (* will be changed if set on the CLI or when connected to the server *)
   
   let password = ref "coco" in
   let certfile = ref "cert/rw_client.crt" in
@@ -45,7 +47,12 @@ under certain conditions; for details read COPYING file\n\n";
   Arg.parse
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
-     "-n", Arg.Int (fun n -> if n <= 0 then raise (Arg.Bad ("wrong argument `"^(string_of_int n)^"'; option `-n' expects an unsigned integer")) else nb_parent_folders := Some n), "\tFolders_Number_For_Notifications";
+     "-n", Arg.Int (fun n ->
+       if n < 0 then
+	 raise (Arg.Bad ("wrong argument `"^(string_of_int n)^"'; option `-n' expects an unsigned integer"))
+       else
+	 nb_parent_folders := n
+     ), "\tFolders_Number_For_Notifications";
     ]
     (fun s -> host := s) usage;
   
@@ -101,17 +108,11 @@ under certain conditions; for details read COPYING file\n\n";
 
   let rec n_last_elements l =
 
-    let n =
-      match !nb_parent_folders with
-      | None -> assert false
-      | Some n -> n
-    in
-
     match l with
     | [] -> "./"
     | [t] -> t^"/"
     | t::q ->
-	if List.length q < n then
+	if List.length q < !nb_parent_folders then
 	  t^"/"^(n_last_elements q)
 	else
 	  n_last_elements q
@@ -127,11 +128,17 @@ under certain conditions; for details read COPYING file\n\n";
 	
 	match com with
 	| RW_server_exited -> loop := false
-	| RW_server_con_ok nb_parent_folders' -> 
+	| RW_server_con_ok nb_parent_folders_from_server -> 
 	    begin
 	      match !nb_parent_folders with
-	      | Some _ -> () (* It has been set by the client on the command line. *)
-	      | None -> nb_parent_folders := Some nb_parent_folders' (* Otherwise, we take the server's choice *)
+		| -1 -> (* Otherwise, we take the server's choice *)
+		  nb_parent_folders :=
+		    begin match nb_parent_folders_from_server with
+		      | None -> 0
+		      | Some nb -> nb
+		    end
+		| _ -> () (* It has been set by the client on the command line. *)
+	      
 	    end;
 	    ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""))
 (*	    | RW_server_con_ok -> dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host)) *)
@@ -154,7 +161,11 @@ under certain conditions; for details read COPYING file\n\n";
 		  Pervasives.flush Pervasives.stdout;
 
 		  let l_folders = Str.split regexp file.f_path in
-		  let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f_login msg_state (n_last_elements l_folders) file.f_name in
+		  let call =
+		    match !nb_parent_folders with
+		      | 0 -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f_login msg_state file.f_name
+		      | _ -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f_login msg_state (n_last_elements l_folders) file.f_name
+		  in
 		  ignore (Unix.system call)
 		    
 (*		let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename in
@@ -178,7 +189,12 @@ under certain conditions; for details read COPYING file\n\n";
 
 		    let l_folders = Str.split regexp file.f_path in
 
-		    let call = Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name in
+		    let call =
+		      match !nb_parent_folders with
+			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m file.f_login file.f_name
+			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name
+		    in
+
 		    ignore (Unix.system call)
 		      
 (*		  let dbus_notif = Printf.sprintf "<b>%s</b> started downloading\n%s" login filename in
