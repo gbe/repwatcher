@@ -133,6 +133,7 @@ let client_quit sock_cli =
   
   let (_,sockaddr_cli,common_name) = List.hd l_client in
   let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
+  print_endline log_msg;
   tellserver ( Report (Log (log_msg, Normal) ));
   Ssl.shutdown sock_cli
 ;;
@@ -148,7 +149,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
   let subj = Ssl.get_subject cert in	
   let common_name = get_common_name subj in
   
-  let new_client = Printf.sprintf "%s connects from %s" common_name (get_ip sockaddr_cli) in
+  let new_client = Printf.sprintf "%s connected from %s" common_name (get_ip sockaddr_cli) in
   print_endline new_client;
   tellserver (Report (Log (new_client, Normal)) ) ;
   
@@ -180,7 +181,6 @@ let handle_connection (ssl_s, sockaddr_cli) =
     done
   with Ssl.Read_error _ -> client_quit ssl_s
 ;;
-
 
 
 
@@ -291,23 +291,17 @@ let run tor remote_config =
 
 
 
-
-  (* Handle the interruptions *)
-  let handle_interrupt i = 
-    
+  let clear_exit () =
     send RW_server_exited None;
     
     Mutex.lock m ;
     (* Close the clients' sockets *)
     List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
     Mutex.unlock m ;
-    Unix.shutdown sock SHUTDOWN_ALL;
-    exit 0
+    Unix.shutdown sock SHUTDOWN_ALL
   in
-  
-  ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
-  ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
-  
+
+  at_exit clear_exit;
   (* *********************** *)
   
 
@@ -326,11 +320,13 @@ let run tor remote_config =
       ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
     with
     | Invalid_argument _ ->
-	prerr_endline "Error in the thread, server-side." ;
-	Pervasives.flush Pervasives.stdout
+	let error = "Error in the thread, server-side" in
+	tellserver (Report (Log (error, Error))) ;
+	prerr_endline error
     | Ssl.Accept_error _ ->
-	prerr_endline "A connection failed" ;
-	Pervasives.flush Pervasives.stdout
+	let error = "A connection failed" in
+	tellserver (Report (Log (error, Error))) ;
+	prerr_endline error
   done
 ;;
 	

@@ -128,26 +128,15 @@ let watch_dirs directories ignore_directories =
 ;;
     
 
+let clean_exit () =
+  (* No need to handle SQL because each connection is closed immediately *)
+  Unix.close Core.fd
+;;
 
 
-
-(* Fonction main *)
-let _ =
-  
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Gregory Bellier
-This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
-This is free software, and you are welcome to redistribute it
-under certain conditions; for details read COPYING file\n\n";
-  Pervasives.flush Pervasives.stdout;
-
-
-
-  (* Load and watch the configuration file *)
-  let conf = load_and_watch_config () in
-
-
+let check conf =
   (* Test if we can successfully connect to the SGBD
-   * if we can't, then we exit right now
+   * if we can't, then we exit right away
    * This prevents the program to crash long after starting running it
    * at the very moment a SQL query is needed.
    * With this, we know from the start if (at least this part) it goes right or wrong.
@@ -165,7 +154,7 @@ under certain conditions; for details read COPYING file\n\n";
 	    failwith error
 	| None -> ()
   end;
-
+  
   (* Check if the identity which should be taken by the main process exists (only if the current identity is root) *) 
   begin
     match conf.c_main_proc_id_fallback with
@@ -176,25 +165,53 @@ under certain conditions; for details read COPYING file\n\n";
 	    try
 	      (* Check in the file /etc/passwd if the user "new_main_identity" exists *)
 	      ignore (Unix.getpwnam new_main_identity);
-	    with Not_found -> failwith ("Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity")
-	  end;
+	    with Not_found ->
+	      let error = "Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity" in
+	      Report.report (Log (error, Error));
+	      failwith error
+	  end
   end;
 
 
-(* Check if the directory to chroot the network process exists *)
-if conf.c_notify.n_remotely.r_activate then
-  begin
-    match conf.c_notify.n_remotely.r_chroot with
-    | None -> ()
-    | Some dir ->
-	try
-	  match Sys.is_directory dir with
-	  | true -> ()
-	  | false -> failwith (dir^" is not a directory")
-	with Sys_error err -> failwith ("It's not possible to use this directory to chroot. "^err)
-  end;
+  (* Check if the directory to chroot the network process exists *)
+  if conf.c_notify.n_remotely.r_activate then
+    begin
+      match conf.c_notify.n_remotely.r_chroot with
+      | None -> ()
+      | Some dir ->
+	  try
+	    match Sys.is_directory dir with
+	    | true -> ()
+	    | false ->
+		let error = "Can't chroot in "^dir^", it's not a directory" in
+		Report.report (Log (error, Error));
+		failwith error
+	  with Sys_error err ->
+	    let error = "Can't chroot in "^dir^", it's not a directory. "^err in
+	    Report.report (Log (error, Error));
+	    failwith error
+    end
+;;
 
 
+
+
+(* Fonction main *)
+let _ =
+  at_exit clean_exit;
+
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Gregory Bellier
+This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
+This is free software, and you are welcome to redistribute it
+under certain conditions; for details read COPYING file\n\n";
+  Pervasives.flush Pervasives.stdout;
+
+
+
+  (* Load and watch the configuration file *)
+  let conf = load_and_watch_config () in
+  
+  check conf;
 
 
 
@@ -214,8 +231,11 @@ if conf.c_notify.n_remotely.r_activate then
 		  try
 		    (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
 		    ignore (Unix.getpwnam new_remote_identity);
-		  with Not_found -> failwith ("Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity")
-		end;
+		  with Not_found ->
+		    let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
+		    Report.report (Log (error, Error));
+		    failwith error
+		end
 	end;
 	
 	Report.report (Log ("Start server for remote notifications", Normal_Extra)) ;
@@ -248,8 +268,11 @@ if conf.c_notify.n_remotely.r_activate then
 		    let passwd_entry = Unix.getpwnam new_identity in
 		    setgid passwd_entry.pw_gid;
 		    setuid passwd_entry.pw_uid;
-		  with Not_found -> failwith ("Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity")
-		end;
+		  with Not_found ->
+		    let error = "Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity" in
+		    Report.report (Log (error, Error));
+		    failwith error
+		end
 	end;
 	
 	
@@ -278,10 +301,6 @@ if conf.c_notify.n_remotely.r_activate then
 	    List.iter (fun event -> Core.what_to_do event) event_l
 	  with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
 	done;
-	
-	
-	(* From this point, we close rw_server properly *)
-	(* No need to handle SQL because each connection is closed immediately *)
-	Unix.close Core.fd;	    
+
       end
 ;;
