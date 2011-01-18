@@ -49,7 +49,8 @@ let log (txt, log_level) =
 	  (* Disable logging *)
 	  Config.conf := Some {conf with c_log = Disabled};
 	  
-	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: %s. Logging feature disabled" (Unix.error_message err) in
+	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: \
+	      %s. Logging feature disabled" (Unix.error_message err) in
 	    prerr_endline error;
 	    
 	    (* fd = None because it failed to open *)
@@ -66,14 +67,16 @@ let log (txt, log_level) =
     in
 
       match open_fd log_filename with
-	| None -> prerr_endline "An error occured, the file to log could neither be opened nor created"
+	| None -> prerr_endline "An error occured, the file to log could neither \
+	      be opened nor created"
 	| Some fd ->
 	    try
 	      ignore (Unix.write fd to_log 0 (String.length to_log));
 	      Unix.close fd
 		
 	    with _ ->
-	      prerr_endline "An error occured either trying to log in the file or to close it"
+	      prerr_endline "An error occured either trying to log in the file \
+		or to close it"
   in
 
     begin
@@ -113,7 +116,10 @@ let dbus img title txt =
       let l = DBus.Message.get r in
 	l
   in
-  let send_notif_msg = send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface in
+
+  let send_notif_msg =
+    send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface
+  in
 
   let bus = DBus.Bus.get DBus.Bus.Session in
   let params = [
@@ -124,7 +130,7 @@ let dbus img title txt =
     DBus.String txt; (* The content *)
     DBus.Array (DBus.Strings []);
     DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
-    DBus.Int32 15000l; (* seems to be the milliseconds the notification must be seen *)
+    DBus.Int32 15000l; (* milliseconds the notification must be seen *)
   ] in	
     ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
 ;;
@@ -169,12 +175,13 @@ let notify notification =
 	    let r = Str.regexp "/" in
 	    let l_folders = Str.split r file.f_path in
 
-	
+	    
 	    let dbus_notif =
 	      match conf.c_notify.n_parent_folders with
-		| None -> Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
-		| Some parent_folders ->
-		  Printf.sprintf "<b>%s</b> %s\n%s%s" file.f_login msg_state (n_last_elements l_folders parent_folders) filename_escaped
+	      | None -> Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
+	      | Some parent_folders ->
+		  Printf.sprintf "<b>%s</b> %s\n%s%s"
+		    file.f_login msg_state (n_last_elements l_folders parent_folders) filename_escaped
 	    in
 	    dbus "nobody" "Repwatcher" dbus_notif
 
@@ -187,7 +194,8 @@ let notify notification =
 	    
 	    (* Send in the pipe for the server to send to the clients *)
 	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )
-	  with _ -> log ("An error occured trying to send in the pipe the notification", Error)
+	  with _ ->
+	    log ("An error occured trying to send in the pipe the notification", Error)
 	      
       end
 
@@ -219,29 +227,35 @@ let sql (f, state, date) =
     
     match state with
       | File_Opened  ->	  
-
-	  let query = Printf.sprintf "INSERT INTO downloads (login,program,path,filename,filesize,starting_date) VALUES (%s, %s, %s, %s, %s, %s)"
-            (Mysqldb.ml2str f.f_login)
-	    (Mysqldb.ml2str f.f_prog_source)
-	    (Mysqldb.ml2str f.f_path)
-	    (Mysqldb.ml2str f.f_name)
-	    (Mysqldb.ml2str (Int64.to_string f.f_filesize))
-	    (Mysqldb.ml2str date)
+	  
+	  (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
+	  let query =
+	    Printf.sprintf "INSERT INTO downloads \
+	      (login,program,path,filename,filesize,starting_date, in_progress) \
+	      VALUES (%s, %s, %s, %s, %s, %s, '1')"
+              (Mysqldb.ml2str f.f_login)
+	      (Mysqldb.ml2str f.f_prog_source)
+	      (Mysqldb.ml2str f.f_path)
+	      (Mysqldb.ml2str f.f_name)
+	      (Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	      (Mysqldb.ml2str date)
 	  in
 
 	  begin
 	    (* Connect to Mysql *)
 	    match Mysqldb.connect() with
 	    | Some error -> log (error, Error)
-	    | None       ->
+	    | None ->
 
 		log ("Connected to MySQL", Normal_Extra);
 		log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
 
 		(* Do the query *)
 		(match Mysqldb.query query with
-		| (QueryOK _ | QueryEmpty) -> log ("Query successfully executed", Normal_Extra)
-		| QueryError error         -> log (error, Error)
+		| (QueryOK _ | QueryEmpty) ->
+		    log ("Query successfully executed", Normal_Extra)
+		| QueryError error ->
+		    log (error, Error)
 		);
 	
 		(* Disconnect *)
@@ -251,10 +265,6 @@ let sql (f, state, date) =
 	  end
 
       | File_Closed ->
-	  let id_query = Printf.sprintf "SELECT ID FROM downloads WHERE LOGIN=%s AND FILENAME=%s ORDER BY STARTING_DATE DESC LIMIT 1"
-	      (Mysqldb.ml2str f.f_login)
-	      (Mysqldb.ml2str f.f_name)
-	  in
 
 	  (* Connect to Mysql *)
 	  match Mysqldb.connect() with
@@ -262,36 +272,58 @@ let sql (f, state, date) =
 	  | None ->
 
 	      log ("Connected to MySQL", Normal_Extra);
+
+	      let id_query =
+		Printf.sprintf "SELECT ID \
+		  FROM downloads \
+		  WHERE LOGIN=%s AND \
+		  FILENAME=%s AND \
+		  IN_PROGRESS = 1 \
+		  ORDER BY STARTING_DATE DESC \
+		  LIMIT 1"
+		  (Mysqldb.ml2str f.f_login)
+		  (Mysqldb.ml2str f.f_name)
+	      in
 	      log (("Next SQL query to compute:\n"^id_query^"\n"), Normal_Extra);
 	      
 	      begin
 		(* Do the query *)
 		match Mysqldb.fetch id_query with
-		| QueryEmpty        -> log ("Query successfully executed but no result returned", Normal_Extra)
-		| QueryError errmsg -> log (errmsg, Error)
-		| QueryOK res       ->
+		| QueryEmpty ->
+		    log ("Query successfully executed but no result returned", Normal_Extra)
+		| QueryError errmsg ->
+		    log (errmsg, Error)
+		| QueryOK res ->
 
 		    log ("Query successfully executed", Normal_Extra);
 
 		    match res with
 		    | None ->
-			log ( ("Error. Previous query successfully executed but nothing was returned. This means something is wrong. Please check and try in your database the following query :\n"^id_query), Error );
-
+			log ( ("Error. Previous query successfully executed but \
+				 nothing was returned. This means something is \
+				 wrong. Please check and try in your database \
+                                 the following query :\n"^id_query), Error );
 		    | Some ids_array -> 
 			
 			(* 0 because I know there is only one result returned *)
 			match Array.get ids_array 0 with
 			| None -> assert false
 			| Some id ->
-			    let query = Printf.sprintf "UPDATE downloads SET ENDING_DATE = %s WHERE ID = %s"
+			    let query =
+			      Printf.sprintf "UPDATE downloads \
+				SET ENDING_DATE = %s, IN_PROGRESS = '0' \
+				WHERE ID = %s"
 				(Mysqldb.ml2str date)
-				(Mysqldb.ml2str id) in
+				(Mysqldb.ml2str id)
+			    in
 
 			    log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
 
 			    match Mysqldb.query query with
-			    | QueryOK _          -> log ("Query successfully executed and returned a result", Normal_Extra)
-			    | QueryEmpty         -> log ("Query successfully executed but no result returned", Normal_Extra)
+			    | QueryOK _ ->
+				log ("Query successfully executed and returned a result", Normal_Extra)
+			    | QueryEmpty ->
+				log ("Query successfully executed but no result returned", Normal_Extra)
 			    | QueryError errmsg  -> log (errmsg, Error)
 	      end;
 
@@ -308,8 +340,13 @@ module Report =
 struct
   
   let report = function
-    | Sql    (file, state, date)    -> sql (file, state, date)
-    | Notify notification             -> notify notification
-    | Log    (txt, log_level)         -> log (txt, log_level)
+    | Sql (file, state, date) ->
+	sql (file, state, date)
+
+    | Notify notification ->
+	notify notification
+
+    | Log (txt, log_level) ->
+	log (txt, log_level)
 ;;
 end;;

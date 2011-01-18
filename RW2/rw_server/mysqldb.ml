@@ -37,7 +37,8 @@ let connect () =
 
 let disconnect () =
   match !cid with
-  | None -> Some ("RW couldn't disconnect from Mysql. The handler is not connected")
+  | None -> Some ("RW couldn't disconnect from Mysql. \
+		    The handler is not connected")
   | Some cid' ->
       try
 	Mysql.disconnect cid';
@@ -63,7 +64,9 @@ let query q =
 	| StatusEmpty   -> QueryEmpty
 	| StatusError _ ->
 	    match errmsg cid with
-	    | None         -> QueryError "Oops. Mysqldb.query, StatusError returned a None. This is not supposed to happen"
+	    | None ->
+		QueryError "Oops. Mysqldb.query, StatusError returned a None. \
+		  This is not supposed to happen"
 	    | Some errmsg' -> QueryError errmsg'
 
       with Mysql.Error error -> QueryError error
