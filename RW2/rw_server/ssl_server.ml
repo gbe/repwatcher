@@ -83,7 +83,7 @@ let send (com : com_server2clients) sock_opt =
     try 
       Ssl.output_string ssl_s ser_com
     with Ssl.Write_error _ ->
-      tellserver (Report (Log ("SSL write error\n", Error)))
+      tellserver (Types.Log ("SSL write error\n", Error))
   in
   
   (* If sock is not given then it means the
@@ -134,7 +134,7 @@ let client_quit sock_cli =
   let (_,sockaddr_cli,common_name) = List.hd l_client in
   let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
   print_endline log_msg;
-  tellserver ( Report (Log (log_msg, Normal) ));
+  tellserver ( Types.Log (log_msg, Normal) );
   Ssl.shutdown sock_cli
 ;;
 
@@ -151,7 +151,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
   
   let new_client = Printf.sprintf "%s connected from %s" common_name (get_ip sockaddr_cli) in
   print_endline new_client;
-  tellserver (Report (Log (new_client, Normal)) ) ;
+  tellserver (Types.Log (new_client, Normal)) ;
   
   Mutex.lock m ;
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
@@ -205,7 +205,7 @@ let run tor remote_config =
       Ssl.use_certificate ctx !certfile !privkey;
     with Ssl.Private_key_error ->
       let error = "Err. Ssl_server: wrong private key password" in
-      tellserver ( Report (Log (error, Error))) ;
+      tellserver (Types.Log (error, Error)) ;
       failwith error
   end;
   
@@ -216,7 +216,7 @@ let run tor remote_config =
       Ssl.load_verify_locations ctx ca (Filename.dirname ca)
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
-      tellserver ( Report (Log (error, Error))) ;
+      tellserver ( Types.Log (error, Error)) ;
       failwith error
   end;
 (* ********************** *)
@@ -241,7 +241,7 @@ let run tor remote_config =
 	      Some (Unix.getpwnam new_remote_id)
 	    with Not_found ->
 	      let error = ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity") in
-	      tellserver (Report (Log (error, Error)));
+	      tellserver ( Types.Log (error, Error));
 	      failwith error
       in
       let passwd_entry_opt = check_identity remote_config.r_process_identity in
@@ -253,10 +253,10 @@ let run tor remote_config =
 	  | None -> ()
 	  | Some dir ->
 	      Unix.chdir dir ; Unix.chroot "." ;
-	      tellserver (Report (Log (("Network process chrooted in "^dir), Normal_Extra)))
+	      tellserver ( Types.Log (("Network process chrooted in "^dir), Normal_Extra))
 	with Unix_error (error,_,s2) ->
 	  let error = ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error)) in
-	  tellserver (Report (Log (error, Error)));
+	  tellserver (Types.Log (error, Error));
 	  failwith error
       end;
 
@@ -268,10 +268,9 @@ let run tor remote_config =
 	    setgid passwd_entry.pw_gid;
 	    setuid passwd_entry.pw_uid;
 	    
-	    begin match remote_config.r_process_identity with
+	    match remote_config.r_process_identity with
 	    | None -> assert false
-	    | Some new_remote_id -> tellserver (Report (Log (("Network process identity changed to "^new_remote_id), Normal_Extra)))
-	    end;
+	    | Some new_remote_id -> tellserver (Types.Log (("Network process identity changed to "^new_remote_id), Normal_Extra))
       end;
     end;
 
@@ -321,11 +320,11 @@ let run tor remote_config =
     with
     | Invalid_argument _ ->
 	let error = "Error in the thread, server-side" in
-	tellserver (Report (Log (error, Error))) ;
+	tellserver (Types.Log (error, Error)) ;
 	prerr_endline error
     | Ssl.Accept_error _ ->
 	let error = "A connection failed" in
-	tellserver (Report (Log (error, Error))) ;
+	tellserver (Types.Log (error, Error)) ;
 	prerr_endline error
   done
 ;;

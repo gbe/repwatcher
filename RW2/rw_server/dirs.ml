@@ -72,8 +72,7 @@ let rec ls folder ignored_directories =
 	with
 	| End_of_file -> Unix.closedir dh
 	| Unix.Unix_error (_,function',file_or_dir) ->
-	    Report.Report.report (
-            Log (("Unix error: "^function'^", "^file_or_dir), Error) )
+	    Log.log (("Unix error: "^function'^", "^file_or_dir), Error)
       end;
       !l
 ;;

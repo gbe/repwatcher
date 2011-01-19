@@ -24,7 +24,6 @@ open Printf
 open Types
 open Types_conf
 open Core
-open Report
 
 
 let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
@@ -54,7 +53,8 @@ let load_and_watch_config () =
 (* Watch the directories from the config file *) 
 let watch_dirs directories ignore_directories =   
   
-  let rem_slash l_directories = List.map (
+  let rem_slash l_directories =
+    List.map (
     fun dir ->
       (* If the directory name ends with a '/' then it is deleted *)
       if String.get dir ((String.length dir) -1) = '/' then
@@ -72,7 +72,7 @@ let watch_dirs directories ignore_directories =
 	if Sys.is_directory dir then						
 	  try
 	    ignore (List.find (fun reg  -> Str.string_match reg dir 0) l_regexp);
-	    false (* false= take off the list *)
+	    false (* false = taken off the list *)
 	  with Not_found -> true
 	else
 	  false
@@ -81,7 +81,7 @@ let watch_dirs directories ignore_directories =
       with Sys_error e ->
 	let error = "Error: "^e in 
 	prerr_endline error ;
-	Report.report (Log (error, Error));
+	Log.log (error, Error) ;
 	false
    ) directories
   in
@@ -126,11 +126,23 @@ let watch_dirs directories ignore_directories =
   (* ... then watch their subfolders *)
   Core.add_watch_children children
 ;;
-    
+
+
+let sgbd_reset_in_progress () =
+  (* Reset all IN_PROGRESS accesses in the SGBD *)
+  let reset_accesses =
+    "UPDATE downloads SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
+  in
+  ignore (Mysqldb.query reset_accesses)
+;;
 
 let clean_exit () =
-  (* No need to handle SQL because each connection is closed immediately *)
-  Unix.close Core.fd
+  Unix.close Core.fd ;
+
+  (* No need to handle SQL because each connection is closed immediately
+   * However, we do need to set all the IN_PROGRESS access to zero.
+   * This has been proved usefull for outside apps *)
+  sgbd_reset_in_progress ()
 ;;
 
 
@@ -142,19 +154,18 @@ let check conf =
    * With this, we know from the start if (at least this part) it goes right or wrong.
    * There is no need to add a try/with here because it's handled in Mysqldb.ml
    *)  
+
   begin
     match Mysqldb.connect() with
-    | Some error -> 
-	Report.report (Log (error, Error));
-	failwith error
-    | None       ->
-	match Mysqldb.disconnect() with
-	| Some error ->
-	    Report.report (Log (error, Error));
-	    failwith error
-	| None -> ()
+    | None -> failwith "Could not connect, read the log"
+    | Some cid ->
+	match Mysqldb.disconnect cid with
+	| true -> ()
+	| false -> failwith "Could not disconnect, read the log"
   end;
-  
+
+
+
   (* Check if the identity which should be taken by the main process exists (only if the current identity is root) *) 
   begin
     match conf.c_main_proc_id_fallback with
@@ -166,8 +177,9 @@ let check conf =
 	      (* Check in the file /etc/passwd if the user "new_main_identity" exists *)
 	      ignore (Unix.getpwnam new_main_identity);
 	    with Not_found ->
-	      let error = "Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity" in
-	      Report.report (Log (error, Error));
+	      let error =
+		"Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity" in
+	      Log.log (error, Error);
 	      failwith error
 	  end
   end;
@@ -184,11 +196,11 @@ let check conf =
 	    | true -> ()
 	    | false ->
 		let error = "Can't chroot in "^dir^", it's not a directory" in
-		Report.report (Log (error, Error));
+		Log.log (error, Error);
 		failwith error
 	  with Sys_error err ->
 	    let error = "Can't chroot in "^dir^", it's not a directory. "^err in
-	    Report.report (Log (error, Error));
+	    Log.log (error, Error);
 	    failwith error
     end
 ;;
@@ -213,6 +225,10 @@ under certain conditions; for details read COPYING file\n\n";
   
   check conf;
 
+  sgbd_reset_in_progress ();
+
+	
+
 
 
  
@@ -233,12 +249,12 @@ under certain conditions; for details read COPYING file\n\n";
 		    ignore (Unix.getpwnam new_remote_identity);
 		  with Not_found ->
 		    let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
-		    Report.report (Log (error, Error));
+		    Log.log (error, Error);
 		    failwith error
 		end
 	end;
 	
-	Report.report (Log ("Start server for remote notifications", Normal_Extra)) ;
+	Log.log ("Start server for remote notifications", Normal_Extra) ;
 	Unix.fork()
     | false -> -1
   in
@@ -270,7 +286,7 @@ under certain conditions; for details read COPYING file\n\n";
 		    setuid passwd_entry.pw_uid;
 		  with Not_found ->
 		    let error = "Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity" in
-		    Report.report (Log (error, Error));
+		    Log.log (error, Error);
 		    failwith error
 		end
 	end;
@@ -279,8 +295,8 @@ under certain conditions; for details read COPYING file\n\n";
 	(* watch the directories given in the config file *)
 	watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
 	
-	Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" )  ) ;
-	Report.report ( Log   ("Repwatcher is watching youuu ! :)", Normal)        ) ;    
+	Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) ;
+	Log.log ("Repwatcher is watching youuu ! :)", Normal) ;    
 	
 	
         (* **************************** *)

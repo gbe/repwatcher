@@ -45,23 +45,16 @@ type notification =
   | Local_notif of string
 
 type report = | Notify of notification
-	      | Log    of (string * log_level)
 	      | Sql    of (f_file * file_state * string)
 
 
 type com_net2main =
-  | Report of report
+  | Log of (string * log_level)
   | Ask_current_dls
 
 type com_server2clients =
   | Notification of notification
   | RW_server_exited
   | RW_server_con_ok of int option (* int is the notify_parent_folders value from the config file *)
-
-type 'a query_result = 
-  | QueryOK    of 'a
-  | QueryEmpty
-  | QueryError of string
-
 
 

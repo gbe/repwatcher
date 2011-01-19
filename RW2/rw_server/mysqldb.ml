@@ -16,70 +16,81 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-
+open Mysql
 open Types
 open Types_conf
-open Mysql
 open Unix
-
-
-(* connection identifier *)
-let cid = ref None;;
 
 let ml2str = Mysql.ml2str;;
 
 let connect () =
   try
-    cid := Some (Mysql.connect (Config.get()).c_mysql);
+    Some (Mysql.connect (Config.get()).c_mysql)
+  with Mysql.Error error ->
+    Log.log (error, Error);
     None
-  with Mysql.Error error -> Some error
 ;;
 
-let disconnect () =
-  match !cid with
-  | None -> Some ("RW couldn't disconnect from Mysql. \
-		    The handler is not connected")
-  | Some cid' ->
-      try
-	Mysql.disconnect cid';
-	cid := None;
-	None
-      with Mysql.Error error ->
-	cid := None;
-	Some ("RW couldn't disconnect from Mysql: "^error)
+let disconnect cid =
+  try
+    Mysql.disconnect cid;
+    Log.log ("Disconnected from MySQL", Normal_Extra);
+    true
+  with Mysql.Error error ->
+    Log.log ("RW couldn't disconnect from Mysql: "^error, Error);
+    false
 ;;
+
+
+
+let map res =
+  try
+    (* row = string option array, the option is if a field is NULL *)
+    let rows = Mysql.map res (fun row -> row) in
+    Log.log ("Query successfully mapped", Normal_Extra);
+
+    rows
+
+  with Mysql.Error error ->
+    Log.log (error, Error);
+    []
+;;
+
 
 let query q =
 
-  (* Check if a connection has been established *)
-  match !cid with
-  | None -> assert false
+  (* Establish a connection with MySQL *)
+  match connect () with
+  | None -> [] (* could not connect so we do nothing *)
   | Some cid ->
 
-      try
-	let res = exec cid q in
+      Log.log ("Connected to MySQL", Normal_Extra);
+      Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra);
 
-	match status cid with
-	| StatusOK      -> QueryOK res
-	| StatusEmpty   -> QueryEmpty
-	| StatusError _ ->
-	    match errmsg cid with
-	    | None ->
-		QueryError "Oops. Mysqldb.query, StatusError returned a None. \
-		  This is not supposed to happen"
-	    | Some errmsg' -> QueryError errmsg'
-
-      with Mysql.Error error -> QueryError error
+      let rows_list =
+	try
+	  let res = exec cid q in
+	  
+	  match status cid with
+	  | StatusOK      ->
+	      Log.log ("Query successfully executed", Normal_Extra);
+	      map res
+	  | StatusEmpty   -> []
+	  | StatusError _ ->
+	      begin match errmsg cid with
+	      | None ->
+		  Log.log ("Oops. Mysqldb.query had an error and the SGBD \
+			     can't tell which one", Error)
+	      | Some errmsg' -> Log.log (errmsg', Error)
+	      end;
+	      []
+		      with Mysql.Error error ->
+			Log.log (error, Error);
+			[]
+      in
+      ignore (disconnect cid);
+      rows_list
 ;;
 
 
-let fetch q =
-  
-  match query q with
-  | QueryEmpty       -> QueryEmpty
-  | QueryError error -> QueryError error
-  | QueryOK res      -> 
-      try
-	QueryOK (Mysql.fetch res)
-      with Mysql.Error error -> QueryError error
-;;
+

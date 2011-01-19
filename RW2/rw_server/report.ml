@@ -17,93 +17,11 @@
 *)
 
 
-open Unix
 open Types
 open Types_conf
 
-let log (txt, log_level) =
 
-  let conf = Config.get() in
-  let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
-
-
-  let rec open_fd ?(l=[ O_WRONLY ; O_APPEND]) log_filename = 
-    try
-      let fd = Unix.openfile log_filename l 0o666 in
-      
-      (* if true then it means the exception was triggered before *)
-      if List.mem O_CREAT l then begin
-	Unix.fchmod fd 0o666
-      end;
-	
-	Some fd
-	
-      
-    with Unix_error (err,_,_) ->
-      
-      match err with
-      | ENOENT -> (* no such file or directory *)
-	  open_fd ~l:[ O_WRONLY ; O_APPEND ; O_CREAT ] log_filename
-      | _      ->
-	  
-	  (* Disable logging *)
-	  Config.conf := Some {conf with c_log = Disabled};
-	  
-	  let error = Printf.sprintf "Oops. Couldn't log due to this Unix error: \
-	      %s. Logging feature disabled" (Unix.error_message err) in
-	    prerr_endline error;
-	    
-	    (* fd = None because it failed to open *)
-	    None
-  in
-
-
-  let log_it ()  = 
-    
-    let log_filename =
-      match log_level with
-	  | (Normal  | Normal_Extra) -> "rw.log"
-	  | Error                    -> "rw.log.err"
-    in
-
-      match open_fd log_filename with
-	| None -> prerr_endline "An error occured, the file to log could neither \
-	      be opened nor created"
-	| Some fd ->
-	    try
-	      ignore (Unix.write fd to_log 0 (String.length to_log));
-	      Unix.close fd
-		
-	    with _ ->
-	      prerr_endline "An error occured either trying to log in the file \
-		or to close it"
-  in
-
-    begin
-      (* Only the Errors get printed and on stderr *)
-      match log_level with
-	| Normal -> ()
-	| Normal_Extra -> ()
-	| Error                    ->
-	    prerr_endline to_log ;
-	    Pervasives.flush Pervasives.stdout
-    end;
-
-
-    (* Depending on the user choice, we log *)
-    match conf.c_log with
-      | Disabled -> () (* don't log *)
-      | Regular  ->
-	  begin
-	    match log_level with
-	      | Normal       -> log_it ()
-	      | Normal_Extra -> () (* don't log *)
-	      | Error        -> log_it ()
-	  end
-      | Debug -> log_it ()
-;;
-    
-
+   
 let dbus img title txt =   
   let notif_interface = "org.freedesktop.Notifications" in
   let notif_name = notif_interface in
@@ -190,12 +108,16 @@ let notify notification =
 	if conf.c_notify.n_remotely.r_activate then
 	  try
                
-	    let str_new_dl = Marshal.to_string ( New_notif ({file with f_name = filename_escaped}, filestate) ) [Marshal.No_sharing] in
+	    let str_new_dl =
+	      Marshal.to_string 
+		(New_notif ({file with f_name = filename_escaped}, filestate) )
+		[Marshal.No_sharing]
+	    in
 	    
 	    (* Send in the pipe for the server to send to the clients *)
 	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )
 	  with _ ->
-	    log ("An error occured trying to send in the pipe the notification", Error)
+	    Log.log ("An error occured trying to send in the pipe the notification", Error)
 	      
       end
 
@@ -224,113 +146,65 @@ let notify notification =
 
 
 let sql (f, state, date) =
-    
-    match state with
-      | File_Opened  ->	  
-	  
-	  (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
-	  let query =
-	    Printf.sprintf "INSERT INTO downloads \
-	      (login,program,path,filename,filesize,starting_date, in_progress) \
-	      VALUES (%s, %s, %s, %s, %s, %s, '1')"
-              (Mysqldb.ml2str f.f_login)
-	      (Mysqldb.ml2str f.f_prog_source)
-	      (Mysqldb.ml2str f.f_path)
-	      (Mysqldb.ml2str f.f_name)
-	      (Mysqldb.ml2str (Int64.to_string f.f_filesize))
-	      (Mysqldb.ml2str date)
+  
+  match state with
+  | File_Opened  ->	  
+      
+      (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
+      let query =
+	Printf.sprintf "INSERT INTO downloads \
+	  (login,program,path,filename,filesize,starting_date, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, '1')"
+          (Mysqldb.ml2str f.f_login)
+	  (Mysqldb.ml2str f.f_prog_source)
+	  (Mysqldb.ml2str f.f_path)
+	  (Mysqldb.ml2str f.f_name)
+	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	  (Mysqldb.ml2str date)
+      in
+         
+      ignore (Mysqldb.query query)
+	
+	
+	
+  | File_Closed ->
+
+      let id_query =
+	Printf.sprintf "SELECT ID \
+	  FROM downloads \
+	  WHERE LOGIN=%s AND \
+	  FILENAME=%s AND \
+	  IN_PROGRESS = 1 \
+	  ORDER BY STARTING_DATE DESC \
+	  LIMIT 1"
+	  (Mysqldb.ml2str f.f_login)
+	  (Mysqldb.ml2str f.f_name)
+      in
+	      
+      (* Do the query *)
+      let rows = Mysqldb.query id_query in
+       
+      if List.length rows = 1 then
+	begin
+	  let row = List.hd rows in
+	  let id =
+	    (* 0 because I know there is only one result returned *)
+	    (* get column 0 from row *)
+	    match Array.get row 0 with
+	    | None -> assert false
+	    | Some id -> id
 	  in
 
-	  begin
-	    (* Connect to Mysql *)
-	    match Mysqldb.connect() with
-	    | Some error -> log (error, Error)
-	    | None ->
+	  let update_query =
+	    Printf.sprintf "UPDATE downloads \
+	      SET ENDING_DATE = %s, IN_PROGRESS = '0' \
+	      WHERE ID = %s"
+	      (Mysqldb.ml2str date)
+	      (Mysqldb.ml2str id)
+	  in
 
-		log ("Connected to MySQL", Normal_Extra);
-		log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
-
-		(* Do the query *)
-		(match Mysqldb.query query with
-		| (QueryOK _ | QueryEmpty) ->
-		    log ("Query successfully executed", Normal_Extra)
-		| QueryError error ->
-		    log (error, Error)
-		);
-	
-		(* Disconnect *)
-		match Mysqldb.disconnect() with
-		| Some error -> log (error, Error)
-		| None       -> log ("Disconnected from MySQL", Normal_Extra);
-	  end
-
-      | File_Closed ->
-
-	  (* Connect to Mysql *)
-	  match Mysqldb.connect() with
-	  | Some error -> log (error, Error)
-	  | None ->
-
-	      log ("Connected to MySQL", Normal_Extra);
-
-	      let id_query =
-		Printf.sprintf "SELECT ID \
-		  FROM downloads \
-		  WHERE LOGIN=%s AND \
-		  FILENAME=%s AND \
-		  IN_PROGRESS = 1 \
-		  ORDER BY STARTING_DATE DESC \
-		  LIMIT 1"
-		  (Mysqldb.ml2str f.f_login)
-		  (Mysqldb.ml2str f.f_name)
-	      in
-	      log (("Next SQL query to compute:\n"^id_query^"\n"), Normal_Extra);
-	      
-	      begin
-		(* Do the query *)
-		match Mysqldb.fetch id_query with
-		| QueryEmpty ->
-		    log ("Query successfully executed but no result returned", Normal_Extra)
-		| QueryError errmsg ->
-		    log (errmsg, Error)
-		| QueryOK res ->
-
-		    log ("Query successfully executed", Normal_Extra);
-
-		    match res with
-		    | None ->
-			log ( ("Error. Previous query successfully executed but \
-				 nothing was returned. This means something is \
-				 wrong. Please check and try in your database \
-                                 the following query :\n"^id_query), Error );
-		    | Some ids_array -> 
-			
-			(* 0 because I know there is only one result returned *)
-			match Array.get ids_array 0 with
-			| None -> assert false
-			| Some id ->
-			    let query =
-			      Printf.sprintf "UPDATE downloads \
-				SET ENDING_DATE = %s, IN_PROGRESS = '0' \
-				WHERE ID = %s"
-				(Mysqldb.ml2str date)
-				(Mysqldb.ml2str id)
-			    in
-
-			    log (("Next SQL query to compute:\n"^query^"\n"), Normal_Extra);
-
-			    match Mysqldb.query query with
-			    | QueryOK _ ->
-				log ("Query successfully executed and returned a result", Normal_Extra)
-			    | QueryEmpty ->
-				log ("Query successfully executed but no result returned", Normal_Extra)
-			    | QueryError errmsg  -> log (errmsg, Error)
-	      end;
-
-	      (* Disconnect *)
-	      match Mysqldb.disconnect() with
-	      | Some error -> log (error, Error)
-	      | None       -> log ("Disconnected from MySQL", Normal_Extra)
+	  ignore (Mysqldb.query update_query)
+	end
 ;;
 
 
@@ -345,8 +219,5 @@ struct
 
     | Notify notification ->
 	notify notification
-
-    | Log (txt, log_level) ->
-	log (txt, log_level)
 ;;
 end;;
