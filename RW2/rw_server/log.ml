@@ -85,9 +85,7 @@ let log (txt, log_level) =
       match log_level with
 	| Normal -> ()
 	| Normal_Extra -> ()
-	| Error                    ->
-	    prerr_endline to_log ;
-	    Pervasives.flush Pervasives.stdout
+	| Error -> prerr_endline to_log
     end;
 
 

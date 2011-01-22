@@ -64,6 +64,7 @@ let watch_dirs directories ignore_directories =
   in
   
   let directories = ref (rem_slash directories) in
+  let ign_dirs_without_slash = rem_slash ignore_directories in
   
   let filter directories l_regexp =
     List.filter (
@@ -77,7 +78,7 @@ let watch_dirs directories ignore_directories =
 	else
 	  false
 	    
-	    (* No such file or directory *)
+      (* No such file or directory *)
       with Sys_error e ->
 	let error = "Error: "^e in 
 	prerr_endline error ;
@@ -90,34 +91,46 @@ let watch_dirs directories ignore_directories =
   (*
    * Filter
    * - if it doesn't exist
-   * - the subdirectories of an ignored one like /home/dest/ignored/dir (set to be watched) and /home/dest/Ftp/ignored (set to be ignored)
-   * /home/dest/ignored/dir is taken off the list
+   * - the subdirectories of an ignored one like /home/dest/Ftp/ignored/dir (set to be watched) and /home/dest/Ftp/ignored (set to be ignored)
+   * /home/dest/Ftp/ignored/dir is taken off of the list
    *)
-  let ignore_directories_slash = List.map (fun s -> s^"/") (rem_slash ignore_directories) in
-  let regexp_ignore_directories_slash = List.map Str.regexp ignore_directories_slash in
+  let l_regexp_ign_dirs_slash_ending =
+    List.map (
+      fun ign_dir ->
+	(* Str.quote escapes special chars which causes problems: $^.*+?[]
+	 * Refer to Str manpage
+	 *)
+	Str.regexp ((Str.quote ign_dir)^"/")
+    ) ign_dirs_without_slash
+  in
+  directories := filter !directories l_regexp_ign_dirs_slash_ending;
 
-  directories := filter !directories regexp_ignore_directories_slash;
 
   (* This dollar is used for the regexp to keep *only* the folder "test - etc" (derivative names) in the following example :
      - /home/dest/test - etc
      - /home/dest/test      <---  this one is the ignored folder
    * Without it both directories would be ignored
    *
-   * This regexp also takes off the list an entry which is the exact same one if it's set to be watched and ignored (what stupid people can do) :
+   * This regexp also takes off of the list an entry
+   * which is the exact same one if it's set to be watched and ignored (what stupid people can do) :
      - to be watched: /home/dest/Ftp
      - to be ignored: /home/dest/Ftp
    *)
-  let ignore_directories_dollar = List.map (fun s -> s^"$") (rem_slash ignore_directories) in
-  let regexp_ignore_directories_dollar = List.map Str.regexp ignore_directories_dollar in
-
-  directories := filter !directories regexp_ignore_directories_dollar;
+  let l_regexp_ign_dirs_dollar =
+    List.map (
+      fun ign_dir ->
+	Str.regexp ((Str.quote ign_dir)^"$")
+    ) ign_dirs_without_slash
+  in
+  directories := filter !directories l_regexp_ign_dirs_dollar;
   
+
   let children =
     List.fold_left (
     fun dirs2watch dir ->
       let children_of_a_branch =
 	try
-	  List.tl (Dirs.ls dir regexp_ignore_directories_dollar)
+	  List.tl (Dirs.ls dir l_regexp_ign_dirs_dollar)
 	with Failure _ -> []
       in
       children_of_a_branch@dirs2watch
