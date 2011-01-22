@@ -18,6 +18,9 @@
 
 open Types;;
 
+let reg_hidden = Str.regexp "[.]";;
+
+
 (* List the subfolders of a folder.
  * The head of the list returned is the folder given in arg
  * Sub branches not parsed if they're ignored
@@ -53,20 +56,24 @@ let rec ls folder ignored_directories =
 		    match entry with
 		    | ("." | "..") -> ()
 		    | _            ->
+		      (* Browse if it's not a hidden directory *)
+		      match Str.string_match reg_hidden entry 0 with
+			| true -> () (* it's a hidden directory *)
+			| false -> print_endline fullpath;
 			(* Stop browsing the subdirectories if they're ignored *)
-			let to_be_ignored =
-			  try
-			    ignore (List.find (fun ign_dir_reg -> Str.string_match ign_dir_reg fullpath 0) ignored_directories);
-			    true
-			  with Not_found -> false
-			in
-			match to_be_ignored with
-			| true -> () (* ignored *)
-			| false -> l := (!l)@(ls fullpath ignored_directories)
-
+			  let to_be_ignored =
+			    try
+			      ignore (List.find (fun ign_dir_reg -> Str.string_match ign_dir_reg fullpath 0) ignored_directories);
+			      true
+			    with Not_found -> false
+			  in
+			  begin match to_be_ignored with
+			    | true -> () (* ignored *)
+			    | false -> l := (!l)@(ls fullpath ignored_directories)
+			  end
 		  end
 	      | false -> ()
-	    with Sys_error err -> print_endline err
+	    with Sys_error err -> prerr_endline err
 		
 	  done;
 	with
