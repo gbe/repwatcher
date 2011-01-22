@@ -84,9 +84,9 @@ let query q =
 	      | Some errmsg' -> Log.log (errmsg', Error)
 	      end;
 	      []
-		      with Mysql.Error error ->
-			Log.log (error, Error);
-			[]
+	with Mysql.Error error ->
+	  Log.log (error, Error);
+	  []
       in
       ignore (disconnect cid);
       rows_list

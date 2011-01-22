@@ -10,7 +10,7 @@ You need to create this database and table in MySQL:
 
 CREATE DATABASE `repwatcher` ;
 
-CREATE TABLE `repwatcher`.`downloads` (
+CREATE TABLE IF NOT EXISTS `repwatcher`.`downloads` (
   `ID` int(4) NOT NULL AUTO_INCREMENT,
   `LOGIN` varchar(20) NOT NULL,
   `PROGRAM` varchar(26) NOT NULL,

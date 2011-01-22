@@ -485,7 +485,17 @@ let what_to_do event =
 					   
 		    | Some value ->
 			let folder = (value.path)^"/"^name in
-		        let children = List.tl (Dirs.ls folder []) in
+		        let children =
+			  (* Exception raised if the list returned by Dirs.ls is empty.
+			   * This shouldn't happen because 'folder' should be at least returned
+			   * If raised, it means the folder couldn't be opened by Unix.opendir *)
+			  try
+			    List.tl (Dirs.ls folder [])
+			  with Failure _ ->
+			    let error = "For some reasons, '"^folder^"' could not be opened while doing a move_to" in
+			    Log.log (error, Error);
+			    []
+			in
 			
 			(* Watch the new folder *)
                         add_watch folder (Some wd) false ;
@@ -574,9 +584,9 @@ let what_to_do event =
 				      Log.log ("move_from du child : "^(value4.path), Normal_Extra) ;
 				      del_watch wd_child
 			       ) children_and_descendants
-					;
-				      Log.log (("move_from de "^name), Normal_Extra) ;
-				      del_watch wd_key
+				;
+				Log.log (("move_from de "^name), Normal_Extra) ;
+				del_watch wd_key
 
 		  end (* eo move_from, true *)
 

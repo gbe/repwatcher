@@ -12,5 +12,4 @@ TO DO
 - Ajouter un message d'erreur et quitter si la ou les clés privées sont accessibles en lecture pour "others"
 - Tester de temps en temps si un client est toujours là toutes les 3 minutes. S'il ne répond pas au bout de 5 fois dans un interval de temps d'1 minute (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
 - Le client devrait tester de temps en temps si le serveur est là
-- Le pipe vers le processus fiston devrait être accessible que par report et plus dans pipe.ml comme maintenant
 - Faire une recherche récursive lors de chaque création de dossiers (bug du mkdir -p)

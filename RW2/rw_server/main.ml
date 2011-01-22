@@ -115,7 +115,11 @@ let watch_dirs directories ignore_directories =
   let children =
     List.fold_left (
     fun dirs2watch dir ->
-      let children_of_a_branch = List.tl (Dirs.ls dir regexp_ignore_directories_dollar) in
+      let children_of_a_branch =
+	try
+	  List.tl (Dirs.ls dir regexp_ignore_directories_dollar)
+	with Failure _ -> []
+      in
       children_of_a_branch@dirs2watch
    ) [] !directories
   in
