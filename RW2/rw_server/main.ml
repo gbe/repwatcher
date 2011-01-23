@@ -35,17 +35,20 @@ let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *
  * - Watch on it
  *)
 let load_and_watch_config () =
-  
-  if Sys.file_exists config_file then
-    begin
-      (* Parse the configuration file *)
-      let conf = Config.parse config_file in
-      (* Watch it *)
-      Core.add_watch config_file None true;
-      conf
-    end
-  else
-    failwith "Config file doesn't exist"
+
+  try
+    (* Check if the file exists and if the process can read it *)
+    Unix.access config_file [F_OK ; R_OK];
+
+    (* Parse the configuration file *)
+    let conf = Config.parse config_file in
+    (* Watch it *)
+    Core.add_watch config_file None true;
+    conf
+  with Unix_error (error,_,file) ->
+    let err = Printf.sprintf "%s: %s" file (error_message error) in
+    Log.log (err, Error) ;
+    failwith err
 ;;
 
 
@@ -153,12 +156,13 @@ let sgbd_reset_in_progress () =
   ignore (Mysqldb.query reset_accesses)
 ;;
 
+
 let clean_exit () =
   Unix.close Core.fd ;
 
   (* No need to handle SQL because each connection is closed immediately
-   * However, we do need to set all the IN_PROGRESS access to zero.
-   * This has been proved usefull for outside apps *)
+   * However, we do need to set all the IN_PROGRESS accesses to zero.
+   * This has been proved to be usefull for outside apps *)
   sgbd_reset_in_progress ()
 ;;
 
@@ -219,7 +223,17 @@ let check conf =
 	    let error = "Can't chroot in "^dir^", it's not a directory. "^err in
 	    Log.log (error, Error);
 	    failwith error
-    end
+    end;
+
+
+  (* print and log if others have read permission on file *)
+  let check_rights file =
+    let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
+    if int_of_string (Str.last_chars rights 1) != 0 then
+      Log.log ("Warning: "^file^" is accessible by the group 'other'", Error)
+  in
+  check_rights config_file ;
+  check_rights "cert/rw_serv.key"
 ;;
 
 

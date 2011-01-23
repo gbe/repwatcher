@@ -50,6 +50,9 @@ rule nexttoken = parse
   | "mysql_dbname"                     { MYSQL_DBNAME }
   | "notify_locally"                   { NOTIFY_LOCALLY }
   | "notify_remotely"                  { NOTIFY_REMOTELY }
+  | "notify_remote_ca_path"            { REMOTE_CA_PATH }
+  | "notify_remote_cert_path"          { REMOTE_CERT_PATH }
+  | "notify_remote_cert_key"           { REMOTE_CERT_KEY }
   | "notify_remote_process_identity"   { REMOTE_IDENTITY_FALLBACK }
   | "notify_remote_process_chroot"     { REMOTE_CHROOT }
   | "notify_parent_folders"            { PARENT_FOLDERS }

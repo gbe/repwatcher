@@ -19,7 +19,14 @@
 
 
 %{
-   open Types_conf 
+  open Types_conf;;
+
+  let check_options activate cert =
+    match (activate, cert) with
+    | true, None -> raise Parse_error
+    | _ -> ()
+  ;;
+
 %}
   
 
@@ -37,6 +44,9 @@
 %token MYSQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
+%token REMOTE_CA_PATH
+%token REMOTE_CERT_PATH
+%token REMOTE_CERT_KEY
 %token REMOTE_IDENTITY_FALLBACK
 %token REMOTE_CHROOT
 %token PARENT_FOLDERS
@@ -162,36 +172,70 @@ notify:
 ;
 
 notif_remote:
+|   NOTIFY_REMOTELY EQUAL true_or_false cert
+      {
+	check_options $3 $4;
+	{
+	  r_activate = $3;
+	  r_cert = $4;
+	  r_process_identity = None;
+	  r_chroot = None;
+	}
+}
 |   NOTIFY_REMOTELY EQUAL true_or_false
-      {{
-       r_activate = $3;
-       r_process_identity = None;
-       r_chroot = None;
-      }}
-|   NOTIFY_REMOTELY EQUAL true_or_false
+    cert
     REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
-      {{
-       r_activate = $3;
-       r_process_identity = Some $6;
-       r_chroot = None;
-      }}
+      {
+	check_options $3 $4;
+	{
+	  r_activate = $3;
+	  r_cert = $4;
+	  r_process_identity = Some $7;
+	  r_chroot = None;
+	}
+      }
 |   NOTIFY_REMOTELY EQUAL true_or_false
+    cert
     REMOTE_CHROOT EQUAL txt_plus
-      {{
-       r_activate = $3;
-       r_process_identity = None;
-       r_chroot = Some $6;
-      }}
+      {
+	check_options $3 $4;
+	{
+	  r_activate = $3;
+	  r_cert = $4;
+	  r_process_identity = None;
+	  r_chroot = Some $7;
+	}
+      }
 |   NOTIFY_REMOTELY EQUAL true_or_false
+    cert
     REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
     REMOTE_CHROOT EQUAL txt_plus
-      {{
-       r_activate = $3;
-       r_process_identity = Some $6;
-       r_chroot = Some $9;
-      }}
+      {
+	check_options $3 $4;
+	{
+	  r_activate = $3;
+	  r_cert = $4;
+	  r_process_identity = Some $7;
+	  r_chroot = Some $10;
+	}
+      }
 ;
 
+
+cert:
+| REMOTE_CA_PATH EQUAL txt_plus
+  REMOTE_CERT_PATH EQUAL txt_plus
+  REMOTE_CERT_KEY EQUAL txt_plus
+  {
+    Some
+    {
+      c_ca_path = $3;
+      c_serv_path = $6;
+      c_serv_key = $9;
+    }
+  }
+| { None }
+;
 
 log:
 /* If the log part is commented then it means logging is disabled */

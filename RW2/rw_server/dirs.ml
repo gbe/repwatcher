@@ -59,7 +59,7 @@ let rec ls folder ignored_directories =
 		      (* Browse if it's not a hidden directory *)
 		      match Str.string_match reg_hidden entry 0 with
 			| true -> () (* it's a hidden directory *)
-			| false -> print_endline fullpath;
+			| false ->
 			(* Stop browsing the subdirectories if they're ignored *)
 			  let to_be_ignored =
 			    try

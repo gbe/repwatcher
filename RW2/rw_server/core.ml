@@ -44,9 +44,10 @@ let ht_iwatched = Hashtbl.create 4001
 
 let get_key path_target =
   try
-    Hashtbl.iter (fun wd fi ->
-      if fi.path = path_target then raise (Found wd)
-		 ) ht_iwatched;
+    Hashtbl.iter (
+      fun wd fi ->
+	if fi.path = path_target then raise (Found wd)
+    ) ht_iwatched;
     let err = ("error get_key with "^path_target^" not found") in
     Log.log (err, Error) ;
     None
@@ -58,9 +59,10 @@ let get_key path_target =
 (* Look in the hashtable if the value exists -> bool *)
 let is_value path_target =
   try
-    Hashtbl.iter (fun wd fi ->
-      if fi.path = path_target then raise (Found wd)
-		 ) ht_iwatched;
+    Hashtbl.iter (
+      fun wd fi ->
+	if fi.path = path_target then raise (Found wd)
+    ) ht_iwatched;
     false
   with Found _ -> true
 ;;

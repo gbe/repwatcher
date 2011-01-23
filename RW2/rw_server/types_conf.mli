@@ -34,12 +34,19 @@ type sql_db = Mysql.db = {
     dbuser : string option ;
 }
 
+type cert_t = {
+  c_ca_path : string;
+  c_serv_path : string;
+  c_serv_key : string;
+}
+
 type remote = {
     r_activate : bool;
+    r_cert : cert_t option;
     r_process_identity : string option;
     r_chroot : string option;
-  }
-      
+}
+
 type notify = {
     n_locally  : bool;
     n_remotely : remote;
