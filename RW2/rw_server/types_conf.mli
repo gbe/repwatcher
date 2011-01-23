@@ -36,8 +36,9 @@ type sql_db = Mysql.db = {
 
 type cert_t = {
   c_ca_path : string;
-  c_serv_path : string;
-  c_serv_key : string;
+  c_serv_cert_path : string;
+  c_serv_key_path : string;
+  c_serv_key_pwd : string;
 }
 
 type remote = {

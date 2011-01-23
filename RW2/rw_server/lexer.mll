@@ -51,8 +51,9 @@ rule nexttoken = parse
   | "notify_locally"                   { NOTIFY_LOCALLY }
   | "notify_remotely"                  { NOTIFY_REMOTELY }
   | "notify_remote_ca_path"            { REMOTE_CA_PATH }
-  | "notify_remote_cert_path"          { REMOTE_CERT_PATH }
-  | "notify_remote_cert_key"           { REMOTE_CERT_KEY }
+  | "notify_remote_serv_cert_path"     { REMOTE_SERV_CERT_PATH }
+  | "notify_remote_serv_key_path"      { REMOTE_SERV_KEY_PATH }
+  | "notify_remote_serv_key_pwd"       { REMOTE_SERV_KEY_PWD }
   | "notify_remote_process_identity"   { REMOTE_IDENTITY_FALLBACK }
   | "notify_remote_process_chroot"     { REMOTE_CHROOT }
   | "notify_parent_folders"            { PARENT_FOLDERS }

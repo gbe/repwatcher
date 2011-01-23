@@ -45,8 +45,9 @@
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
 %token REMOTE_CA_PATH
-%token REMOTE_CERT_PATH
-%token REMOTE_CERT_KEY
+%token REMOTE_SERV_CERT_PATH
+%token REMOTE_SERV_KEY_PATH
+%token REMOTE_SERV_KEY_PWD
 %token REMOTE_IDENTITY_FALLBACK
 %token REMOTE_CHROOT
 %token PARENT_FOLDERS
@@ -224,14 +225,16 @@ notif_remote:
 
 cert:
 | REMOTE_CA_PATH EQUAL txt_plus
-  REMOTE_CERT_PATH EQUAL txt_plus
-  REMOTE_CERT_KEY EQUAL txt_plus
+  REMOTE_SERV_CERT_PATH EQUAL txt_plus
+  REMOTE_SERV_KEY_PATH EQUAL txt_plus
+  REMOTE_SERV_KEY_PWD EQUAL txt_plus
   {
     Some
     {
       c_ca_path = $3;
-      c_serv_path = $6;
-      c_serv_key = $9;
+      c_serv_cert_path = $6;
+      c_serv_key_path = $9;
+      c_serv_key_pwd = $12;
     }
   }
 | { None }
