@@ -23,12 +23,6 @@ open Types
 open Types_conf
 
 
-let certfile = ref "cert/rw_serv.crt"
-let privkey  = ref "cert/rw_serv.key"
-let password = ref "soso"
-
-let ca = "CA/CA.crt"
-
 let port         = ref 9292
 let backlog      = 15
 
@@ -83,7 +77,7 @@ let send (com : com_server2clients) sock_opt =
     try 
       Ssl.output_string ssl_s ser_com
     with Ssl.Write_error _ ->
-      tellserver (Types.Log ("SSL write error\n", Error))
+      tellserver (Types.Log ("SSL write error", Error))
   in
   
   (* If sock is not given then it means the
@@ -195,25 +189,35 @@ let run tor remote_config =
   Ssl_threads.init ();
   Ssl.init ();
 
+  let certs =
+    match remote_config.r_cert with
+      | None -> assert false
+      | Some certs -> certs
+  in
+
   let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Server_context in
 
-    if !password <> "" then
-      Ssl.set_password_callback ctx (fun _ -> !password);
+  if certs.c_serv_key_pwd <> "" then
+      Ssl.set_password_callback ctx (fun _ -> certs.c_serv_key_pwd);
 
   begin
     try
-      Ssl.use_certificate ctx !certfile !privkey;
-    with Ssl.Private_key_error ->
-      let error = "Err. Ssl_server: wrong private key password" in
-      tellserver (Types.Log (error, Error)) ;
-      failwith error
+      Ssl.use_certificate ctx certs.c_serv_cert_path certs.c_serv_key_path;
+    with
+      | Ssl.Private_key_error ->
+	let error = "Err. Ssl_server: wrong private key password" in
+	tellserver (Types.Log (error, Error)) ;
+	failwith error
+      | Ssl.Certificate_error ->
+	tellserver (Types.Log ("Certificate error", Error));
+	raise Ssl.Certificate_error
   end;
   
   Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
   
   begin
     try
-      Ssl.load_verify_locations ctx ca (Filename.dirname ca)
+      Ssl.load_verify_locations ctx certs.c_ca_path (Filename.dirname certs.c_ca_path)
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
       tellserver ( Types.Log (error, Error)) ;

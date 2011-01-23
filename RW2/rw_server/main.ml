@@ -167,6 +167,7 @@ let clean_exit () =
 ;;
 
 
+
 let check conf =
   (* Test if we can successfully connect to the SGBD
    * if we can't, then we exit right away
@@ -226,6 +227,7 @@ let check conf =
     end;
 
 
+
   (* print and log if others have read permission on file *)
   let check_rights file =
     let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
@@ -233,8 +235,34 @@ let check conf =
       Log.log ("Warning: "^file^" is accessible by the group 'other'", Error)
   in
   check_rights config_file ;
-  check_rights "cert/rw_serv.key"
+
+
+  (* Does the file exist and can it be read ? *)
+  let exists_and_can_be_read file =
+    try
+      (* Checks if the file exists and if the process can read it *)
+      Unix.access file [F_OK ; R_OK];
+
+    with Unix_error (error,_,file') ->
+      let err = Printf.sprintf "%s: %s" file' (error_message error) in
+      Log.log (err, Error) ;
+      failwith err
+  in
+
+  match conf.c_notify.n_remotely.r_cert with
+    | None -> ()
+    | Some cert ->
+      (* check on CA *)
+      exists_and_can_be_read cert.c_ca_path;
+
+      (* check on cert *)
+      exists_and_can_be_read cert.c_serv_cert_path;
+
+      (* checks on the key *)
+      exists_and_can_be_read cert.c_serv_key_path;
+      check_rights cert.c_serv_key_path
 ;;
+
 
 
 
