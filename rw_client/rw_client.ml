@@ -57,7 +57,41 @@ under certain conditions; for details read COPYING file\n\n";
     (fun s -> host := s) usage;
   
   if !host = "" then (Printf.printf "%s\n\n" usage; exit 1);
- 
+
+
+  (* print and log if others have read permission on file *)
+  let check_rights file =
+    let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
+    if int_of_string (Str.last_chars rights 1) != 0 then
+      begin
+	let warning = "Warning: "^file^" is accessible by the group 'other'" in
+	(* Log.log (warning, Error) *)
+	prerr_endline warning
+      end
+  in
+  
+  (* Does the file exist and can it be read ? *)
+  let exists_and_can_be_read file =
+    try
+      (* Checks if the file exists and if the process can read it *)
+      Unix.access file [F_OK ; R_OK];
+
+    with Unix_error (error,_,file') ->
+      let err = Printf.sprintf "%s: %s" file' (error_message error) in
+      (* Log.log (err, Error) ; *)
+      failwith err
+  in
+  (* check on CA *)
+  exists_and_can_be_read ca;
+  
+  (* check on cert *)
+  exists_and_can_be_read !certfile;
+
+  (* checks on the key *)
+  exists_and_can_be_read !privkey;
+  check_rights !privkey ;
+
+
   Ssl_threads.init ();
   Ssl.init ();
 

@@ -1,8 +1,6 @@
 TO DO
 
-- Script pour créer les certificats et CA, signer etc.
 - Voir pour mettre en place une base Postgresql (et linker à la compilation, en cas de besoin sur MySQL ou Postgresql mais pas les 2)
 - Voir pour mettre en place du sqlite
-- Ajouter un message d'erreur si la clé privée du client est accessible en lecture pour "others"
 - Tester de temps en temps si un client est toujours là toutes les 3 minutes. S'il ne répond pas au bout de 5 fois dans un interval de temps d'1 minute (par exemple), alors la socket est à supprimer. De cette façon, on accumule pas des sockets qui ne répondent plus. Serveur et client à mettre à jour. Thread en plus à faire côté serveur pour le processus ssl
 - Le client devrait tester de temps en temps si le serveur est là
