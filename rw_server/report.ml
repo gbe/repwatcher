@@ -169,42 +169,20 @@ let sql (f, state, date) =
 	
   | File_Closed ->
 
-      let id_query =
-	Printf.sprintf "SELECT ID \
-	  FROM downloads \
+      let update_query =
+	Printf.sprintf "UPDATE downloads \
+	  SET ENDING_DATE = %s, IN_PROGRESS = '0' \
 	  WHERE LOGIN=%s AND \
 	  FILENAME=%s AND \
 	  IN_PROGRESS = 1 \
 	  ORDER BY STARTING_DATE DESC \
 	  LIMIT 1"
+	  (Mysqldb.ml2str date)
 	  (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_name)
       in
-	      
-      (* Do the query *)
-      let rows = Mysqldb.query id_query in
-       
-      if List.length rows = 1 then
-	begin
-	  let row = List.hd rows in
-	  let id =
-	    (* 0 because I know there is only one result returned *)
-	    (* get column 0 from row *)
-	    match Array.get row 0 with
-	    | None -> assert false
-	    | Some id -> id
-	  in
 
-	  let update_query =
-	    Printf.sprintf "UPDATE downloads \
-	      SET ENDING_DATE = %s, IN_PROGRESS = '0' \
-	      WHERE ID = %s"
-	      (Mysqldb.ml2str date)
-	      (Mysqldb.ml2str id)
-	  in
-
-	  ignore (Mysqldb.query update_query)
-	end
+      ignore (Mysqldb.query update_query)
 ;;
 
 
