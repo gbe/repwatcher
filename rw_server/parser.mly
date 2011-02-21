@@ -47,12 +47,12 @@ let check_options cert =
 %token MYSQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
-%token REMOTE_CA_PATH
-%token REMOTE_SERV_CERT_PATH
-%token REMOTE_SERV_KEY_PATH
-%token REMOTE_SERV_KEY_PWD
-%token REMOTE_IDENTITY_FALLBACK
-%token REMOTE_CHROOT
+%token SERVER_CA_PATH
+%token SERVER_CERT_PATH
+%token SERVER_KEY_PATH
+%token SERVER_KEY_PWD
+%token SERVER_PROCESS_IDENTITY
+%token SERVER_PROCESS_CHROOT
 %token PARENT_FOLDERS
 %token LOG_LEVEL
 %token <string>TXT
@@ -196,7 +196,7 @@ server:
 	 })
    }
     
-| certs REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
+| certs SERVER_PROCESS_IDENTITY EQUAL txt_plus
     {
      check_options $1 ;
      Some ({
@@ -206,7 +206,7 @@ server:
 	 })
    }
     
-| certs REMOTE_CHROOT EQUAL txt_plus
+| certs SERVER_PROCESS_CHROOT EQUAL txt_plus
     {
      check_options $1 ;
      Some ({
@@ -216,8 +216,8 @@ server:
 	 })
    }
     
-| certs REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
-       REMOTE_CHROOT EQUAL txt_plus
+| certs SERVER_PROCESS_IDENTITY EQUAL txt_plus
+        SERVER_PROCESS_CHROOT EQUAL txt_plus
     {
      check_options $1 ;
      Some ({
@@ -231,10 +231,10 @@ server:
 
 
 certs:
-| REMOTE_CA_PATH EQUAL txt_plus
-  REMOTE_SERV_CERT_PATH EQUAL txt_plus
-  REMOTE_SERV_KEY_PATH EQUAL txt_plus
-  REMOTE_SERV_KEY_PWD EQUAL txt_plus
+| SERVER_CA_PATH EQUAL txt_plus
+  SERVER_CERT_PATH EQUAL txt_plus
+  SERVER_KEY_PATH EQUAL txt_plus
+  SERVER_KEY_PWD EQUAL txt_plus
   {
     Some
      {
