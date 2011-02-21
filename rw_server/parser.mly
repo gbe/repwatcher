@@ -150,15 +150,12 @@ mysql:
 notify:
 |   NOTIFY_LOCALLY EQUAL true_or_false
     NOTIFY_REMOTELY EQUAL true_or_false
-    PARENT_FOLDERS EQUAL txt_plus
+    PARENT_FOLDERS EQUAL uint
     {
      try
        let nb =
-	 
-	 let i = int_of_string $9 in
-	 if i < 0 then
-	   raise Parse_error
-	 else if i = 0 then
+	 let i = $9 in
+	 if i = 0 then
 	   None
 	 else
 	   Some i
@@ -219,7 +216,7 @@ s_certs:
 
 s_port:
 | { None }
-| SERVER_PORT EQUAL uint { Some $3 }
+| SERVER_PORT EQUAL uint_pos { Some $3 }
 
 s_process_identity:
 | { None }
@@ -273,12 +270,20 @@ true_or_false:
 }
 ;
 
-  uint:
+uint_pos:
+| uint {
+  if $1 = 0 then
+    raise Parse_error
+  else
+    $1
+}
+
+uint:
 | txt_plus {
   try
     let i = int_of_string $1 in
 
-    if i <= 0 then
+    if i < 0 then
       raise Parse_error
     else
       i
