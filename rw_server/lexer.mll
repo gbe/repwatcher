@@ -43,6 +43,7 @@ rule nexttoken = parse
   | "ignore_users"                     { IGNORE_USERS }
   | "specified_programs"               { SPECIFIED_PROGRAMS }
   | "unwanted_programs"                { UNWANTED_PROGRAMS }
+  | "process_identity"                 { PROCESS_IDENTITY }
   | "mysql_login"                      { MYSQL_LOGIN }
   | "mysql_pswd"                       { MYSQL_PSWD }
   | "mysql_host"                       { MYSQL_HOST }
@@ -58,7 +59,6 @@ rule nexttoken = parse
   | "notify_remote_process_chroot"     { REMOTE_CHROOT }
   | "notify_parent_folders"            { PARENT_FOLDERS }
   | "log_level"                        { LOG_LEVEL }
-  | "main_process_identity_fallback"   { MAIN_IDENTITY_FALLBACK }
   | eof                                { EOF }
   | '\n'                               { newline lexbuf; nexttoken lexbuf }
   | space+                             { nexttoken lexbuf }

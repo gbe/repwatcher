@@ -192,7 +192,7 @@ let check conf =
 
   (* Check if the identity which should be taken by the main process exists (only if the current identity is root) *) 
   begin
-    match conf.c_main_proc_id_fallback with
+    match conf.c_process_identity with
     | None -> ()
     | Some new_main_identity ->
 	if Unix.geteuid() = 0 && Unix.getegid() = 0 then
@@ -362,7 +362,7 @@ under certain conditions; for details read COPYING file\n\n";
 	
 	
       begin
-	match conf.c_main_proc_id_fallback with
+	match conf.c_process_identity with
 	| None -> ()
 	| Some new_identity ->
 	    (* Drop privileges by changing the processus' identity if its current id is root *)

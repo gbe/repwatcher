@@ -39,6 +39,7 @@ let check_options cert =
 %token IGNORE_USERS
 %token SPECIFIED_PROGRAMS
 %token UNWANTED_PROGRAMS
+%token PROCESS_IDENTITY
 %token MYSQL_LOGIN
 %token MYSQL_PSWD
 %token MYSQL_HOST
@@ -54,7 +55,6 @@ let check_options cert =
 %token REMOTE_CHROOT
 %token PARENT_FOLDERS
 %token LOG_LEVEL
-%token MAIN_IDENTITY_FALLBACK
 %token <string>TXT
 %token EOF
 
@@ -68,11 +68,11 @@ let check_options cert =
 %%
 
 
-configuration: watch mode main_identity_fallback mysql notify server log EOF {
+configuration: watch mode process_identity mysql notify server log EOF {
    {
       c_watch = $1;
       c_mode = $2;
-      c_main_proc_id_fallback = $3;
+      c_process_identity = $3;
       c_mysql = $4;
       c_notify = $5;
       c_server = $6;
@@ -114,9 +114,9 @@ mode:
 | UNWANTED_PROGRAMS EQUAL txt_star_list { (Unwanted_programs, $3) }
 ;
 
-main_identity_fallback:
+process_identity:
 | { None }
-| MAIN_IDENTITY_FALLBACK EQUAL txt_plus { Some $3 }
+| PROCESS_IDENTITY EQUAL txt_plus { Some $3 }
 ;
 
 mysql:
