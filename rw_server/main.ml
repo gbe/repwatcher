@@ -157,6 +157,7 @@ let sgbd_reset_in_progress () =
 ;;
 
 
+
 let clean_exit () =
   Unix.close Core.fd ;
 
@@ -168,7 +169,9 @@ let clean_exit () =
 
 
 
+
 let check conf =
+
   (* Test if we can successfully connect to the SGBD
    * if we can't, then we exit right away
    * This prevents the program to crash long after starting running it
@@ -176,7 +179,6 @@ let check conf =
    * With this, we know from the start if (at least this part) it goes right or wrong.
    * There is no need to add a try/with here because it's handled in Mysqldb.ml
    *)  
-
   begin
     match Mysqldb.connect() with
     | None -> failwith "Could not connect, read the log"
@@ -200,7 +202,8 @@ let check conf =
 	      ignore (Unix.getpwnam new_main_identity);
 	    with Not_found ->
 	      let error =
-		"Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity" in
+		"Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity"
+	      in
 	      Log.log (error, Error);
 	      failwith error
 	  end
@@ -228,7 +231,7 @@ let check conf =
   in
 
 
-  (* Check if the directory to chroot the network process exists *)
+  (* If the server is enabled *)
   if conf.c_notify.n_remotely then
     begin
       match conf.c_server with
@@ -238,17 +241,18 @@ let check conf =
 	    match server.s_certs with
 	    | None -> assert false
 	    | Some certs -> 
-		(* check on CA *)
+		(* checks the CA *)
 		exists_and_can_be_read certs.c_ca_path;
-		
-		(* check on cert *)
+
+		(* checks the cert *)
 		exists_and_can_be_read certs.c_serv_cert_path;
-		
-		(* checks on the key *)
+
+		(* checks the key *)
 		exists_and_can_be_read certs.c_serv_key_path;
 		check_rights certs.c_serv_key_path
 	  end;
 
+	  (* Check if the directory to chroot exists *)
 	  begin
 	    match server.s_chroot with
 	    | None -> ()
@@ -264,14 +268,25 @@ let check conf =
 		  let error = "Can't chroot in "^dir^", it's not a directory. "^err in
 		  Log.log (error, Error);
 		  failwith error
-	  end
+	  end;
+
+          (* Check if the identity which should be taken by the remote process exists (only if the current identity is root) *)
+	  begin
+	    match server.s_process_identity with
+	    | None -> ()
+	    | Some new_remote_identity ->
+		if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+		  begin
+		    try
+		      (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
+		      ignore (Unix.getpwnam new_remote_identity);
+		    with Not_found ->
+		      let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
+		      Log.log (error, Error);
+		      failwith error
+		  end;
+	  end;
     end;
-
-
-
-
-
-
 ;;
 
 
@@ -292,39 +307,37 @@ under certain conditions; for details read COPYING file\n\n";
 
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
-  
+
+
+(* Perform the following tests and failwith in case of error :
+   - SGBD connection
+   - main process identity
+   - rights on the configuration file
+
+   if the server is enabled :
+   - exist and can be read: CA, cert
+   - exist, can be read and rights: key
+   - chroot folder
+   - server identity
+ *)
   check conf;
 
+
+(* Set to zero every files marked as in progress in the SGBD *)
   sgbd_reset_in_progress ();
 
-	
 
 
 
- 
+
 (* Fork if remote notifications are activated *)
   let fd =
     match conf.c_notify.n_remotely with
     | true  ->
+	(* Match left here willingly *)
 	begin match conf.c_server with
 	| None -> assert false
 	| Some server ->
-	    
-            (* Check if the identity exists which should be taken by the remote process (only if the current identity is root) *) 
-	    begin match server.s_process_identity with
-	    | None -> ()
-	    | Some new_remote_identity ->
-		if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-		  begin try
-		    (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
-		    ignore (Unix.getpwnam new_remote_identity);
-		  with Not_found ->
-		    let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
-		    Log.log (error, Error);
-		    failwith error
-		  end
-	    end;
-	    
 	    Log.log ("Start server for remote notifications", Normal_Extra) ;
 	    Unix.fork();
 	end
@@ -340,59 +353,59 @@ under certain conditions; for details read COPYING file\n\n";
 	| None -> assert false
 	| Some server ->
 	    Ssl_server.run Pipe.tor server
-	end
-  | _ ->
-      begin
-	if conf.c_notify.n_remotely then begin
-	  ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
-	end;
-	
-	
-	begin
-	  match conf.c_main_proc_id_fallback with
-	  | None -> ()
-	  | Some new_identity ->
-	      (* Drop privileges by changing the processus' identity if its current id is root *)
-	      if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-		begin
-		  try
-		    (* Check in the file /etc/passwd if the user "new_identity" exists *)
-		    let passwd_entry = Unix.getpwnam new_identity in
-		    setgid passwd_entry.pw_gid;
-		    setuid passwd_entry.pw_uid;
-		  with Not_found ->
-		    let error = "Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity" in
-		    Log.log (error, Error);
-		    failwith error
-		end
-	end;
-	
-	
-	(* watch the directories given in the config file *)
-	watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
-	
-	Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) ;
-	Log.log ("Repwatcher is watching youuu ! :)", Normal) ;    
-	
-	
-        (* **************************** *)
-	(* For interruptions *)
-	let loop = ref true in
-	
-	let handle_interrupt i =
-	  loop := false
-	in	    	    
-	ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
-	ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
-        (* **************************** *)	    
-	
-	while !loop do
-	  try
-	    let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
-	    let event_l = Inotify.read Core.fd in
-	    List.iter (fun event -> Core.what_to_do event) event_l
-	  with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
-	done;
-
       end
+  | _ ->
+
+      if conf.c_notify.n_remotely then begin
+	ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
+      end;
+	
+	
+      begin
+	match conf.c_main_proc_id_fallback with
+	| None -> ()
+	| Some new_identity ->
+	    (* Drop privileges by changing the processus' identity if its current id is root *)
+	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+	      begin
+		try
+		  (* Check in the file /etc/passwd if the user "new_identity" exists *)
+		  let passwd_entry = Unix.getpwnam new_identity in
+		  setgid passwd_entry.pw_gid;
+		  setuid passwd_entry.pw_uid;
+
+		with Not_found ->
+		  (* This shouldn't be triggered here because the test has been already done in the function check() *)
+		  let error = "Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity" in
+		  Log.log (error, Error);
+		  failwith error
+	      end
+      end;
+
+
+      (* watch the directories given in the config file *)
+      watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
+
+      Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) ;
+      Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
+
+
+      (* **************************** *)
+      (* For interruptions *)
+      let loop = ref true in
+	
+      let handle_interrupt i =
+	loop := false
+      in
+      ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
+      ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
+      (* **************************** *)
+
+      while !loop do
+	try
+	  let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+	  let event_l = Inotify.read Core.fd in
+	  List.iter (fun event -> Core.what_to_do event) event_l
+	with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
+      done;
 ;;
