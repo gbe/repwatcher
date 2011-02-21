@@ -185,52 +185,21 @@ notify:
 
 server:
 | { None }
-
-| certs
+| s_certs s_process_identity s_chroot
     {
-     check_options $1 ;
-     Some ({
-	   s_certs = $1;
-	   s_process_identity = None;
-	   s_chroot = None;
-	 })
-   }
-    
-| certs SERVER_PROCESS_IDENTITY EQUAL txt_plus
-    {
-     check_options $1 ;
-     Some ({
-	   s_certs = $1;
-	   s_process_identity = Some $4;
-	   s_chroot = None;
-	 })
-   }
-    
-| certs SERVER_PROCESS_CHROOT EQUAL txt_plus
-    {
-     check_options $1 ;
-     Some ({
-	   s_certs = $1;
-	   s_process_identity = None;
-	   s_chroot = Some $4;
-	 })
-   }
-    
-| certs SERVER_PROCESS_IDENTITY EQUAL txt_plus
-        SERVER_PROCESS_CHROOT EQUAL txt_plus
-    {
-     check_options $1 ;
-     Some ({
-	   s_certs = $1;
-	   s_process_identity = Some $4;
-	   s_chroot = Some $7;
-	 })
+     check_options $1;
+     Some
+       {
+	s_certs = $1;
+	s_process_identity = $2;
+	s_chroot = $3;
+      }
    }
 ;
 
 
-
-certs:
+s_certs:
+| { None }
 | SERVER_CA_PATH EQUAL txt_plus
   SERVER_CERT_PATH EQUAL txt_plus
   SERVER_KEY_PATH EQUAL txt_plus
@@ -244,8 +213,19 @@ certs:
       c_serv_key_pwd = $12;
     }
  }
-| { None }
 ;
+
+s_process_identity:
+| { None }
+| SERVER_PROCESS_IDENTITY EQUAL txt_plus { Some $3 }
+;
+
+s_chroot:
+| { None }
+| SERVER_PROCESS_CHROOT EQUAL txt_plus { Some $3 }
+;
+
+
 
 log:
 /* If the log part is commented then it means logging is disabled */

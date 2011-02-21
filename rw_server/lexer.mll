@@ -51,13 +51,13 @@ rule nexttoken = parse
   | "mysql_dbname"                     { MYSQL_DBNAME }
   | "notify_locally"                   { NOTIFY_LOCALLY }
   | "notify_remotely"                  { NOTIFY_REMOTELY }
+  | "notify_parent_folders"            { PARENT_FOLDERS }
   | "server_ca_path"                   { SERVER_CA_PATH }
   | "server_cert_path"                 { SERVER_CERT_PATH }
   | "server_key_path"                  { SERVER_KEY_PATH }
   | "server_key_pwd"                   { SERVER_KEY_PWD }
   | "server_process_identity"          { SERVER_PROCESS_IDENTITY }
   | "server_process_chroot"            { SERVER_PROCESS_CHROOT }
-  | "notify_parent_folders"            { PARENT_FOLDERS }
   | "log_level"                        { LOG_LEVEL }
   | eof                                { EOF }
   | '\n'                               { newline lexbuf; nexttoken lexbuf }
