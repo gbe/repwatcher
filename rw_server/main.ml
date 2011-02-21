@@ -206,28 +206,6 @@ let check conf =
 	  end
   end;
 
-
-  (* Check if the directory to chroot the network process exists *)
-  if conf.c_notify.n_remotely.r_activate then
-    begin
-      match conf.c_notify.n_remotely.r_chroot with
-      | None -> ()
-      | Some dir ->
-	  try
-	    match Sys.is_directory dir with
-	    | true -> ()
-	    | false ->
-		let error = "Can't chroot in "^dir^", it's not a directory" in
-		Log.log (error, Error);
-		failwith error
-	  with Sys_error err ->
-	    let error = "Can't chroot in "^dir^", it's not a directory. "^err in
-	    Log.log (error, Error);
-	    failwith error
-    end;
-
-
-
   (* print and log if others have read permission on file *)
   let check_rights file =
     let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
@@ -242,25 +220,58 @@ let check conf =
     try
       (* Checks if the file exists and if the process can read it *)
       Unix.access file [F_OK ; R_OK];
-
+      
     with Unix_error (error,_,file') ->
       let err = Printf.sprintf "%s: %s" file' (error_message error) in
       Log.log (err, Error) ;
       failwith err
   in
 
-  match conf.c_notify.n_remotely.r_cert with
-    | None -> ()
-    | Some cert ->
-      (* check on CA *)
-      exists_and_can_be_read cert.c_ca_path;
 
-      (* check on cert *)
-      exists_and_can_be_read cert.c_serv_cert_path;
+  (* Check if the directory to chroot the network process exists *)
+  if conf.c_notify.n_remotely then
+    begin
+      match conf.c_server with
+      | None -> assert false
+      | Some server ->
+	  begin
+	    match server.s_certs with
+	    | None -> assert false
+	    | Some certs -> 
+		(* check on CA *)
+		exists_and_can_be_read certs.c_ca_path;
+		
+		(* check on cert *)
+		exists_and_can_be_read certs.c_serv_cert_path;
+		
+		(* checks on the key *)
+		exists_and_can_be_read certs.c_serv_key_path;
+		check_rights certs.c_serv_key_path
+	  end;
 
-      (* checks on the key *)
-      exists_and_can_be_read cert.c_serv_key_path;
-      check_rights cert.c_serv_key_path
+	  begin
+	    match server.s_chroot with
+	    | None -> ()
+	    | Some dir ->
+		try
+		  match Sys.is_directory dir with
+		  | true -> ()
+		  | false ->
+		      let error = "Can't chroot in "^dir^", it's not a directory" in
+		      Log.log (error, Error);
+		      failwith error
+		with Sys_error err ->
+		  let error = "Can't chroot in "^dir^", it's not a directory. "^err in
+		  Log.log (error, Error);
+		  failwith error
+	  end
+    end;
+
+
+
+
+
+
 ;;
 
 
@@ -293,28 +304,30 @@ under certain conditions; for details read COPYING file\n\n";
  
 (* Fork if remote notifications are activated *)
   let fd =
-    match conf.c_notify.n_remotely.r_activate with
+    match conf.c_notify.n_remotely with
     | true  ->
-	
-        (* Check if the identity exists which should be taken by the remote process (only if the current identity is root) *) 
-	begin
-	  match conf.c_notify.n_remotely.r_process_identity with
-	  | None -> ()
-	  | Some new_remote_identity ->
-	      if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-		begin
-		  try
+	begin match conf.c_server with
+	| None -> assert false
+	| Some server ->
+	    
+            (* Check if the identity exists which should be taken by the remote process (only if the current identity is root) *) 
+	    begin match server.s_process_identity with
+	    | None -> ()
+	    | Some new_remote_identity ->
+		if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+		  begin try
 		    (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
 		    ignore (Unix.getpwnam new_remote_identity);
 		  with Not_found ->
 		    let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
 		    Log.log (error, Error);
 		    failwith error
-		end
-	end;
-	
-	Log.log ("Start server for remote notifications", Normal_Extra) ;
-	Unix.fork()
+		  end
+	    end;
+	    
+	    Log.log ("Start server for remote notifications", Normal_Extra) ;
+	    Unix.fork();
+	end
     | false -> -1
   in
   
@@ -322,11 +335,15 @@ under certain conditions; for details read COPYING file\n\n";
 (* If the process has been forked *)   
   match fd with
   | 0 ->
-      if conf.c_notify.n_remotely.r_activate then
-	Ssl_server.run Pipe.tor conf.c_notify.n_remotely
+      if conf.c_notify.n_remotely then begin
+	match conf.c_server with
+	| None -> assert false
+	| Some server ->
+	    Ssl_server.run Pipe.tor server
+	end
   | _ ->
       begin
-	if conf.c_notify.n_remotely.r_activate then begin
+	if conf.c_notify.n_remotely then begin
 	  ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
 	end;
 	

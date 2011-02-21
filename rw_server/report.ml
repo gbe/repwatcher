@@ -105,7 +105,7 @@ let notify notification =
 
 	  end ;
 
-	if conf.c_notify.n_remotely.r_activate then
+	if conf.c_notify.n_remotely then
 	  try
                
 	    let str_new_dl =

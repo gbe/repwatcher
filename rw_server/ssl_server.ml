@@ -79,7 +79,7 @@ let send (com : com_server2clients) sock_opt =
     with Ssl.Write_error _ ->
       tellserver (Types.Log ("SSL write error", Error))
   in
-  
+
   (* If sock is not given then it means the
    * notification must be sent to every one *)
   match sock_opt with
@@ -102,6 +102,7 @@ let pipe_waits_for_notifications tor =
       begin
 	let data = String.sub buf 0 recv in
 	let notif = (Marshal.from_string data 0 : Types.notification) in
+
 	(* Resend the data already serialized to the clients *)
         match notif with
 	| Local_notif _ -> assert false
@@ -179,7 +180,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
 
 
 
-let run tor remote_config =
+let run tor server =
 
 
   
@@ -190,9 +191,9 @@ let run tor remote_config =
   Ssl.init ();
 
   let certs =
-    match remote_config.r_cert with
-      | None -> assert false
-      | Some certs -> certs
+    match server.s_certs with
+    | None -> assert false
+    | Some certs -> certs
   in
 
   let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Server_context in
@@ -248,12 +249,12 @@ let run tor remote_config =
 	      tellserver ( Types.Log (error, Error));
 	      failwith error
       in
-      let passwd_entry_opt = check_identity remote_config.r_process_identity in
+      let passwd_entry_opt = check_identity server.s_process_identity in
       
       (* Chroot the process *)
       begin
 	try
-	  match remote_config.r_chroot with
+	  match server.s_chroot with
 	  | None -> ()
 	  | Some dir ->
 	      Unix.chdir dir ; Unix.chroot "." ;
@@ -272,7 +273,7 @@ let run tor remote_config =
 	    setgid passwd_entry.pw_gid;
 	    setuid passwd_entry.pw_uid;
 	    
-	    match remote_config.r_process_identity with
+	    match server.s_process_identity with
 	    | None -> assert false
 	    | Some new_remote_id -> tellserver (Types.Log (("Network process identity changed to "^new_remote_id), Normal_Extra))
       end;

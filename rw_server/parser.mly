@@ -19,13 +19,15 @@
 
 
 %{
-  open Types_conf;;
+open Types_conf;;
 
-  let check_options activate cert =
-    match (activate, cert) with
-    | true, None -> raise Parse_error
-    | _ -> ()
-  ;;
+let is_server_activated = ref false ;;
+
+let check_options cert =
+  match (!is_server_activated, cert) with
+  | true, None -> raise Parse_error
+  | _ -> ()
+;;
 
 %}
   
@@ -58,22 +60,23 @@
 
   
 /* Point d'entrée de la grammaire */
-%start conf
+%start configuration
   
 /* Type des valeurs retournées par l'analyseur syntaxique */
-%type <Types_conf.configuration> conf
+%type <Types_conf.configuration> configuration
   
 %%
 
 
-conf: watch mode main_identity_fallback mysql notify log EOF {
+configuration: watch mode main_identity_fallback mysql notify server log EOF {
    {
       c_watch = $1;
       c_mode = $2;
       c_main_proc_id_fallback = $3;
       c_mysql = $4;
       c_notify = $5;
-      c_log = $6;
+      c_server = $6;
+      c_log = $7;
    }
 }
 ;
@@ -144,99 +147,103 @@ mysql:
 ;
 
 notify:
-|  NOTIFY_LOCALLY EQUAL true_or_false notif_remote PARENT_FOLDERS EQUAL txt_plus
+|   NOTIFY_LOCALLY EQUAL true_or_false
+    NOTIFY_REMOTELY EQUAL true_or_false
+    PARENT_FOLDERS EQUAL txt_plus
     {
      try
        let nb =
-
-	 let i = int_of_string $7 in	 
+	 
+	 let i = int_of_string $9 in
 	 if i < 0 then
-	     raise Parse_error
+	   raise Parse_error
 	 else if i = 0 then
 	   None
 	 else
 	   Some i
        in
+
+       is_server_activated := $6 ;
        {
 	n_locally = $3;
-	n_remotely = $4;
+	n_remotely = $6;
 	n_parent_folders = nb;
       }
      with Failure "int_of_string" -> raise Parse_error
-   }
-| NOTIFY_LOCALLY EQUAL true_or_false notif_remote
-	{{
-	  n_locally = $3;
-	  n_remotely = $4;
-	  n_parent_folders = None;
-	}}
-;
-
-notif_remote:
-|   NOTIFY_REMOTELY EQUAL true_or_false cert
-      {
-	check_options $3 $4;
-	{
-	  r_activate = $3;
-	  r_cert = $4;
-	  r_process_identity = None;
-	  r_chroot = None;
-	}
 }
-|   NOTIFY_REMOTELY EQUAL true_or_false
-    cert
-    REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
-      {
-	check_options $3 $4;
-	{
-	  r_activate = $3;
-	  r_cert = $4;
-	  r_process_identity = Some $7;
-	  r_chroot = None;
-	}
-      }
-|   NOTIFY_REMOTELY EQUAL true_or_false
-    cert
-    REMOTE_CHROOT EQUAL txt_plus
-      {
-	check_options $3 $4;
-	{
-	  r_activate = $3;
-	  r_cert = $4;
-	  r_process_identity = None;
-	  r_chroot = Some $7;
-	}
-      }
-|   NOTIFY_REMOTELY EQUAL true_or_false
-    cert
-    REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
-    REMOTE_CHROOT EQUAL txt_plus
-      {
-	check_options $3 $4;
-	{
-	  r_activate = $3;
-	  r_cert = $4;
-	  r_process_identity = Some $7;
-	  r_chroot = Some $10;
-	}
-      }
+|  NOTIFY_LOCALLY EQUAL true_or_false
+   NOTIFY_REMOTELY EQUAL true_or_false
+    {
+     is_server_activated := $6 ;
+     {
+      n_locally = $3;
+      n_remotely = $6;
+      n_parent_folders = None;
+    }
+   }
+;
+
+server:
+| { None }
+
+| certs
+    {
+     check_options $1 ;
+     Some ({
+	   s_certs = $1;
+	   s_process_identity = None;
+	   s_chroot = None;
+	 })
+   }
+    
+| certs REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
+    {
+     check_options $1 ;
+     Some ({
+	   s_certs = $1;
+	   s_process_identity = Some $4;
+	   s_chroot = None;
+	 })
+   }
+    
+| certs REMOTE_CHROOT EQUAL txt_plus
+    {
+     check_options $1 ;
+     Some ({
+	   s_certs = $1;
+	   s_process_identity = None;
+	   s_chroot = Some $4;
+	 })
+   }
+    
+| certs REMOTE_IDENTITY_FALLBACK EQUAL txt_plus
+       REMOTE_CHROOT EQUAL txt_plus
+    {
+     check_options $1 ;
+     Some ({
+	   s_certs = $1;
+	   s_process_identity = Some $4;
+	   s_chroot = Some $7;
+	 })
+   }
 ;
 
 
-cert:
+
+certs:
 | REMOTE_CA_PATH EQUAL txt_plus
   REMOTE_SERV_CERT_PATH EQUAL txt_plus
   REMOTE_SERV_KEY_PATH EQUAL txt_plus
   REMOTE_SERV_KEY_PWD EQUAL txt_plus
   {
     Some
-    {
+     {
       c_ca_path = $3;
       c_serv_cert_path = $6;
       c_serv_key_path = $9;
       c_serv_key_pwd = $12;
     }
-  }
+ }
 | { None }
 ;
 

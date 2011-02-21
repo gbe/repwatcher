@@ -34,23 +34,22 @@ type sql_db = Mysql.db = {
     dbuser : string option ;
 }
 
-type cert_t = {
+type certs_t = {
   c_ca_path : string;
   c_serv_cert_path : string;
   c_serv_key_path : string;
   c_serv_key_pwd : string;
 }
 
-type remote = {
-    r_activate : bool;
-    r_cert : cert_t option;
-    r_process_identity : string option;
-    r_chroot : string option;
+type server_t = {
+    s_certs : certs_t option;
+    s_process_identity : string option;
+    s_chroot : string option;
 }
 
 type notify = {
     n_locally  : bool;
-    n_remotely : remote;
+    n_remotely : bool;
     n_parent_folders : int option;
 }
 
@@ -65,5 +64,6 @@ type configuration = {
     c_main_proc_id_fallback : string option;
     c_mysql : sql_db;
     c_notify : notify;
+    c_server : server_t option;
     c_log : log_verbosity;
 }

@@ -40,7 +40,7 @@ let parse config_file =
   let c = open_in config_file in
   let lb = Lexing.from_channel c in
     try
-      conf := Some (Parser.conf Lexer.nexttoken lb) ;
+      conf := Some (Parser.configuration Lexer.nexttoken lb) ;
       close_in c;
       get()
     with
