@@ -56,6 +56,7 @@ rule nexttoken = parse
   | "server_cert_path"                 { SERVER_CERT_PATH }
   | "server_key_path"                  { SERVER_KEY_PATH }
   | "server_key_pwd"                   { SERVER_KEY_PWD }
+  | "server_port"                      { SERVER_PORT }
   | "server_process_identity"          { SERVER_PROCESS_IDENTITY }
   | "server_process_chroot"            { SERVER_PROCESS_CHROOT }
   | "log_level"                        { LOG_LEVEL }

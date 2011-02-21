@@ -51,6 +51,7 @@ let check_options cert =
 %token SERVER_CERT_PATH
 %token SERVER_KEY_PATH
 %token SERVER_KEY_PWD
+%token SERVER_PORT
 %token SERVER_PROCESS_IDENTITY
 %token SERVER_PROCESS_CHROOT
 %token PARENT_FOLDERS
@@ -123,7 +124,7 @@ mysql:
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
   MYSQL_HOST EQUAL txt_plus
-  MYSQL_PORT EQUAL int
+  MYSQL_PORT EQUAL uint
   MYSQL_DBNAME EQUAL txt_plus
       {{
        dbhost = Some $9;
@@ -185,14 +186,15 @@ notify:
 
 server:
 | { None }
-| s_certs s_process_identity s_chroot
+| s_certs s_port s_process_identity s_chroot
     {
      check_options $1;
      Some
        {
 	s_certs = $1;
-	s_process_identity = $2;
-	s_chroot = $3;
+	s_port = $2;
+	s_process_identity = $3;
+	s_chroot = $4;
       }
    }
 ;
@@ -215,6 +217,10 @@ s_certs:
  }
 ;
 
+s_port:
+| { None }
+| SERVER_PORT EQUAL uint { Some $3 }
+
 s_process_identity:
 | { None }
 | SERVER_PROCESS_IDENTITY EQUAL txt_plus { Some $3 }
@@ -230,7 +236,7 @@ s_chroot:
 log:
 /* If the log part is commented then it means logging is disabled */
 | { Disabled }
-| LOG_LEVEL EQUAL int {
+| LOG_LEVEL EQUAL uint {
   match $3 with
   | 0 -> Disabled
   | 1 -> Regular
@@ -267,10 +273,15 @@ true_or_false:
 }
 ;
 
-int:
+  uint:
 | txt_plus {
   try
-    int_of_string $1
+    let i = int_of_string $1 in
+
+    if i <= 0 then
+      raise Parse_error
+    else
+      i
   with Failure _ -> raise Parse_error
 }
 ;

@@ -43,6 +43,7 @@ type certs_t = {
 
 type server_t = {
     s_certs : certs_t option;
+    s_port : int option;
     s_process_identity : string option;
     s_chroot : string option;
 }
@@ -53,7 +54,7 @@ type notify = {
     n_parent_folders : int option;
 }
 
-type log_verbosity  =
+type log_verbosity =
   | Disabled
   | Regular
   | Debug

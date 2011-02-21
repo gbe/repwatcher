@@ -23,7 +23,7 @@ open Types
 open Types_conf
 
 
-let port         = ref 9292
+let default_port = 9292
 let backlog      = 15
 
 let m = Mutex.create () 
@@ -209,6 +209,7 @@ let run tor server =
 	let error = "Err. Ssl_server: wrong private key password" in
 	tellserver (Types.Log (error, Error)) ;
 	failwith error
+
       | Ssl.Certificate_error ->
 	tellserver (Types.Log ("Certificate error", Error));
 	raise Ssl.Certificate_error
@@ -219,6 +220,7 @@ let run tor server =
   begin
     try
       Ssl.load_verify_locations ctx certs.c_ca_path (Filename.dirname certs.c_ca_path)
+
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
       tellserver ( Types.Log (error, Error)) ;
@@ -244,6 +246,7 @@ let run tor server =
 	    try
 	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
 	      Some (Unix.getpwnam new_remote_id)
+
 	    with Not_found ->
 	      let error = ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity") in
 	      tellserver ( Types.Log (error, Error));
@@ -259,6 +262,7 @@ let run tor server =
 	  | Some dir ->
 	      Unix.chdir dir ; Unix.chroot "." ;
 	      tellserver ( Types.Log (("Network process chrooted in "^dir), Normal_Extra))
+
 	with Unix_error (error,_,s2) ->
 	  let error = ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error)) in
 	  tellserver (Types.Log (error, Error));
@@ -287,7 +291,14 @@ let run tor server =
 
   (* Initialize Unix socket *)
   let sock = Unix.socket PF_INET SOCK_STREAM 0 in
-  Unix.bind sock (ADDR_INET (inet_addr_any, !port));
+
+  let port =
+    match server.s_port with
+    | None -> default_port
+    | Some p -> p
+  in
+
+  Unix.bind sock (ADDR_INET (inet_addr_any, port));
   Unix.setsockopt sock Unix.SO_REUSEADDR true;
   Unix.listen sock backlog;
   (* ********************** *)
