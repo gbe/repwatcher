@@ -17,11 +17,22 @@
 *)
 
 open Types
+open Types_conf
 open Unix
 (* open Dbus_call *)
 
 
+let parse_config file =
+  try
+    (* Check if the file exists and if the process can read it *)
+    Unix.access file [F_OK ; R_OK];
 
+    Config.parse file
+    
+  with Unix_error (error,_,file) ->
+    let err = Printf.sprintf "%s: %s" file (error_message error) in
+    failwith err
+;;
 
 let _ =
 
@@ -42,8 +53,6 @@ This is free software, and you are welcome to redistribute it
 under certain conditions; for details read COPYING file\n\n";
   Pervasives.flush Pervasives.stdout;
 
-  let regexp = Str.regexp "/" in
-
   Arg.parse
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
@@ -58,6 +67,9 @@ under certain conditions; for details read COPYING file\n\n";
   
   if !host = "" then (Printf.printf "%s\n\n" usage; exit 1);
 
+  let conf = parse_config "conf/rw_client.conf" in
+  Printf.printf "Password: %s\n" conf.c_certs.c_client_key_pwd;
+  Pervasives.flush Pervasives.stdout;
 
   (* print and log if others have read permission on file *)
   let check_rights file =
@@ -152,6 +164,10 @@ under certain conditions; for details read COPYING file\n\n";
 	  n_last_elements q
   in
   
+  let regexp_slash = Str.regexp "/" in
+  let regexp_space = Str.regexp "[' ']" in
+  let regexp_ddot = Str.regexp "[':']" in
+
   begin try
     while !loop do
       let data_recv = Ssl.read ssl buf 0 bufsize in
@@ -194,7 +210,7 @@ under certain conditions; for details read COPYING file\n\n";
 		  Printf.printf "Recu new_notif: '%s', '%s' et %s\n" file.f_login file.f_name str_of_state;
 		  Pervasives.flush Pervasives.stdout;
 
-		  let l_folders = Str.split regexp file.f_path in
+		  let l_folders = Str.split regexp_slash file.f_path in
 		  let call =
 		    match !nb_parent_folders with
 		      | 0 -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f_login msg_state file.f_name
@@ -207,8 +223,6 @@ under certain conditions; for details read COPYING file\n\n";
  *)		  
 		    
 	      | Old_notif dls_l ->
-		  let regexp_space = Str.regexp "[' ']" in
-		  let regexp_dot = Str.regexp "[':']" in
 
 		  List.iter (
 		  fun (file, date) ->
@@ -217,11 +231,11 @@ under certain conditions; for details read COPYING file\n\n";
 		    
 		    let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
 		    let h_m = 
-		      let hms_l = Str.split regexp_dot h_m_s in
+		      let hms_l = Str.split regexp_ddot h_m_s in
 		      (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		    in
 
-		    let l_folders = Str.split regexp file.f_path in
+		    let l_folders = Str.split regexp_slash file.f_path in
 
 		    let call =
 		      match !nb_parent_folders with

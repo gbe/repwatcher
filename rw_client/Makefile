@@ -1,5 +1,5 @@
-CMX= rw_client.cmx
-GENERATED = 
+CMX= lexer.cmx parser.cmx config.cmx rw_client.cmx
+GENERATED = lexer.ml parser.ml parser.mli 
 BIN= rw_client
 FLAGS=-linkpkg -package ssl
 
@@ -26,7 +26,7 @@ $(BIN):$(CMX)
 	ocamlyacc -v $<
 
 clean:
-	rm -f a.out main.cmi *.cm[ix] *.annot *.o *~ .depend $(BIN) $(GENERATED)
+	rm -f a.out main.cmi *.cm[ix] *.annot *.o *~ .depend parser.output $(BIN) $(GENERATED)
 
 .depend depend:$(GENERATED)
 	rm -f .depend
