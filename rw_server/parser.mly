@@ -202,16 +202,21 @@ s_certs:
 | SERVER_CA_PATH EQUAL txt_plus
   SERVER_CERT_PATH EQUAL txt_plus
   SERVER_KEY_PATH EQUAL txt_plus
-  SERVER_KEY_PWD EQUAL txt_plus
+  serv_key_pwd
   {
     Some
      {
       c_ca_path = $3;
       c_serv_cert_path = $6;
       c_serv_key_path = $9;
-      c_serv_key_pwd = $12;
+      c_serv_key_pwd = $10;
     }
  }
+;
+
+serv_key_pwd:
+| { None }
+| SERVER_KEY_PWD EQUAL txt_plus { Some $3 }
 ;
 
 s_port:

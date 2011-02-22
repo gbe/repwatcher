@@ -53,14 +53,20 @@ c_certs:
 | CLIENT_CA_PATH EQUAL txt
   CLIENT_CERT_PATH EQUAL txt
   CLIENT_KEY_PATH EQUAL txt
-  CLIENT_KEY_PWD EQUAL txt
-    {{
-     c_ca_path = $3;
-     c_client_cert_path = $6;
-     c_client_key_path = $9;
-     c_client_key_pwd = $12;
-   }}
+  client_key_pwd
+  {{
+    c_ca_path = $3;
+    c_client_cert_path = $6;
+    c_client_key_path = $9;
+    c_client_key_pwd = $10;
+  }}
 ;
+
+client_key_pwd:
+| { None }
+| CLIENT_KEY_PWD EQUAL txt { Some $3 }
+;
+
 
 
 txt:

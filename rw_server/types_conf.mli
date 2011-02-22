@@ -38,7 +38,7 @@ type certs_t = {
   c_ca_path : string;
   c_serv_cert_path : string;
   c_serv_key_path : string;
-  c_serv_key_pwd : string;
+  c_serv_key_pwd : string option;
 }
 
 type server_t = {

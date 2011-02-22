@@ -198,8 +198,11 @@ let run tor server =
 
   let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Server_context in
 
-  if certs.c_serv_key_pwd <> "" then
-      Ssl.set_password_callback ctx (fun _ -> certs.c_serv_key_pwd);
+  begin
+    match certs.c_serv_key_pwd with
+      | None -> ()
+      | Some pwd -> Ssl.set_password_callback ctx (fun _ -> pwd)
+  end;
 
   begin
     try

@@ -123,8 +123,12 @@ under certain conditions; for details read COPYING file\n\n";
   let s_ssl =
     let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
 
-    if certs.c_client_key_pwd <> "" then
-      Ssl.set_password_callback ctx (fun _ -> certs.c_client_key_pwd);
+    begin
+      match certs.c_client_key_pwd with
+	| None -> ()
+	| Some pwd ->
+	  Ssl.set_password_callback ctx (fun _ -> pwd)
+    end;
 
     begin
       try
