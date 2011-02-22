@@ -1,6 +1,6 @@
 (*
     Repwatcher
-    Copyright (C) 2009-2010  Gregory Bellier
+    Copyright (C) 2009-2011  Gregory Bellier
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -46,11 +46,11 @@ let parse config_file =
     with
       | Lexer.Lexing_error s -> 
 	  localization (lexeme_start_p lb, lexeme_end_p lb) config_file;
-	  eprintf "lexical error in the configuration file repwatcher.conf: %s\n@." s;
+	  eprintf "lexical error in the configuration file %s: %s\n@." config_file s;
 	  exit 1
       | Parsing.Parse_error ->
 	  localization (lexeme_start_p lb, lexeme_end_p lb) config_file;
-	  eprintf "syntax error in the configuration file repwatcher.conf\n@.";
+	  eprintf "syntax error in the configuration file %s\n@." config_file;
 	  exit 1
 ;; 
 		  

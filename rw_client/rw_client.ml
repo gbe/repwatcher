@@ -21,6 +21,12 @@ open Types_conf
 open Unix
 (* open Dbus_call *)
 
+let config_file = "conf/rw_client.conf" ;;
+
+let port = ref 9292 ;;
+let host = ref "" ;;
+let nb_parent_folders = ref (-1) ;; (* will be changed if set on the CLI or when connected to the server *)
+
 
 let parse_config file =
   try
@@ -34,16 +40,9 @@ let parse_config file =
     failwith err
 ;;
 
+
 let _ =
 
-  let port = ref 9292 in
-  let host = ref "" in
-  let nb_parent_folders = ref (-1) in (* will be changed if set on the CLI or when connected to the server *)
-  
-  let password = ref "coco" in
-  let certfile = ref "cert/rw_client.crt" in
-  let privkey  = ref "cert/rw_client.key" in
-  let ca = "CA/CA.crt" in
   
   let usage = "usage: rw_client host [-p port] [-n Folders_nb_for_notifications]" in
   
@@ -67,10 +66,6 @@ under certain conditions; for details read COPYING file\n\n";
   
   if !host = "" then (Printf.printf "%s\n\n" usage; exit 1);
 
-  let conf = parse_config "conf/rw_client.conf" in
-  Printf.printf "Password: %s\n" conf.c_certs.c_client_key_pwd;
-  Pervasives.flush Pervasives.stdout;
-
   (* print and log if others have read permission on file *)
   let check_rights file =
     let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
@@ -93,16 +88,20 @@ under certain conditions; for details read COPYING file\n\n";
       (* Log.log (err, Error) ; *)
       failwith err
   in
+
+  let conf = parse_config config_file in
+  let certs = conf.c_certs in
+
   (* check on CA *)
-  exists_and_can_be_read ca;
+  exists_and_can_be_read certs.c_ca_path;
   
   (* check on cert *)
-  exists_and_can_be_read !certfile;
+  exists_and_can_be_read certs.c_client_cert_path;
 
   (* checks on the key *)
-  exists_and_can_be_read !privkey;
-  check_rights !privkey ;
-
+  exists_and_can_be_read certs.c_client_key_path;
+  check_rights certs.c_client_key_path ;
+ 
 
   Ssl_threads.init ();
   Ssl.init ();
@@ -121,31 +120,53 @@ under certain conditions; for details read COPYING file\n\n";
   let bufsize = 1024 in
   let buf = String.create bufsize in
   
-  let ssl =
+  let s_ssl =
     let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
-    
-    if !password <> "" then
-      Ssl.set_password_callback ctx (fun _ -> !password);
-    
-    Ssl.use_certificate ctx !certfile !privkey;      
-    Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
-    begin try
-      Ssl.load_verify_locations ctx ca (Filename.dirname ca)
-    with Invalid_argument e -> failwith ("Error_load_verify_locations"^e)
+
+    if certs.c_client_key_pwd <> "" then
+      Ssl.set_password_callback ctx (fun _ -> certs.c_client_key_pwd);
+
+    begin
+      try
+	Ssl.use_certificate ctx certs.c_client_cert_path certs.c_client_key_path
+      with Ssl.Private_key_error -> failwith "Error with the private key, please check the password"
     end;
     
+    Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
+   
+    begin try
+      Ssl.load_verify_locations ctx certs.c_ca_path (Filename.dirname certs.c_ca_path)
+    with Invalid_argument e -> failwith ("Error_load_verify_locations: "^e)
+    end;
+    
+  (*
+   * Extracted from the SSL_CTX_set_verify man page
+   * The depth count is "level 0:peer
+   * certificate", "level 1: CA certificate", "level 2: higher level CA certificate", and so on.
+   * Setting the maximum depth to 2 allows the levels 0, 1,
+   * and 2. The default depth limit is 9, allowing for the peer certificate and additional 9 CA certificates.
+   *)
     Ssl.set_verify_depth ctx 2;
+
     Ssl.open_connection_with_context ctx sockaddr
   in
 
-      
+  (* Check the result of the verification of the X509 certificate presented by
+   * the peer, if any. Raises a [verify_error] on failure. *)
+  begin
+    try
+      Ssl.verify s_ssl;
+    with Ssl.Verify_error _ ->
+      failwith (Ssl.get_error_string ())
+  end;
+
   let handle_interrupt i =       
     begin try
-      Ssl.output_string ssl "rw_client_exit"
+      Ssl.output_string s_ssl "rw_client_exit"
     with Ssl.Write_error _ -> failwith "Failed to send the closing msg to server"
     end;
-    Ssl.flush ssl;
-    Ssl.shutdown_connection ssl;
+    Ssl.flush s_ssl;
+    Ssl.shutdown_connection s_ssl;
     exit 0
   in
       
@@ -170,7 +191,7 @@ under certain conditions; for details read COPYING file\n\n";
 
   begin try
     while !loop do
-      let data_recv = Ssl.read ssl buf 0 bufsize in
+      let data_recv = Ssl.read s_ssl buf 0 bufsize in
       
       if data_recv > 0 then
 	let data = String.sub buf 0 data_recv in
@@ -254,9 +275,9 @@ under certain conditions; for details read COPYING file\n\n";
   with Ssl.Read_error _ -> ()
   end;
   
-  Ssl.shutdown ssl;
+  Ssl.shutdown s_ssl;
   ignore (Unix.system "notify-send -i nobody Repwatcher \"Server is down. Closing the client...\"");
-(*      dbus "nobody" "Repwatcher" "Server is down. Closing the client..."; *)
+  (* dbus "nobody" "Repwatcher" "Server is down. Closing the client..."; *)
   
   exit 0	   
 ;;

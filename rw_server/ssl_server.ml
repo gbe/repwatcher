@@ -144,7 +144,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
   let subj = Ssl.get_subject cert in	
   let common_name = get_common_name subj in
   
-  let new_client = Printf.sprintf "%s connected from %s" common_name (get_ip sockaddr_cli) in
+  let new_client = Printf.sprintf "%s connected from %s (using: %s)" common_name (get_ip sockaddr_cli) (Ssl.get_cipher_name (Ssl.get_cipher ssl_s)) in
   print_endline new_client;
   tellserver (Types.Log (new_client, Normal)) ;
   
@@ -215,7 +215,7 @@ let run tor server =
 	raise Ssl.Certificate_error
   end;
   
-  Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
+  Ssl.set_verify ctx [Ssl.Verify_fail_if_no_peer_cert] (Some Ssl.client_verify_callback);
   
   begin
     try
@@ -223,9 +223,18 @@ let run tor server =
 
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
-      tellserver ( Types.Log (error, Error)) ;
+      tellserver (Types.Log (error, Error)) ;
       failwith error
   end;
+  
+  (*
+   * Extracted from the SSL_CTX_set_verify man page
+   * The depth count is "level 0:peer
+   * certificate", "level 1: CA certificate", "level 2: higher level CA certificate", and so on.
+   * Setting the maximum depth to 2 allows the levels 0, 1,
+   * and 2. The default depth limit is 9, allowing for the peer certificate and additional 9 CA certificates.
+   *)
+  Ssl.set_verify_depth ctx 2;
 (* ********************** *)
 
 
@@ -331,9 +340,20 @@ let run tor server =
     let ssl_s = Ssl.embed_socket s_cli ctx in
     
     try
+
+    (* Check the result of the verification of the X509 certificate presented by
+     * the peer, if any. Raises a [verify_error] on failure. *)
+      Ssl.verify ssl_s;
+
       Ssl.accept ssl_s;
+
       ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
     with
+      | Ssl.Verify_error _ ->
+	let error = Ssl.get_error_string () in
+	tellserver (Types.Log (error, Error)) ;
+	prerr_endline error
+
     | Invalid_argument _ ->
 	let error = "Error in the thread, server-side" in
 	tellserver (Types.Log (error, Error)) ;
