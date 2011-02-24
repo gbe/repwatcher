@@ -59,6 +59,7 @@ let check_options cert =
 %token <string>TXT
 %token EOF
 
+
   
 /* Point d'entrée de la grammaire */
 %start configuration
@@ -182,8 +183,18 @@ notify:
 ;
 
 server:
-| { None }
-| s_certs s_port s_process_identity s_chroot
+/*  If there is None here, there is a reduce/reduce conflict
+    due to s_certs which can be also None.
+    
+    2 possible ways in case of a None :
+    notify -> serv -> s_certs
+    which could also be interpreted as
+    notify -> s_certs
+*/
+
+/* server can keep its optional type by using the None from s_certs */
+/* | { None } */
+   | s_certs s_port s_process_identity s_chroot
     {
      check_options $1;
      Some
