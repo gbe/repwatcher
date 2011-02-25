@@ -231,8 +231,8 @@ let run tor server =
 
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
-      tellserver (Types.Log (error, Error)) ;
-      failwith error
+      tellserver (Exit_on_error error) ;
+      exit 1
   end;
   
   (*
