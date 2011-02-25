@@ -46,11 +46,14 @@ let wait_pipe_from_child_process () =
 	     ) Files_progress.ht []
 	    in
 	    
-	    (* We sent to Report.notify only if necessary *)
+	    (* Sent to Report.notify only if necessary *)
 	    if List.length l_current_dls > 0 then
 	      Report.report (Notify (Old_notif l_current_dls))
 
 	| Types.Log log -> Log.log log
+	| Exit_on_error error ->
+	    Log.log (error, Error);
+	    Unix.kill (Unix.getpid()) Sys.sigabrt
       end;
   done
 ;;

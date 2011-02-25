@@ -210,12 +210,17 @@ let run tor server =
     with
       | Ssl.Private_key_error ->
 	let error = "Err. Ssl_server: wrong private key password" in
-	tellserver (Types.Log (error, Error)) ;
-	failwith error
+
+	(* Because of this error, RW's run is aborted *)
+	(* Logging is done in the other process *)
+	tellserver (Exit_on_error error) ;
+	exit 1
 
       | Ssl.Certificate_error ->
-	tellserver (Types.Log ("Certificate error", Error));
-	raise Ssl.Certificate_error
+	(* Because of this error, RW's run is aborted *)
+	(* Logging is done in the other process *)
+	tellserver (Exit_on_error "Certificate error") ;
+	exit 1
   end;
   
   Ssl.set_verify ctx [Ssl.Verify_fail_if_no_peer_cert] (Some Ssl.client_verify_callback);
