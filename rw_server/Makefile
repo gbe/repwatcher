@@ -21,9 +21,9 @@ $(BIN):$(CMX)
 
 .ml.cmx:
 ifeq ($(NO_DBUS), 1)
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of -DNO_DBUS" -c $<
+	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of.opt -DNO_DBUS" -c $<
 else
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of" -c $<
+	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of.opt" -c $<
 endif
 
 .mll.ml:
@@ -41,9 +41,9 @@ clean:
 .depend depend:$(GENERATED)
 	rm -f .depend
 ifeq ($(NO_DBUS), 1)
-	ocamldep.opt -pp "camlp4of -DNO_DBUS" *.ml *.mli > .depend
+	ocamldep.opt -pp "camlp4of.opt -DNO_DBUS" *.ml *.mli > .depend
 else
-	ocamldep.opt -pp "camlp4of" *.ml *.mli > .depend
+	ocamldep.opt -pp "camlp4of.opt" *.ml *.mli > .depend
 endif
 
 include .depend
