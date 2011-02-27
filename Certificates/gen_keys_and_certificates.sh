@@ -16,7 +16,7 @@ function create_ca_key {
 	clear &&
 	echo    "1/8 Create the CA key" &&
 	echo -e "---------------------\n" &&
-	openssl genrsa -aes256 1024 > CA/ca.key
+	openssl genrsa -aes256 1024 > CA/CA.key
 }
 
 function create_ca_cert {
@@ -26,7 +26,7 @@ function create_ca_cert {
 	echo "How many days should this certificate be valid ?" &&
 	echo -n "Number of days: " &&
 	read cert_days &&
-	openssl req -new -x509 -days $cert_days -key CA/ca.key > CA/ca.crt
+	openssl req -new -x509 -days $cert_days -key CA/CA.key > CA/CA.crt
 }
 
 function create_key {
@@ -60,8 +60,8 @@ function sign_cert {
 	underline "$TXT";
 
 	certsigned_out=${1:0:$((${#1}-4))}
-	openssl x509 -req -in $1 -out $certsigned_out.crt -CA CA/ca.crt\
-	-CAkey CA/ca.key -CAcreateserial -CAserial ca.srl
+	openssl x509 -req -in $1 -out $certsigned_out.crt -CA CA/CA.crt\
+	-CAkey CA/CA.key -CAcreateserial -CAserial CA.srl
 }
 
 function failure {
@@ -124,7 +124,7 @@ create_key server/rw_serv.key 3/8 || failure "Could not create the server's key"
 
 request_signed_cert server/rw_serv.key server/rw_serv.csr 4/8 || failure "Couldn't request a signed certificate";
 
-sign_cert server/rw_serv.csr 5/8 && rm -f ca.srl server/rw_serv.csr || failure "CA couldn't sign server certificate";
+sign_cert server/rw_serv.csr 5/8 && rm -f CA.srl server/rw_serv.csr || failure "CA couldn't sign server certificate";
 
 echo -e "\n==> Server certificate ready."
 ###############################################
@@ -138,7 +138,7 @@ create_key client/rw_client.key 6/8 || failure "Could not create the client's ke
 
 request_signed_cert client/rw_client.key client/rw_client.csr 7/8 || failure "Couldn't request a signed certificate";
 
-sign_cert client/rw_client.csr 8/8 && rm -f ca.srl client/rw_client.csr || failure "CA couldn't sign client certificate";
+sign_cert client/rw_client.csr 8/8 && rm -f CA.srl client/rw_client.csr || failure "CA couldn't sign client certificate";
 
 echo -e "\n==> Client certificate ready.\n";
 ###############################################

@@ -1,3 +1,21 @@
+(*
+    Repwatcher
+    Copyright (C) 2009-2011  Gregory Bellier
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*)
+
 let print_dbus_ty_list l =
 	List.iter (fun o -> Printf.printf "%s\n" (DBus.string_of_ty o)) l
 ;;
@@ -14,15 +32,9 @@ let dbus img title txt =
       let l = DBus.Message.get r in
 	l
   in
-    Printf.printf "1\n";
-    Pervasives.flush Pervasives.stdout;
     let send_notif_msg = send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface in
-      Printf.printf "2\n";
-      Pervasives.flush Pervasives.stdout;
 
       let bus = DBus.Bus.get DBus.Bus.Session in
-	Printf.printf "3\n";
-	Pervasives.flush Pervasives.stdout;
 	let params = [
 	  DBus.String "n";
 	  DBus.UInt32 1l;
@@ -33,11 +45,7 @@ let dbus img title txt =
 	  DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
 	  DBus.Int32 4000l;
 	] in	
-	  Printf.printf "4\n";
-	  Pervasives.flush Pervasives.stdout;
 	  let r = send_notif_msg ~bus ~serv:"Notify" ~params in
-	  Printf.printf "5\n";
-	  Pervasives.flush Pervasives.stdout;
 	  print_dbus_ty_list r;
 	  ()
 ;;

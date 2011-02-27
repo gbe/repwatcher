@@ -4,6 +4,7 @@ gregory.bellier@gmail.com
 Dependencies for Debian/Ubuntu:
 ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml-dev libinotify-ocaml-dev libnotify-bin libdbus-ocaml-dev camlp4-extra
 
+* Local notifications can be disabled before building RW. Set NO_DBUS=1 in the Makefile. Thus, there is no dependecy on libdbus-ocaml-dev.
 
 
 You need to create this database and table in MySQL:
@@ -28,8 +29,6 @@ To clean the compiled files : make clean
 
 You need to configure the file repwatcher.conf
 
-I recommend to use the program "screen" to run repwatcher in a virtual terminal.
+You can either run Repwatcher in a "screen" or "nohup ./rw_server &".
 
 Don't hesitate to give me some feedbacks.
-
-Dest.

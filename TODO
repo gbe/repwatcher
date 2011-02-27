@@ -1,4 +1,0 @@
-TO DO
-
-- Voir pour mettre en place une base Postgresql (et linker à la compilation, en cas de besoin sur MySQL ou Postgresql mais pas les 2)
-- Voir pour mettre en place du sqlite

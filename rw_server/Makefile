@@ -3,7 +3,7 @@ CMX= lexer.cmx parser.cmx config.cmx date.cmx log.cmx file_list.cmx mysqldb.cmx 
 GENERATED= lexer.ml parser.ml parser.mli
 BIN=rw_server
 PACKAGES=mysql,ssl,inotify
-FLAGS=-annot -linkpkg -package $(PACKAGES)
+FLAGS=-linkpkg -package $(PACKAGES)
 
 ifeq ($(NO_DBUS), 0)
 	PACKAGES +=-package dbus
