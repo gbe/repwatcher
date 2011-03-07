@@ -33,9 +33,9 @@ let wait_pipe_from_child_process () =
 	let data = String.sub buf 0 recv in
 	let com = (Marshal.from_string data 0 : Types.com_net2main) in
 	match com with
-	| Ask_current_dls ->
+	| Ask_current_accesses ->
 	    
-	    let l_current_dls =
+	    let l_current =
 	      Hashtbl.fold (
 	      fun (_,file) date ret ->
 		ret@[ (
@@ -47,10 +47,11 @@ let wait_pipe_from_child_process () =
 	    in
 	    
 	    (* Sent to Report.notify only if necessary *)
-	    if List.length l_current_dls > 0 then
-	      Report.report (Notify (Old_notif l_current_dls))
+	    if List.length l_current > 0 then
+	      Report.report (Notify (Old_notif l_current))
 
 	| Types.Log log -> Log.log log
+
 	| Exit_on_error error ->
 	    Log.log (error, Error);
 	    Unix.kill (Unix.getpid()) Sys.sigabrt

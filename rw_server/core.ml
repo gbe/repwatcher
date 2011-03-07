@@ -449,7 +449,7 @@ let what_to_do event =
 		    let date = Date.date() in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 
-		    Log.log (f_file.f_login^" finished downloading: "^f_file.f_name, Normal) ;
+		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 		    Report.report ( Sql (f_file, File_Closed, date) ) ;
 		    Report.report ( Notify (New_notif (f_file, File_Closed) )) ;
 		   ) l_stop

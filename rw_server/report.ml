@@ -72,12 +72,13 @@ let notify notification =
 	let filename_escaped = Txt_operations.escape_for_notify file.f_name in
 	let conf             = Config.get() in  
 
+
 	if conf.c_notify.n_locally then
 	  begin
 	    let msg_state =
 	      match filestate with
-	      | File_Opened -> "is downloading"
-	      | File_Closed -> "finished downloading"
+	      | File_Opened -> "has opened"
+	      | File_Closed -> "closed"
 	    in
 
 	    (* Return the n last folders *)
@@ -112,17 +113,19 @@ let notify notification =
 
 	  end ;
 
+
+
 	if conf.c_notify.n_remotely then
 	  try
                
-	    let str_new_dl =
+	    let str_notif =
 	      Marshal.to_string 
 		(New_notif ({file with f_name = filename_escaped}, filestate) )
 		[Marshal.No_sharing]
 	    in
 	    
 	    (* Send in the pipe for the server to send to the clients *)
-	    ignore ( Unix.write Pipe.tow str_new_dl 0 (String.length str_new_dl) )
+	    ignore ( Unix.write Pipe.tow str_notif 0 (String.length str_notif) )
 	  with _ ->
 	    Log.log ("An error occured trying to send in the pipe the notification", Error)
 	      
@@ -141,12 +144,12 @@ let notify notification =
 	end
 
 
-  | Old_notif l_current_dls ->
+  | Old_notif l_current ->
       (* Txt_operations.escape_for_notify has already been done on f_name *)
-      let str_current_dls = Marshal.to_string (Old_notif l_current_dls) [Marshal.No_sharing] in
+      let str_current = Marshal.to_string (Old_notif l_current) [Marshal.No_sharing] in
 
       (* send though the pipe to be processed by the server *)
-      ignore (Unix.write Pipe.tow str_current_dls 0 (String.length str_current_dls))
+      ignore (Unix.write Pipe.tow str_current 0 (String.length str_current))
 ;;
 
 
@@ -159,7 +162,7 @@ let sql (f, state, date) =
       
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
-	Printf.sprintf "INSERT INTO downloads \
+	Printf.sprintf "INSERT INTO accesses \
 	  (login,program,path,filename,filesize,starting_date, in_progress) \
 	  VALUES (%s, %s, %s, %s, %s, %s, '1')"
           (Mysqldb.ml2str f.f_login)
@@ -177,7 +180,7 @@ let sql (f, state, date) =
   | File_Closed ->
 
       let update_query =
-	Printf.sprintf "UPDATE downloads \
+	Printf.sprintf "UPDATE accesses \
 	  SET ENDING_DATE = %s, IN_PROGRESS = '0' \
 	  WHERE LOGIN=%s AND \
 	  FILENAME=%s AND \

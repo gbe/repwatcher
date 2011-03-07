@@ -50,7 +50,7 @@ type report = | Notify of notification
 
 type com_net2main =
   | Log of (string * log_level)
-  | Ask_current_dls
+  | Ask_current_accesses
   | Exit_on_error of string
 
 type com_server2clients =

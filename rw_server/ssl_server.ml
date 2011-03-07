@@ -144,7 +144,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
   let subj = Ssl.get_subject cert in	
   let common_name = get_common_name subj in
   
-  let new_client = Printf.sprintf "%s connected from %s (using: %s)" common_name (get_ip sockaddr_cli) (Ssl.get_cipher_name (Ssl.get_cipher ssl_s)) in
+  let new_client = Printf.sprintf "%s has connected from %s (using: %s)" common_name (get_ip sockaddr_cli) (Ssl.get_cipher_name (Ssl.get_cipher ssl_s)) in
   print_endline new_client;
   tellserver (Types.Log (new_client, Normal)) ;
   
@@ -158,8 +158,8 @@ let handle_connection (ssl_s, sockaddr_cli) =
   (* Tell the new client that he is authorized and send him at the same time the number of last folders to display set in the config file*)
   send (RW_server_con_ok conf.c_notify.n_parent_folders) (Some(ssl_s, sockaddr_cli, common_name));
   
-  (* Ask father's process for the current downloads to send them to the new client *)
-  tellserver Ask_current_dls;
+  (* Ask father's process for the current accesses to send them to the new client *)
+  tellserver Ask_current_accesses;
   
   let loop = ref true in	
   

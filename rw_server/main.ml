@@ -151,7 +151,7 @@ let watch_dirs directories ignore_directories =
 let sgbd_reset_in_progress () =
   (* Reset all IN_PROGRESS accesses in the SGBD *)
   let reset_accesses =
-    "UPDATE downloads SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
+    "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
   in
   ignore (Mysqldb.query reset_accesses)
 ;;
