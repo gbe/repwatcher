@@ -141,7 +141,7 @@ let del_watch wd =
 		del_child wd_father wd;
 		
 		let report =
-		  sprintf "%d n'est plus enfant de %d\n"
+		  sprintf "%d is no longer a child of %d\n"
 		    (int_of_wd wd) (int_of_wd wd_father)
 		in
 		Log.log (report, Normal_Extra)
@@ -294,9 +294,10 @@ let add_watch_children l_children =
 
 let print_ht () =
   Hashtbl.iter (fun key value -> 
-		  printf "\n--------------\n'%s'(%d) est le père de :\n" value.path (int_of_wd key);
+		  printf "\n--------------\n'%s'(%d) is the father of :\n" value.path (int_of_wd key);
 		  List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
-	       ) ht_iwatched 
+	       ) ht_iwatched;
+  Pervasives.flush Pervasives.stdout
 ;;
 
 
@@ -376,7 +377,7 @@ let what_to_do event =
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 
-			Log.log (file.f_login^" is downloading: "^file.f_name, Normal);
+			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
 			Report.report ( Sql (file, File_Opened, date) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
 			Hashtbl.add Files_progress.ht (wd,file) date
@@ -386,7 +387,8 @@ let what_to_do event =
 	    end (* eo Open, false *)
 					      
 
-	| Close_write, false ->
+	| Close_write, false -> ()
+(*
 	    if Hashtbl.mem ht_iwatched wd then
 	      
 	      (* To avoid an error when updating the configuration file.
@@ -394,9 +396,8 @@ let what_to_do event =
 	       * Sometimes when you change several times the configuration file,
 	       * this event is triggered and the conf file loses its watch *)
 	      if is_config_file wd then
-		(* reinit fd; *)
 		Log.log ("Configuration file modified and REwatch it", Normal_Extra)
-
+ *)
 
 	| Close_nowrite, true -> ()
 
@@ -569,7 +570,7 @@ let what_to_do event =
 				in
 				let children_and_descendants = get_all_descendants value2.wd_children in
 				
-				(* printf "Liste des enfants : \n";
+				(* printf "Children's list :\n";
 				   List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
 				   printf "\n";
 				 *)
@@ -583,11 +584,11 @@ let what_to_do event =
 						 Could not find a wd_child to delete", Error)
 			 
 				  | Some value4 -> 
-				      Log.log ("move_from du child : "^(value4.path), Normal_Extra) ;
+				      Log.log ("move_from of child : "^(value4.path), Normal_Extra) ;
 				      del_watch wd_child
 			       ) children_and_descendants
 				;
-				Log.log (("move_from de "^name), Normal_Extra) ;
+				Log.log (("move_from of "^name), Normal_Extra) ;
 				del_watch wd_key
 
 		  end (* eo move_from, true *)
@@ -595,8 +596,9 @@ let what_to_do event =
              (* When IGNORED is triggered it means the wd
 	      * is not watched anymore. Therefore, we need
 	      * to take this wd out of the Hashtbl *)		    
-	      | Ignored, _  ->
+	      | Ignored, _  -> ()
 
+(*
 		  if Hashtbl.mem ht_iwatched wd then
 
 		    (* To avoid an error when updating the configuration file.
@@ -605,12 +607,11 @@ let what_to_do event =
 		     * this event is triggered and the conf file loses its watch *)
 		    begin
 		      if is_config_file wd then
-			(* reinit (); *)
 			Log.log ("Configuration file modified and REwatch it", Normal_Extra) ;
 		      
 		      print_ht ();
 		    end
-					   
+*)
 	      | _ ->
 		  Log.log ("I don't do: "^(string_of_event type_event)^", "
 			   ^(string_of_bool is_folder)^" yet.", Normal_Extra)
