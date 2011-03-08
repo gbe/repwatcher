@@ -226,13 +226,13 @@ under certain conditions; for details read COPYING file\n\n";
 
 	      | New_notif (file, filestate) -> 
 		  
-		  let (str_of_state, msg_state) =
+		  let msg_state =
 		    match filestate with
-		    | File_Opened -> ("File_Opened", "has opened")
-		    | File_Closed -> ("File_Closed", "closed")
+		    | File_Opened -> "has opened"
+		    | File_Closed -> "closed"
 		  in
 		  
-		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f_login str_of_state file.f_name;
+		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f_login msg_state file.f_name;
 		  Pervasives.flush Pervasives.stdout;
 
 		  let l_folders = Str.split regexp_slash file.f_path in
