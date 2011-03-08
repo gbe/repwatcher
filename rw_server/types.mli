@@ -27,17 +27,10 @@ type f_file = {
 
 type file_state = File_Opened | File_Closed
 
-(* New log_level type *)
 type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
-
-
-(* New of file
- * Old of file * date) list
- * Info of message (such as Repwatcher is watching you)
-*)
 
 type notification =
   | New_notif  of f_file * file_state
