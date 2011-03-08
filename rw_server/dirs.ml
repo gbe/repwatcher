@@ -25,16 +25,24 @@ let reg_hidden = Str.regexp "[.]";;
  * The head of the list returned is the folder given in arg
  * Sub branches not parsed if they're ignored
  *)
-let rec ls folder ignored_directories =
+  let rec ls folder ignored_directories =
   
   let dh_opt = ref None in
   
-  begin try
-    (* Check if the given folder exists in argument *)
-    match Sys.is_directory folder with
-    | true ->  dh_opt := Some (Unix.opendir folder)
-    | false -> ()
-  with Sys_error _ -> ()
+  begin
+    try
+      (* Check if the given folder exists in argument *)
+      match Sys.is_directory folder with
+      | true ->  dh_opt := Some (Unix.opendir folder)
+      | false -> ()
+
+    with
+  | Sys_error err -> Log.log (err, Error)
+
+ (* If triggered here then the siblings will be able to be read *)
+  | Unix.Unix_error (err ,fun_name, dir) ->
+      Log.log (("Unix error in "^fun_name^" function: "^(Unix.error_message err)^" - "^dir), Error)
+
   end;
   
   
@@ -73,13 +81,18 @@ let rec ls folder ignored_directories =
 			  end
 		  end
 	      | false -> ()
-	    with Sys_error err -> prerr_endline err
+	    with Sys_error err -> Log.log (err, Error)
 		
 	  done;
 	with
 	| End_of_file -> Unix.closedir dh
-	| Unix.Unix_error (_,function',file_or_dir) ->
-	    Log.log (("Unix error: "^function'^", "^file_or_dir), Error)
+
+	| Unix.Unix_error (err, fun_name, file_or_dir) ->
+	    (* If this error is triggered then the next siblings
+	     * won't be watched because never read.
+	     * Every error triggered here should be caught elsewhere *)
+
+	    Log.log (("Unix error in "^fun_name^" function: "^(Unix.error_message err)^" - "^file_or_dir^"\tPlease report this. It shouldn't happened"), Error)
       end;
       !l
 ;;
