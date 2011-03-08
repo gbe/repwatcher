@@ -228,11 +228,11 @@ under certain conditions; for details read COPYING file\n\n";
 		  
 		  let (str_of_state, msg_state) =
 		    match filestate with
-		    | File_Opened -> ("File_Opened", "is downloading")
-		    | File_Closed -> ("File_Closed", "finished downloading")
+		    | File_Opened -> ("File_Opened", "has opened")
+		    | File_Closed -> ("File_Closed", "closed")
 		  in
 		  
-		  Printf.printf "Recu new_notif: '%s', '%s' et %s\n" file.f_login file.f_name str_of_state;
+		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f_login str_of_state file.f_name;
 		  Pervasives.flush Pervasives.stdout;
 
 		  let l_folders = Str.split regexp_slash file.f_path in
@@ -251,7 +251,7 @@ under certain conditions; for details read COPYING file\n\n";
 
 		  List.iter (
 		  fun (file, date) ->
-		    Printf.printf "Recu Old_notif: '%s', '%s' et '%s'\n" file.f_login file.f_name date;
+		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date file.f_login file.f_name;
 		    Pervasives.flush Pervasives.stdout;
 		    
 		    let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
@@ -264,13 +264,13 @@ under certain conditions; for details read COPYING file\n\n";
 
 		    let call =
 		      match !nb_parent_folders with
-			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s\"" h_m file.f_login file.f_name
-			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> started downloading\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name
+			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s\"" h_m file.f_login file.f_name
+			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name
 		    in
 
 		    ignore (Unix.system call)
 		      
-(*		  let dbus_notif = Printf.sprintf "<b>%s</b> started downloading\n%s" login filename in
+(*		  let dbus_notif = Printf.sprintf "<b>%s</b> opened\n%s" login filename in
  *		    dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
  *)
 		 ) dls_l
