@@ -40,7 +40,7 @@ let reg_hidden = Str.regexp "[.]";;
   | Sys_error err -> Log.log (err, Error)
 
  (* If triggered here then the siblings will be able to be read *)
-  | Unix.Unix_error (err ,fun_name, dir) ->
+  | Unix.Unix_error (err, fun_name, dir) ->
       Log.log (("Unix error in "^fun_name^" function: "^(Unix.error_message err)^" - "^dir), Error)
 
   end;
