@@ -48,8 +48,6 @@ let get_key path_target =
       fun wd fi ->
 	if fi.path = path_target then raise (Found wd)
     ) ht_iwatched;
-    let err = ("error get_key with "^path_target^" not found") in
-    Log.log (err, Error) ;
     None
   with Found wd -> Some wd
 ;;
@@ -69,13 +67,8 @@ let is_value path_target =
 
 
 let get_value wd =
-  try
-    Some (Hashtbl.find ht_iwatched wd)
-  with Not_found ->
-    let err = Printf.sprintf "Error in main - Hashtbl.find -> \
-	impossible to find the key: %d" (int_of_wd wd) in
-    Log.log (err, Error) ;
-    None
+  try Some (Hashtbl.find ht_iwatched wd)
+  with Not_found -> None
 ;;
 
 
@@ -105,9 +98,11 @@ let del_watch wd =
     try
       (* Get wd's father so we can delete wd from its father's children list *)
       match get_value wd with
-      | None -> Log.log ("Error: del_watch. Could not find the wd to delete", Error)
-      | Some value ->
-	  let wd_father_opt = value.wd_father in	 
+      | None ->
+	  (* Due to Hashtbl.mem, this error shouldn't happened *)
+	  Log.log ("Error: del_watch. Couldn't find the folder's value in the Hashtbl", Error)
+      | Some folder ->
+	  let wd_father_opt = folder.wd_father in	 
 	  
 	  Hashtbl.remove ht_iwatched wd;
 	  
@@ -123,42 +118,41 @@ let del_watch wd =
 		  match get_value wd_father with
 		  | None ->
 		      Log.log ("Error: del_watch. \
-				 Could not find the wd's father to delete", Error)
+				 Could not find the folder's father to delete", Error)
 
 		  | Some f_father_info -> 
 		      let l_new_children =
-			List.filter (fun wd_c ->
+			List.filter (
+			fun wd_c ->
 			  if wd_c = wd_child then false else true
-				    )f_father_info.wd_children
+		       ) f_father_info.wd_children
 		      in
 
 		      let new_f_f_info =
 			{ f_father_info with wd_children = l_new_children }
 		      in
-		      Hashtbl.replace ht_iwatched wd_father new_f_f_info
+		      Hashtbl.replace ht_iwatched wd_father new_f_f_info ;
+
+		      let report =
+			sprintf "%d is no longer a child of %d\n"
+			  (int_of_wd wd) (int_of_wd wd_father)
+		      in
+		      Log.log (report, Normal_Extra)
 
 		in
-		del_child wd_father wd;
-		
-		let report =
-		  sprintf "%d is no longer a child of %d\n"
-		    (int_of_wd wd) (int_of_wd wd_father)
-		in
-		Log.log (report, Normal_Extra)
+		del_child wd_father wd
 	  end;
 
 	  let report =
 	    sprintf "*** %s, wd = %d is not watched anymore\n"
-	      value.path (int_of_wd wd)
+	      folder.path (int_of_wd wd)
 	  in
 	  Log.log (report, Normal_Extra)
     with 
       Failure err ->
 	let error =
-	  sprintf "ERROR in function '%s', does the target still exist ? \
-	    Here is the wd_target concerned: %d\n" err (int_of_wd wd)
+	  sprintf "Error in function '%s', does the target still exist ?" err
 	in
-	prerr_endline error ;
 	Log.log (error, Error)
 ;;
 
@@ -277,9 +271,9 @@ let add_watch_children l_children =
   
   List.iter (
   fun f ->
-    let folder_path = Filename.dirname f in
+    let father_path = Filename.dirname f in
     
-    match get_key folder_path with
+    match get_key father_path with
     | None ->
 	Log.log ("Oops. Can't start watching a children list because \
 		   I can't find their wd's father based on his path", Error)
@@ -311,22 +305,22 @@ let what_to_do event =
     | Some x -> x
   in  
     
-  let rec action type_evenement_list is_folder =
-    match type_evenement_list with
+  let rec action event_type_list is_folder =
+    match event_type_list with
     | [] -> ()
-    | type_event::q -> 
+    | event_type :: q -> 
 	  
 	if debug_event then
 	  begin
-	    if not (string_of_event type_event = "ACCESS") then
+	    if not (string_of_event event_type = "ACCESS") then
 	      printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
-		(string_of_event type_event)
+		(string_of_event event_type)
 		(string_of_bool is_folder)
 		name
 		(int_of_wd wd)
 	  end;
 	  
-	begin match type_event, is_folder with	
+	begin match event_type, is_folder with	
 	| Isdir, _ -> action q true
 
 	| Access, false -> () (* déclenché avec un "more fichier.txt" *)
@@ -344,14 +338,14 @@ let what_to_do event =
 		  in
 		  Log.log (err, Error)
 		    
-	      | Some value ->
-		  let folder = Filename.quote value.path in
+	      | Some father ->
+		  let path_quoted = Filename.quote father.path in
 		  
 		  if debug_event then
-		    Printf.printf "[II] Folder: %s\n" folder;
+		    Printf.printf "[II] Folder: %s\n" path_quoted;
 		  
 		  let chan =
-		    Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG")
+		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
 		  in
 		  
 		  let l_opened_files = File_list.get chan in					       
@@ -368,7 +362,7 @@ let what_to_do event =
 		    
 		    (* This test is here because without it
 		     * we could be notified 3 times for the same thing *)
-		    if not (Hashtbl.mem Files_progress.ht (wd,file)) then
+		    if not (Hashtbl.mem Files_progress.ht (wd, file)) then
 		      begin
 			if debug_event then
 			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
@@ -380,7 +374,7 @@ let what_to_do event =
 			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
 			Report.report ( Sql (file, File_Opened, date) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
-			Hashtbl.add Files_progress.ht (wd,file) date
+			Hashtbl.add Files_progress.ht (wd, file) date
 		      end
 		   ) l_filtered
 
@@ -413,15 +407,15 @@ let what_to_do event =
 		  in
 		  Log.log (err, Error)
 					  
-	      | Some value ->
-		  let folder = Filename.quote value.path in
+	      | Some folder ->
+		  let path_quoted = Filename.quote folder.path in
 					      
 		  if debug_event then
-		    Printf.printf "[II] Folder: %s\n" folder;
+		    Printf.printf "[II] Folder: %s\n" path_quoted ;
 					      
 		  (* Call lsof to know which file stopped being accessed *)
 		  let chan =
-		    Unix.open_process_in ("(lsof -w +d "^folder^") | grep REG")
+		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
 		  in
 
 		  let l_opened_files = File_list.get chan in
@@ -429,7 +423,7 @@ let what_to_do event =
 		  let l_files_in_progress = File_list.filter l_opened_files in
 
                   (* Return the list of the files which stopped being accessed *)
-		  let l_stop    =
+		  let l_stop =
 		    Hashtbl.fold (
 		    fun (wd2, f_file) _ l_stop' ->
 		      (* if wd2 is wd's child and is not in progress anymore *)
@@ -446,7 +440,7 @@ let what_to_do event =
 		  fun (wd2, f_file) ->
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
 
-		    let date = Date.date() in
+		    let date = Date.date () in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
@@ -469,10 +463,9 @@ let what_to_do event =
 			    can't find its father" name
 			in
 			Log.log (err, Error)
-					       
-		    | Some value ->
-	      		let folder = value.path in
-		        add_watch (folder^"/"^name) (Some wd) false
+			  
+		    | Some father ->
+		        add_watch (father.path^"/"^name) (Some wd) false
 		  end
 
 					   
@@ -486,22 +479,23 @@ let what_to_do event =
 			in
 			Log.log (report, Error)
 					   
-		    | Some value ->
-			let folder = (value.path)^"/"^name in
+		    | Some father ->
+			let path = (father.path)^"/"^name in
+
 		        let children =
 			  (* Exception raised if the list returned by Dirs.ls is empty.
 			   * This shouldn't happen because 'folder' should be at least returned
 			   * If raised, it means the folder couldn't be opened by Unix.opendir *)
 			  try
-			    List.tl (Dirs.ls folder [])
+			    List.tl (Dirs.ls path [])
 			  with Failure _ ->
-			    let error = "For some reasons, '"^folder^"' could not be opened while doing a move_to" in
+			    let error = "For some reasons, '"^path^"' could not be browsed while doing a move_to" in
 			    Log.log (error, Error);
 			    []
 			in
 			
 			(* Watch the new folder *)
-                        add_watch folder (Some wd) false ;
+                        add_watch path (Some wd) false ;
 					       
 			(* Then the folder's children *)
 			add_watch_children children
@@ -513,20 +507,26 @@ let what_to_do event =
 
 		  
 	      | Delete, true ->
-                  let err =
-		    sprintf "%s has been deleted but I can't stop \
-		      watching it because I can't find its father" name
-		  in
 		  begin
 		    match get_value wd with
-		    | None -> Log.log (err, Error)
-
-		    | Some value  ->
-			let folder = value.path in
-
-			match get_key (folder^"/"^name) with
-			| None -> Log.log (err, Error)
-			| Some wd_key -> del_watch wd_key						      
+		    | None ->
+			let err =
+			  sprintf "%s has been deleted but I can't stop \
+			    watching it because I can't find its father" name
+			in
+			Log.log (err, Error)
+			  
+		    | Some father ->
+			let path = (father.path^"/"^name) in
+			
+			match get_key path with
+			| None ->
+			    let err =
+			      sprintf "%s has been deleted but couldn't \
+				be stopped being watched (not found in Hashtbl)" path
+			    in
+			    Log.log (err, Error)
+			| Some wd_key -> del_watch wd_key
 		  end
 
 
@@ -544,10 +544,9 @@ let what_to_do event =
 			in
 			Log.log (report, Error)
 			  
-		    | Some value1  ->
-			let folder = value1.path in
-			
-			match get_key (folder^"/"^name) with
+		    | Some father ->
+
+			match get_key (father.path^"/"^name) with
 			| None ->
 			    Log.log ("Error. Move_from: get_key -> wd_key", Error)
 
@@ -556,7 +555,7 @@ let what_to_do event =
 			    | None ->
 				Log.log ("Error: Move_from: get_value", Error)
 
-			    | Some value2 ->
+			    | Some current ->
 						       
 				(* Get the list of ALL the children and descendants *)
 				let rec get_all_descendants l_children =
@@ -564,11 +563,11 @@ let what_to_do event =
 				  fun acc wd_child ->
 				    match get_value wd_child with
 				    | None -> []
-				    | Some value3 ->
-					(get_all_descendants value3.wd_children)@[wd_child]@acc
+				    | Some child ->
+					(get_all_descendants child.wd_children)@[wd_child]@acc
 				 ) [] l_children
 				in
-				let children_and_descendants = get_all_descendants value2.wd_children in
+				let children_and_descendants = get_all_descendants current.wd_children in
 				
 				(* printf "Children's list :\n";
 				   List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
@@ -583,12 +582,16 @@ let what_to_do event =
 				      Log.log ("Error. What_to_do(move_from): \
 						 Could not find a wd_child to delete", Error)
 			 
-				  | Some value4 -> 
-				      Log.log ("move_from of child : "^(value4.path), Normal_Extra) ;
+				  | Some child -> 
+				      Log.log ("move_from of child : "^(child.path), Normal_Extra) ;
 				      del_watch wd_child
 			       ) children_and_descendants
 				;
 				Log.log (("move_from of "^name), Normal_Extra) ;
+
+                                (* The children's watch has been deleted,
+                                 * let's delete the real target
+                                 *)
 				del_watch wd_key
 
 		  end (* eo move_from, true *)
@@ -613,7 +616,7 @@ let what_to_do event =
 		    end
 *)
 	      | _ ->
-		  Log.log ("I don't do: "^(string_of_event type_event)^", "
+		  Log.log ("I don't do: "^(string_of_event event_type)^", "
 			   ^(string_of_bool is_folder)^" yet.", Normal_Extra)
 	end (* eo match type_event *)
   
