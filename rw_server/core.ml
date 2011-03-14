@@ -179,7 +179,7 @@ let add_watch path2watch wd_father_opt is_config_file =
   else
     if Sys.file_exists path2watch then
       try
-	(* Start watching the wd in 2 differents ways in case it's a configuration file or not *)
+	(* Start watching the wd in 2 different ways in case it's a configuration file or not *)
 	let wd =
 	  if is_config_file then
 	    Inotify.add_watch fd path2watch [S_Close_write]
@@ -323,8 +323,8 @@ let what_to_do event =
 	begin match event_type, is_folder with	
 	| Isdir, _ -> action q true
 
-	| Access, false -> () (* déclenché avec un "more fichier.txt" *)
-	| Attrib, false -> () (* lors de création de fichier *)
+	| Access, false -> () (* triggered with "more foobar.txt" *)
+	| Attrib, false -> () (* when creating a file *)
 	| Delete, false -> ()
 	| Modify, false -> ()
 	| Open, true -> ()
