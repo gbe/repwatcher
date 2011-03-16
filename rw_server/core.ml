@@ -250,7 +250,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 	    in
 	    Log.log (txt, Normal_Extra)
 	  end
-	    
+
       with 
       | Failure err ->
 	  let error =
@@ -267,21 +267,35 @@ let add_watch path2watch wd_father_opt is_config_file =
 
 
 
-let add_watch_children l_children =
+let rec add_watch_children l_children =
   
-  List.iter (
-  fun f ->
-    let father_path = Filename.dirname f in
-    
-    match get_key father_path with
-    | None ->
-	Log.log ("Oops. Can't start watching a children list because \
-		   I can't find their wd's father based on his path", Error)
-		   
-    | Some wd_father ->
-	add_watch f (Some wd_father) false 
-	  
- ) l_children
+  match l_children with
+  | [] -> ()
+  | folder :: q ->
+      let father_path = Filename.dirname folder in
+
+      match get_key father_path with
+      | None ->
+	  let error =
+	    sprintf "Oops. %s couldn't be found. \
+	      Every subdirectories won't be watched. \
+	      Perhaps this directory is already watched (mount --bind ?)." father_path
+	  in
+	  Log.log (error, Error) ;
+
+          (* Remove every subfolders *)
+	  let regexp_faulty = Str.regexp father_path in
+
+	  let remaining =
+	    List.filter (
+	    fun child -> not (Str.string_match regexp_faulty child 0)
+	   ) q
+	  in
+	  add_watch_children remaining
+
+      | Some wd_father ->
+	  add_watch folder (Some wd_father) false ;
+	  add_watch_children q
 ;;
 
 
