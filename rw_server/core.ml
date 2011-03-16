@@ -277,7 +277,7 @@ let rec add_watch_children l_children =
       match get_key father_path with
       | None ->
 	  let error =
-	    sprintf "Oops. %s couldn't be found. \
+	    sprintf "Oops. %s couldn't be found in the Hashtbl. \
 	      Every subdirectories won't be watched. \
 	      Perhaps this directory is already watched (mount --bind ?)." father_path
 	  in
