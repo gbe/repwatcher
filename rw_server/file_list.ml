@@ -27,7 +27,14 @@ let get channel =
   let regexp_quote     = Str.regexp "'" in
   let regexp_quote2    = Str.regexp "&apos;" in
 
-  let file = {f_name="";f_path="";f_login="";f_filesize=(Int64.of_int 0);f_prog_source=""} in
+  let file = {
+    f_name = "" ;
+    f_path = "" ;
+    f_login = "" ;
+    f_filesize = (Int64.of_int 0) ;
+    f_program = "" ;
+    f_program_pid = -1 ;
+  } in
   
   begin
     try
@@ -39,18 +46,21 @@ let get channel =
 	  match cut_line with
 	  | [] -> file
 	  | t::q -> if column = 0 then
-	      set_file q (column+1) {file with f_prog_source = t}
+	      set_file q (column + 1) {file with f_program = t}
+
+	  else if column = 1 then
+	    set_file q (column + 1) {file with f_program_pid = (int_of_string t)}
 		
-	  else if List.mem column [1 ; 3 ; 4 ; 5 ; 7] then
-	    set_file q (column+1) file
+	  else if List.mem column [3 ; 4 ; 5 ; 7] then
+	    set_file q (column + 1) file
 	      
 	      (* login *)
 	  else if column = 2 then
-	    set_file q (column+1) {file with f_login = t}
+	    set_file q (column + 1) {file with f_login = t}
 	      
 	      (* file size *)
 	  else if column = 6 then
-	    set_file q (column+1) {file with f_filesize = (Int64.of_string t)}
+	    set_file q (column + 1) {file with f_filesize = (Int64.of_string t)}
 	      
 	  else
 	    let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) in
@@ -75,11 +85,11 @@ let filter unfiltered_l =
   let lprogs_filtered =
     match conf.c_mode with
     | (Specified_programs, specified_programs) ->
-	List.filter (fun file -> List.mem file.f_prog_source specified_programs) unfiltered_l
+	List.filter (fun file -> List.mem file.f_program specified_programs) unfiltered_l
 	    
     (* Remove all the unwanted_programs from the list *)
     | (Unwanted_programs, unwanted_programs) ->	  	  
-	List.filter (fun file -> if List.mem file.f_prog_source unwanted_programs then false else true) unfiltered_l
+	List.filter (fun file -> if List.mem file.f_program unwanted_programs then false else true) unfiltered_l
 	    
   in
     

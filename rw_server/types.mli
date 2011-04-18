@@ -22,7 +22,8 @@ type f_file = {
   f_path        : string ;
   f_login       : string ;
   f_filesize    : int64  ;
-  f_prog_source : string ;
+  f_program     : string ;
+  f_program_pid : int    ;
 }
 
 type file_state = File_Opened | File_Closed

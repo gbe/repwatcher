@@ -166,7 +166,7 @@ let sql (f, state, date) =
 	  (login,program,path,filename,filesize,starting_date, in_progress) \
 	  VALUES (%s, %s, %s, %s, %s, %s, '1')"
           (Mysqldb.ml2str f.f_login)
-	  (Mysqldb.ml2str f.f_prog_source)
+	  (Mysqldb.ml2str f.f_program)
 	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
