@@ -163,7 +163,7 @@ let sql (f, state, date) =
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
 	Printf.sprintf "INSERT INTO accesses \
-	  (login,program,path,filename,filesize,starting_date, in_progress) \
+	  (login, program, path, filename, filesize, opening_date, in_progress) \
 	  VALUES (%s, %s, %s, %s, %s, %s, '1')"
           (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
@@ -181,11 +181,11 @@ let sql (f, state, date) =
 
       let update_query =
 	Printf.sprintf "UPDATE accesses \
-	  SET ENDING_DATE = %s, IN_PROGRESS = '0' \
+	  SET CLOSING_DATE = %s, IN_PROGRESS = '0' \
 	  WHERE LOGIN=%s AND \
 	  FILENAME=%s AND \
 	  IN_PROGRESS = 1 \
-	  ORDER BY STARTING_DATE DESC \
+	  ORDER BY OPENING_DATE DESC \
 	  LIMIT 1"
 	  (Mysqldb.ml2str date)
 	  (Mysqldb.ml2str f.f_login)
