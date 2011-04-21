@@ -21,7 +21,7 @@ open Types
 open Types_conf
 open Unix
 
-let ml2str = Mysql.ml2str;;
+let ml2str = Mysql.ml2str ;;
 
 let connect () =
   try
@@ -127,13 +127,65 @@ let create_db dbname =
 	    | StatusOK ->
 	      Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
 
-	    | StatusEmpty -> Log.log ("hmmm yes ???", Normal_Extra)
+	    | StatusEmpty -> ()
 
 	    | StatusError _ ->
 	      begin
 		match errmsg cid with
 		  | None ->
 		    Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+			     doesn't know why", Error)
+
+		  | Some errmsg' ->
+		    Log.log (errmsg', Error)
+	      end ;
+	      exit 2
+	end ;
+
+	ignore (disconnect cid)
+
+      with
+	  Mysql.Error error ->
+	    Log.log (error, Error) ;
+	    exit 2
+;;
+
+let create_table_accesses dbname =
+
+  let q =
+    Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s`.`accesses` (\
+  `ID` int(4) NOT NULL AUTO_INCREMENT,\
+  `LOGIN` varchar(20) NOT NULL,\
+  `PROGRAM` varchar(26) NOT NULL,\
+  `PATH` varchar(512) NOT NULL,\
+  `FILENAME` varchar(256) NOT NULL,\
+  `FILESIZE` bigint(20) unsigned NOT NULL,\
+  `OPENING_DATE` datetime NOT NULL,\
+  `CLOSING_DATE` datetime DEFAULT NULL,\
+  `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
+  PRIMARY KEY (`ID`)\
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;" dbname
+  in
+
+  match connect () with
+    | None -> assert false
+    | Some cid ->
+
+      try
+	let _ = exec cid q in
+
+	begin
+	  match status cid with
+	    | StatusOK ->
+	      Log.log (("Table accesses successfully created"), Normal_Extra)
+
+	    | StatusEmpty -> ()
+
+	    | StatusError _ ->
+	      begin
+		match errmsg cid with
+		  | None ->
+		    Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
 			     doesn't know why", Error)
 
 		  | Some errmsg' ->

@@ -187,8 +187,8 @@ let check conf =
       | Some cid ->
 	match Mysqldb.disconnect cid with
 	  | true -> ()
-	  | false -> failwith "Could not disconnect, read the log" ;
-  end;
+	  | false -> failwith "Could not disconnect, read the log"
+  end ;
 
 
 
@@ -196,8 +196,15 @@ let check conf =
   (* if Mysqldb.create_db goes wrong, the program exits *)
     match conf.c_mysql.dbname with
       | None -> assert false
-      | Some dbname -> Mysqldb.create_db dbname
+      | Some dbname ->
+	Mysqldb.create_db dbname ;
+
+	(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
+	Mysqldb.create_table_accesses dbname
   end ;
+
+
+
 
 
 
