@@ -323,6 +323,7 @@ under certain conditions; for details read COPYING file\n\n";
 
 (* Perform the following tests and failwith in case of error :
    - SGBD connection
+   - Add Database if it doesn't exist
    - main process identity
    - rights on the configuration file
 
