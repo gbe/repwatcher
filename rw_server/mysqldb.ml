@@ -25,7 +25,10 @@ let ml2str = Mysql.ml2str;;
 
 let connect () =
   try
-    Some (Mysql.connect (Config.get()).c_mysql)
+    let cid = Some (Mysql.connect (Config.get()).c_mysql) in
+    Log.log ("Connected to MySQL", Normal_Extra) ;
+    cid
+
   with Mysql.Error error ->
     Log.log (error, Error);
     None
@@ -36,7 +39,10 @@ let connect_without_db () =
   let m = (Config.get()).c_mysql in
 
   try
-    Some (Mysql.connect { m with dbname = None })
+    let cid = Some (Mysql.connect { m with dbname = None }) in
+    Log.log ("Connected to MySQL", Normal_Extra) ;
+    cid
+
   with Mysql.Error error ->
     Log.log (error, Error);
     None
@@ -75,7 +81,6 @@ let query q =
   | None -> [] (* could not connect so we do nothing *)
   | Some cid ->
 
-      Log.log ("Connected to MySQL", Normal_Extra);
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra);
 
       let rows_list =
@@ -116,23 +121,28 @@ let create_db dbname =
 
       try
 	let _ = exec cid q in
-	match  status cid with
-	  | StatusOK ->
-	    Log.log ("Database s% successfully created", Normal_Extra)
 
-	  | StatusEmpty -> Log.log ("hmmm yes ???", Normal_Extra)
+	begin
+	  match status cid with
+	    | StatusOK ->
+	      Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
 
-	  | StatusError _ ->
-	    begin
-	      match errmsg cid with
-		| None ->
-		  Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+	    | StatusEmpty -> Log.log ("hmmm yes ???", Normal_Extra)
+
+	    | StatusError _ ->
+	      begin
+		match errmsg cid with
+		  | None ->
+		    Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
 			     doesn't know why", Error)
 
-		| Some errmsg' ->
-		  Log.log (errmsg', Error)
-	    end ;
-	    exit 2
+		  | Some errmsg' ->
+		    Log.log (errmsg', Error)
+	      end ;
+	      exit 2
+	end ;
+
+	ignore (disconnect cid)
 
       with
 	  Mysql.Error error ->
