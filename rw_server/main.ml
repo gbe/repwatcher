@@ -17,7 +17,6 @@
 *)
 
 
-
 open Unix
 open Printf
 
@@ -172,7 +171,10 @@ let clean_exit () =
 
 let check conf =
 
-  (* Test if we can successfully connect to the SGBD
+
+  (* Test if we can successfully connect to the SGBD without a dbname,
+   * because at this point, the DB could not exist.
+   *
    * if we can't, then we exit right away
    * This prevents the program to crash long after starting running it
    * at the very moment a SQL query is needed.
@@ -180,13 +182,23 @@ let check conf =
    * There is no need to add a try/with here because it's handled in Mysqldb.ml
    *)  
   begin
-    match Mysqldb.connect() with
-    | None -> failwith "Could not connect, read the log"
-    | Some cid ->
+    match Mysqldb.connect_without_db () with
+      | None -> failwith "Could not connect, read the log"
+      | Some cid ->
 	match Mysqldb.disconnect cid with
-	| true -> ()
-	| false -> failwith "Could not disconnect, read the log"
+	  | true -> ()
+	  | false -> failwith "Could not disconnect, read the log" ;
   end;
+
+
+
+  begin
+  (* if Mysqldb.create_db goes wrong, the program exits *)
+    match conf.c_mysql.dbname with
+      | None -> assert false
+      | Some dbname -> Mysqldb.create_db dbname
+  end ;
+
 
 
 

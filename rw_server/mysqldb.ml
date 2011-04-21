@@ -31,6 +31,17 @@ let connect () =
     None
 ;;
 
+let connect_without_db () =
+
+  let m = (Config.get()).c_mysql in
+
+  try
+    Some (Mysql.connect { m with dbname = None })
+  with Mysql.Error error ->
+    Log.log (error, Error);
+    None
+;;
+
 let disconnect cid =
   try
     Mysql.disconnect cid;
@@ -93,4 +104,38 @@ let query q =
 ;;
 
 
+let create_db dbname =
 
+  let q =
+    Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" dbname
+  in
+
+  match connect_without_db () with
+    | None -> assert false
+    | Some cid ->
+
+      try
+	let _ = exec cid q in
+	match  status cid with
+	  | StatusOK ->
+	    Log.log ("Database s% successfully created", Normal_Extra)
+
+	  | StatusEmpty -> Log.log ("hmmm yes ???", Normal_Extra)
+
+	  | StatusError _ ->
+	    begin
+	      match errmsg cid with
+		| None ->
+		  Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+			     doesn't know why", Error)
+
+		| Some errmsg' ->
+		  Log.log (errmsg', Error)
+	    end ;
+	    exit 2
+
+      with
+	  Mysql.Error error ->
+	    Log.log (error, Error) ;
+	    exit 2
+;;
