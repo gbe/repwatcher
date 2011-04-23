@@ -163,8 +163,8 @@ let sql (f, state, date) =
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
 	Printf.sprintf "INSERT INTO accesses \
-	  (login, program, path, filename, filesize, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, '1')"
+	  (login, program, path, filename, filesize, opening_offset, opening_date, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, '0', %s, '1')"
           (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
 	  (Mysqldb.ml2str f.f_path)

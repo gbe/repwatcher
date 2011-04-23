@@ -160,6 +160,8 @@ let create_table_accesses dbname =
   `PATH` varchar(512) NOT NULL,\
   `FILENAME` varchar(256) NOT NULL,\
   `FILESIZE` bigint(20) unsigned NOT NULL,\
+  `OPENING_OFFSET` bigint(20) unsigned NOT NULL,\
+  `CLOSING_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `OPENING_DATE` datetime NOT NULL,\
   `CLOSING_DATE` datetime DEFAULT NULL,\
   `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
@@ -176,10 +178,8 @@ let create_table_accesses dbname =
 
 	begin
 	  match status cid with
-	    | StatusOK ->
-	      Log.log (("Table accesses successfully created"), Normal_Extra)
-
-	    | StatusEmpty -> ()
+	    | (StatusOK | StatusEmpty) ->
+	      Log.log (("Table accesses successfully created"), Normal_Extra)	 
 
 	    | StatusError _ ->
 	      begin
@@ -201,3 +201,12 @@ let create_table_accesses dbname =
 	    Log.log (error, Error) ;
 	    exit 2
 ;;
+
+
+(* table current_accesses
+
+   * ID
+   * OFFSET
+   * ACCESSES.ID
+
+*)
