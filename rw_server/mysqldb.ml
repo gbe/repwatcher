@@ -74,32 +74,30 @@ let map res =
 ;;
 
 
-let query queries =
+let query q =
 
   (* Establish a connection with MySQL *)
   match connect () with
   | None -> [] (* could not connect so we do nothing *)
   | Some cid ->
 
-    let do_query q =       
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra);
-      
+
       let rows_list =
-	try	  
-	  
+	try
 	  let res = exec cid q in
 	  
 	  match status cid with
-	    | StatusOK      ->
+	  | StatusOK      ->
 	      Log.log ("Query successfully executed", Normal_Extra);
 	      map res
-	    | StatusEmpty   -> []
-	    | StatusError _ ->
+	  | StatusEmpty   -> []
+	  | StatusError _ ->
 	      begin match errmsg cid with
-		| None ->
+	      | None ->
 		  Log.log ("Oops. Mysqldb.query had an error and the SGBD \
 			     can't tell which one", Error)
-		| Some errmsg' -> Log.log (errmsg', Error)
+	      | Some errmsg' -> Log.log (errmsg', Error)
 	      end;
 	      []
 	with Mysql.Error error ->
@@ -107,21 +105,7 @@ let query queries =
 	  []
       in
       ignore (disconnect cid);
-      
-	(* return the query and its associated value *)
-      (q, rows_list)
-    in
-
-    if List.length queries > 1 then
-      ignore (do_query "SET AUTOCOMMIT=OFF") ;
-
-    let res = List.map do_query queries in
-
-    if List.length queries > 1 then
-      ignore (do_query "COMMIT") ;
-
-    res
-
+      rows_list
 ;;
 
 

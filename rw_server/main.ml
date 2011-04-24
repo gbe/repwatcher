@@ -152,7 +152,7 @@ let sgbd_reset_in_progress () =
   let reset_accesses =
     "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
   in
-  ignore (Mysqldb.query [reset_accesses])
+  ignore (Mysqldb.query reset_accesses)
 ;;
 
 
@@ -207,7 +207,7 @@ let check conf =
 
 	(* if the table existed prior to this run, then it gets truncated *)
 	let truncate = "TRUNCATE TABLE current_accesses" in
-	ignore (Mysqldb.query [truncate])
+	ignore (Mysqldb.query truncate)
 
   end ;
 
