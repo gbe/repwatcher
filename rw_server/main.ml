@@ -200,7 +200,15 @@ let check conf =
 	Mysqldb.create_db dbname ;
 
 	(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
-	Mysqldb.create_table_accesses dbname
+	Mysqldb.create_table_accesses () ;
+
+	(* if Mysqldb.create_table_current_accesses goes wrong, the program exits *)
+	Mysqldb.create_table_current_accesses () ;
+
+	(* if the table existed prior to this run, then it gets truncated *)
+	let truncate = "TRUNCATE TABLE current_accesses" in
+	ignore (Mysqldb.query truncate)
+
   end ;
 
 
@@ -214,7 +222,7 @@ let check conf =
     match conf.c_process_identity with
     | None -> ()
     | Some new_main_identity ->
-	if Unix.geteuid() = 0 && Unix.getegid() = 0 then
+	if Unix.geteuid () = 0 && Unix.getegid () = 0 then
 	  begin
 	    try
 	      (* Check in the file /etc/passwd if the user "new_main_identity" exists *)

@@ -150,10 +150,10 @@ let create_db dbname =
 	    exit 2
 ;;
 
-let create_table_accesses dbname =
+let create_table_accesses () =
 
   let q =
-    Printf.sprintf "CREATE TABLE IF NOT EXISTS `%s`.`accesses` (\
+    Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(4) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
   `PROGRAM` varchar(26) NOT NULL,\
@@ -166,7 +166,7 @@ let create_table_accesses dbname =
   `CLOSING_DATE` datetime DEFAULT NULL,\
   `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
   PRIMARY KEY (`ID`)\
-) ENGINE=InnoDB  DEFAULT CHARSET=utf8;" dbname
+) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
   in
 
   match connect () with
@@ -203,10 +203,51 @@ let create_table_accesses dbname =
 ;;
 
 
-(* table current_accesses
 
-   * ID
-   * OFFSET
-   * ACCESSES.ID
 
-*)
+let create_table_current_accesses () =
+
+  let q =
+    Printf.sprintf "CREATE TABLE IF NOT EXISTS `current_accesses` (\
+  `CA_ID` int(4) NOT NULL AUTO_INCREMENT,\
+  `CA_CID` int(4) NOT NULL,\
+  `CA_OFFSET` bigint(20) unsigned NOT NULL,\
+  PRIMARY KEY (`CA_ID`), \
+  INDEX acc_id (CA_CID),\
+  FOREIGN KEY (CA_CID) REFERENCES accesses(ID) \
+  ON DELETE CASCADE
+  ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
+  in
+
+  match connect () with
+    | None -> assert false
+    | Some cid ->
+
+      try
+	let _ = exec cid q in
+
+	begin
+	  match status cid with
+	    | (StatusOK | StatusEmpty) ->
+	      Log.log (("Table current_accesses successfully created"), Normal_Extra)
+
+	    | StatusError _ ->
+	      begin
+		match errmsg cid with
+		  | None ->
+		    Log.log ("Oops. Mysqldb.create_table_current_accesses had an error and the SGBD \
+			     doesn't know why", Error)
+
+		  | Some errmsg' ->
+		    Log.log (errmsg', Error)
+	      end ;
+	      exit 2
+	end ;
+
+	ignore (disconnect cid)
+
+      with
+	  Mysql.Error error ->
+	    Log.log (error, Error) ;
+	    exit 2
+;;
