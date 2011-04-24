@@ -173,7 +173,7 @@ let sql (f, state, date) =
 	  (Mysqldb.ml2str date)
       in
          
-      ignore (Mysqldb.query query)
+      ignore (Mysqldb.query [query])
 	
 	
 	
@@ -192,7 +192,7 @@ let sql (f, state, date) =
 	  (Mysqldb.ml2str f.f_name)
       in
 
-      ignore (Mysqldb.query update_query)
+      ignore (Mysqldb.query [update_query])
 ;;
 
 
