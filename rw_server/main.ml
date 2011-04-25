@@ -152,7 +152,12 @@ let sgbd_reset_in_progress () =
   let reset_accesses =
     "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
   in
-  ignore (Mysqldb.query reset_accesses)
+  
+  match Mysqldb.connect () with
+    | None -> ()
+    | Some cid -> 
+      ignore (Mysqldb.query cid reset_accesses) ;
+      Mysqldb.disconnect cid
 ;;
 
 
@@ -185,9 +190,7 @@ let check conf =
     match Mysqldb.connect_without_db () with
       | None -> failwith "Could not connect, read the log"
       | Some cid ->
-	match Mysqldb.disconnect cid with
-	  | true -> ()
-	  | false -> failwith "Could not disconnect, read the log"
+	Mysqldb.disconnect cid
   end ;
 
 
@@ -207,8 +210,12 @@ let check conf =
 
 	(* if the table existed prior to this run, then it gets truncated *)
 	let truncate = "TRUNCATE TABLE current_accesses" in
-	ignore (Mysqldb.query truncate)
 
+	match Mysqldb.connect () with
+	  | None -> ()
+	  | Some cid ->
+	    ignore (Mysqldb.query cid truncate) ;
+	    Mysqldb.disconnect cid
   end ;
 
 

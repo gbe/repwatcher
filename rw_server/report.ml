@@ -159,7 +159,7 @@ let sql (f, state, date) =
   
   match state with
   | File_Opened  ->	  
-      
+    begin
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
 	Printf.sprintf "INSERT INTO accesses \
@@ -172,9 +172,13 @@ let sql (f, state, date) =
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
 	  (Mysqldb.ml2str date)
       in
-         
-      ignore (Mysqldb.query query)
-	
+
+      match Mysqldb.connect () with
+	| None -> ()
+	| Some cid ->
+	  ignore (Mysqldb.query cid query) ;
+	  Mysqldb.disconnect cid
+    end
 	
 	
   | File_Closed ->
@@ -192,7 +196,11 @@ let sql (f, state, date) =
 	  (Mysqldb.ml2str f.f_name)
       in
 
-      ignore (Mysqldb.query update_query)
+      match Mysqldb.connect () with
+	| None -> ()
+	| Some cid ->
+	  ignore (Mysqldb.query cid update_query) ;
+	  Mysqldb.disconnect cid
 ;;
 
 

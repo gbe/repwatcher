@@ -25,9 +25,9 @@ let ml2str = Mysql.ml2str ;;
 
 let connect () =
   try
-    let cid = Some (Mysql.connect (Config.get()).c_mysql) in
+    let cid = Mysql.connect (Config.get()).c_mysql in
     Log.log ("Connected to MySQL", Normal_Extra) ;
-    cid
+    Some cid
 
   with Mysql.Error error ->
     Log.log (error, Error);
@@ -39,9 +39,9 @@ let connect_without_db () =
   let m = (Config.get()).c_mysql in
 
   try
-    let cid = Some (Mysql.connect { m with dbname = None }) in
+    let cid = Mysql.connect { m with dbname = None } in
     Log.log ("Connected to MySQL", Normal_Extra) ;
-    cid
+    Some cid
 
   with Mysql.Error error ->
     Log.log (error, Error);
@@ -51,11 +51,10 @@ let connect_without_db () =
 let disconnect cid =
   try
     Mysql.disconnect cid;
-    Log.log ("Disconnected from MySQL", Normal_Extra);
-    true
+    Log.log ("Disconnected from MySQL", Normal_Extra)
+
   with Mysql.Error error ->
-    Log.log ("RW couldn't disconnect from Mysql: "^error, Error);
-    false
+    Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
 ;;
 
 
@@ -74,38 +73,29 @@ let map res =
 ;;
 
 
-let query q =
+let query cid q =
 
-  (* Establish a connection with MySQL *)
-  match connect () with
-  | None -> [] (* could not connect so we do nothing *)
-  | Some cid ->
+  Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
 
-      Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra);
-
-      let rows_list =
-	try
-	  let res = exec cid q in
-	  
-	  match status cid with
-	  | StatusOK      ->
-	      Log.log ("Query successfully executed", Normal_Extra);
-	      map res
-	  | StatusEmpty   -> []
-	  | StatusError _ ->
-	      begin match errmsg cid with
-	      | None ->
-		  Log.log ("Oops. Mysqldb.query had an error and the SGBD \
+  try
+    let res = exec cid q in
+    
+    match status cid with
+      | StatusOK      ->
+	Log.log ("Query successfully executed", Normal_Extra);
+	map res
+      | StatusEmpty   -> []
+      | StatusError _ ->
+	begin match errmsg cid with
+	  | None ->
+	    Log.log ("Oops. Mysqldb.query had an error and the SGBD \
 			     can't tell which one", Error)
-	      | Some errmsg' -> Log.log (errmsg', Error)
-	      end;
-	      []
-	with Mysql.Error error ->
-	  Log.log (error, Error);
-	  []
-      in
-      ignore (disconnect cid);
-      rows_list
+	  | Some errmsg' -> Log.log (errmsg', Error)
+	end;
+	[]
+  with Mysql.Error error ->
+    Log.log (error, Error) ;
+    []
 ;;
 
 
@@ -142,7 +132,7 @@ let create_db dbname =
 	      exit 2
 	end ;
 
-	ignore (disconnect cid)
+	disconnect cid
 
       with
 	  Mysql.Error error ->
@@ -194,7 +184,7 @@ let create_table_accesses () =
 	      exit 2
 	end ;
 
-	ignore (disconnect cid)
+	disconnect cid
 
       with
 	  Mysql.Error error ->
@@ -244,7 +234,7 @@ let create_table_current_accesses () =
 	      exit 2
 	end ;
 
-	ignore (disconnect cid)
+	disconnect cid
 
       with
 	  Mysql.Error error ->
