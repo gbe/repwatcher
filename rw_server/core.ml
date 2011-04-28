@@ -24,6 +24,7 @@ open Inotify
 open Types
 open Types_conf
 open Report
+open Fdinfo
 
 let debug_event = false;;
 
@@ -382,11 +383,30 @@ let what_to_do event =
 			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
 			    file.f_name (Int64.to_string file.f_filesize) name;
 			
+			let pid = pid_of_int file.f_program_pid in
+
+			let fds =
+			  try
+			    get_fds pid
+			  with Unix.Unix_error _ -> []
+			in
+			
+			let offset =
+			  try
+			    let fd =
+			      List.find (fun fd ->
+				fd.name = file.f_path^file.f_name
+					) fds
+			    in
+			    get_offset pid fd
+			  with Not_found -> Int64.of_int (-1)
+			in
+			
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 
 			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
-			Report.report ( Sql (file, File_Opened, date) );
+			Report.report ( Sql (file, File_Opened, date, offset) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
 			Hashtbl.add Files_progress.ht (wd, file) date
 		      end
@@ -454,11 +474,15 @@ let what_to_do event =
 		  fun (wd2, f_file) ->
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
 
+
+		    let offset = Int64.of_int (-1) in
+
+
 		    let date = Date.date () in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
-		    Report.report ( Sql (f_file, File_Closed, date) ) ;
+		    Report.report ( Sql (f_file, File_Closed, date, offset) ) ;
 		    Report.report ( Notify (New_notif (f_file, File_Closed) )) ;
 		   ) l_stop
 	    end (* eo Close_nowrite, false *)

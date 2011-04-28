@@ -174,6 +174,25 @@ let clean_exit () =
 
 
 
+
+
+
+
+
+
+(* Perform the following tests and failwith in case of error :
+   - SGBD connection
+   - Add Database if it doesn't exist
+   - Add Table
+   - main process identity
+   - rights on the configuration file
+
+   if the server is enabled :
+   - exist and can be read: CA, cert
+   - exist, can be read and rights: key
+   - chroot folder
+   - server identity
+ *)
 let check conf =
 
 
@@ -205,17 +224,6 @@ let check conf =
 	(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
 	Mysqldb.create_table_accesses () ;
 
-	(* if Mysqldb.create_table_current_accesses goes wrong, the program exits *)
-	Mysqldb.create_table_current_accesses () ;
-
-	(* if the table existed prior to this run, then it gets truncated *)
-	let truncate = "TRUNCATE TABLE current_accesses" in
-
-	match Mysqldb.connect () with
-	  | None -> ()
-	  | Some cid ->
-	    ignore (Mysqldb.query cid truncate) ;
-	    Mysqldb.disconnect cid
   end ;
 
 
@@ -342,19 +350,6 @@ under certain conditions; for details read COPYING file\n\n";
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
 
-
-(* Perform the following tests and failwith in case of error :
-   - SGBD connection
-   - Add Database if it doesn't exist
-   - main process identity
-   - rights on the configuration file
-
-   if the server is enabled :
-   - exist and can be read: CA, cert
-   - exist, can be read and rights: key
-   - chroot folder
-   - server identity
- *)
   check conf;
 
 

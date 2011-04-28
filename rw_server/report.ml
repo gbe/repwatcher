@@ -155,7 +155,7 @@ let notify notification =
 
 
 
-let sql (f, state, date) =
+let sql (f, state, date, offset) =
   
   match state with
   | File_Opened  ->	  
@@ -164,12 +164,13 @@ let sql (f, state, date) =
       let query =
 	Printf.sprintf "INSERT INTO accesses \
 	  (login, program, path, filename, filesize, opening_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, '0', %s, '1')"
+	  VALUES (%s, %s, %s, %s, %s, '%s', %s, '1')"
           (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
 	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	  (Int64.to_string offset)
 	  (Mysqldb.ml2str date)
       in
 
@@ -210,8 +211,8 @@ module Report =
 struct
   
   let report = function
-    | Sql (file, state, date) ->
-	sql (file, state, date)
+    | Sql (file, state, date, offset) ->
+	sql (file, state, date, offset)
 
     | Notify notification ->
 	notify notification
