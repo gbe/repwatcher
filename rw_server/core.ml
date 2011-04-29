@@ -24,7 +24,6 @@ open Inotify
 open Types
 open Types_conf
 open Report
-open Fdinfo
 
 let debug_event = false;;
 
@@ -359,11 +358,18 @@ let what_to_do event =
 		  if debug_event then
 		    Printf.printf "[II] Folder: %s\n" path_quoted;
 		  
+		  
 		  let chan =
 		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
 		  in
 		  
-		  let l_opened_files = File_list.get chan in					       
+		    let l_opened_files = File_list.get chan (father.path^"/"^name) in		
+
+		(*  let chan =
+		    Unix.open_process_in ("lsof -o -F cLo father.path"^"/"^name)
+		  in
+		  let l_opened_files = File_list.get2 chan in
+		  *)
 		  ignore (Unix.close_process_in chan);
 		  
 		  let l_filtered = File_list.filter l_opened_files in
@@ -383,24 +389,7 @@ let what_to_do event =
 			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
 			    file.f_name (Int64.to_string file.f_filesize) name;
 			
-			let pid = pid_of_int file.f_program_pid in
-
-			let fds =
-			  try
-			    get_fds pid
-			  with Unix.Unix_error _ -> []
-			in
-			
-			let offset =
-			  try
-			    let fd =
-			      List.find (fun fd ->
-				fd.name = file.f_path^file.f_name
-					) fds
-			    in
-			    get_offset pid fd
-			  with Not_found -> Int64.of_int (-1)
-			in
+			let offset = Int64.of_int (-1) in
 			
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
@@ -408,7 +397,7 @@ let what_to_do event =
 			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
 			Report.report ( Sql (file, File_Opened, date, offset) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
-			Hashtbl.add Files_progress.ht (wd, file) date
+			Hashtbl.add Files_progress.ht (wd, file) (date, offset)
 		      end
 		   ) l_filtered
 
@@ -472,15 +461,12 @@ let what_to_do event =
 					      
 		  List.iter (
 		  fun (wd2, f_file) ->
+		    let (_, offset) = Hashtbl.find Files_progress.ht (wd2, f_file) in
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
-
-
-		    let offset = Int64.of_int (-1) in
-
-
+		    
 		    let date = Date.date () in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
-
+		    
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 		    Report.report ( Sql (f_file, File_Closed, date, offset) ) ;
 		    Report.report ( Notify (New_notif (f_file, File_Closed) )) ;

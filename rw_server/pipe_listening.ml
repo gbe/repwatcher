@@ -37,7 +37,7 @@ let wait_pipe_from_child_process () =
 	    
 	    let l_current =
 	      Hashtbl.fold (
-	      fun (_,file) date ret ->
+	      fun (_,file) (date,_) ret ->
 		ret@[ (
 		      { file with
 			f_name = (Txt_operations.escape_for_notify file.f_name)

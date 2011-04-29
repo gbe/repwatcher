@@ -16,5 +16,5 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *)
 
-val ht : (Inotify.wd * Types.f_file, string) Hashtbl.t
-(* The string here is the date when the file has been accessed *)
+val ht : (Inotify.wd * Types.f_file, (string * int64)) Hashtbl.t
+(* The string here is the date and int64 the offset when the file has been accessed *)

@@ -416,6 +416,8 @@ under certain conditions; for details read COPYING file\n\n";
       (* watch the directories given in the config file *)
       watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
 
+      ignore (Thread.create Offset.loop_check ()) ;
+
       Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) ;
       Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
 

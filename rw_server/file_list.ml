@@ -20,6 +20,31 @@
 open Types
 open Types_conf
 
+(*
+let get2 channel =
+
+
+(*
+ * process number
+ * program name
+ * program identity (login)
+ * offset
+ *)
+let r = List.map Str.regexp [
+  "^p" ;
+  "^c" ;
+  "^L" ;
+  "^o"
+] in
+
+  try  
+    while true do
+
+    done
+  with _ -> close_in channel
+;;
+*)
+
 let get channel =
   
   let l = ref [] in    
@@ -38,6 +63,8 @@ let get channel =
   
   begin
     try
+      print_endline ("! '"^name^"'") ;
+
       while true do 
 	let line     = Str.global_replace regexp_quote "&apos;" (input_line channel) in
 	let cut_line = Str.split regexp_cut_space line in
@@ -63,8 +90,11 @@ let get channel =
 	    set_file q (column + 1) {file with f_filesize = (Int64.of_string t)}
 	      
 	  else
-	    let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) in
-	    {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}
+	    begin
+	      let path_and_filename = Str.global_replace regexp_quote2 "'" (t^" "^(String.concat " " q)) in
+	      print_endline ("'"^path_and_filename^"'") ;
+	      {file with f_name = (Filename.basename path_and_filename) ; f_path = (Filename.dirname path_and_filename)^"/"}
+	    end
 	      
 	in l := (set_file cut_line 0 file)::(!l)
       done
