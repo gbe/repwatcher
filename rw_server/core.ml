@@ -374,16 +374,29 @@ let what_to_do event =
 		      begin
 			if debug_event then
 			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
-			    file.f_name (Int64.to_string file.f_filesize) name;
-			let offset = Offset.get file.f_program_pid (file.f_path^file.f_name) in
+			    file.f_name (Int64.to_string file.f_filesize) name;			
 
+			(* Notify right away *)
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
 			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
-			Report.report ( Sql (file, File_Opened, date, offset) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
-			Hashtbl.add Files_progress.ht (wd, file) (date, offset)
+
+			
+			(* But wait a few seconds to get an opening offset != 0 *)
+			let wait_to_get_offset () =
+			  Thread.delay 3.0 ; 
+			  let offset =
+			    Offset.get file.f_program_pid (file.f_path^file.f_name)
+			  in
+			  Report.report ( Sql (file, File_Opened, date, offset) );
+			  Hashtbl.add Files_progress.ht (wd, file) (date, offset) 
+			in
+			print_endline "hello" ;
+			ignore (Thread.create wait_to_get_offset ()) ;
+			print_endline "bye" ;
+
 		      end
 			
 		  ) files_filtered
