@@ -391,10 +391,15 @@ let what_to_do event =
 			    Offset.get file.f_program_pid (file.f_path^file.f_name)
 			  in
 			  Report.report ( Sql (file, File_Opened, date, offset) );
-			  Hashtbl.add Files_progress.ht (wd, file) (date, offset) 
+
+			  (* Has to be a replace and not a add *)
+			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
 			in
 
 			ignore (Thread.create wait_to_get_offset ()) ;
+			
+			(* Can't add in the thread otherwise, we got 3 or 4 notifications *)
+			Hashtbl.add Files_progress.ht (wd, file) (date, (Int64.of_int 0))
 
 		      end
 			
