@@ -187,14 +187,18 @@ let sql (f, state, date, offset) =
       let update_query =
 	Printf.sprintf "UPDATE accesses \
 	  SET CLOSING_DATE = %s, CLOSING_OFFSET = '%s', IN_PROGRESS = '0' \
-	  WHERE LOGIN=%s AND \
-	  FILENAME=%s AND \
+	  WHERE LOGIN = %s AND \
+	  PROGRAM = %s AND \
+	  PATH = %s AND \
+	  FILENAME = %s AND \
 	  IN_PROGRESS = 1 \
 	  ORDER BY OPENING_DATE DESC \
 	  LIMIT 1"
 	  (Mysqldb.ml2str date)
 	  (Int64.to_string offset)
 	  (Mysqldb.ml2str f.f_login)
+	  (Mysqldb.ml2str f.f_program)
+	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
       in
 
