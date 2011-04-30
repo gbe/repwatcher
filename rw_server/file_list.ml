@@ -21,27 +21,39 @@ open Types
 open Types_conf
 
 
-let get2 channel path filename =
+let get channel =
 
   let file = ref {
-    f_name = filename ;
-    f_path = path^"/" ;
+    f_name = "" ;
+    f_path = "" ;
     f_login = "" ;
     f_filesize = (Int64.of_int 0) ;
     f_program = "" ;
     f_program_pid = -1 ;
   } in
 
+  let files = ref [] in
+
   (*
    * process number
    * program name
    * program identity (login)
-   * offset
+   * filesize
+   * file fullpath
    *)
+
+  (*
+    p4399
+    cvlc
+    Ldest
+    s367147008
+    n/home/ftp/Movies/FNL.avi
+  *)
   let r_process = Str.regexp "^p" in
   let r_prog_name = Str.regexp "^c" in
   let r_id = Str.regexp "^L" in
   let r_size = Str.regexp "^s" in
+  let r_fullpath = Str.regexp "^n" in
 
   begin
     try  
@@ -59,56 +71,33 @@ let get2 channel path filename =
 	    
 	else if Str.string_match r_size line 0 then
 	  file := { !file with f_filesize = Int64.of_string (Str.string_after line 1) }
+
+	else if Str.string_match r_fullpath line 0 then
+	  let fullpath = Str.string_after line 1 in
+	  file := { !file with
+	    f_name = (Filename.basename fullpath) ;
+	    f_path = (Filename.dirname fullpath)^"/"
+	  } ;
+	  
+	  files := !file :: !files
 	else
 	  assert false
       done
     with _ -> close_in channel
 
   end ;
-  !file
+  !files
 
 ;;
 
 
 
-(* list unfiltered -> list filtered. The filter depends on the mode and if the user is ignored *)
-let filter2 file =
-  
-  let conf = Config.get() in
-    
-  (* filters if the user is ignored *)
-  match List.mem file.f_login conf.c_watch.w_ignore_users with
-    | true -> None
-    | false ->
-      
-      match conf.c_mode with
-	| (Specified_programs, specified_programs) ->
-
-	  (* filters if the program is not specified *)
-	  if List.mem file.f_program specified_programs then
-	    Some file
-	  else
-	    None
-	      
-	    
-	| (Unwanted_programs, unwanted_programs) ->	  	  
-	  
-	  (* filters if the program is unwanted *)
-	  if List.mem file.f_program unwanted_programs then
-	    None
-	  else
-	    Some file
-;;	    
 
 
 
 
 
-
-
-
-
-
+(*
 let get channel =
   
   let l = ref [] in    
@@ -165,7 +154,7 @@ let get channel =
   end;
   !l
 ;;
-
+*)
 
 
 

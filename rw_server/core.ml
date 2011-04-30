@@ -25,7 +25,7 @@ open Types
 open Types_conf
 open Report
 
-let debug_event = false;;
+let debug_event = false ;;
 
 type w_info = {
   conf         : bool;
@@ -353,30 +353,20 @@ let what_to_do event =
 		  Log.log (err, Error)
 		    
 	      | Some father ->
-		  let path_quoted = Filename.quote father.path in
 		  
 		  if debug_event then
-		    Printf.printf "[II] Folder: %s\n" path_quoted;
-		  
-		  (*
-		  let chan =
-		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
-		  in
-		  
-		    let l_opened_files = File_list.get chan (father.path^"/"^name) in		*)
+		    Printf.printf "[II] Folder: %s\n" father.path;
 
 		  let chan =
-		    Unix.open_process_in ("lsof -F cLs \""^father.path^"/"^name^"\"")
+		    Unix.open_process_in ("lsof -w -F cLsn \""^father.path^"/"^name^"\"")
 		  in
-		  let file_info = File_list.get2 chan father.path name in
+		  let files = File_list.get chan in
 		  
 		  ignore (Unix.close_process_in chan);
 		  
-		  let file_opt = File_list.filter2 file_info in		  		
+		  let files_filtered = File_list.filter files in		  		
 		  
-		  begin match file_opt with
-		    | None -> print_endline "filtered"
-		    | Some file ->
+		  List.iter (fun file ->
 		      
 		    (* This test is here because without it
 		     * we could be notified 3 times for the same thing *)
@@ -385,9 +375,8 @@ let what_to_do event =
 			if debug_event then
 			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
 			    file.f_name (Int64.to_string file.f_filesize) name;
-			
-			let offset = Int64.of_int (-1) in
-			
+			let offset = Offset.get file.f_program_pid (file.f_path^file.f_name) in
+
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
@@ -396,8 +385,8 @@ let what_to_do event =
 			Report.report ( Notify (New_notif (file, File_Opened)) );
 			Hashtbl.add Files_progress.ht (wd, file) (date, offset)
 		      end
-
-		  end (* eo match file_opt *)
+			
+		  ) files_filtered
 
 	    end (* eo Open, false *)
 					      
@@ -436,7 +425,7 @@ let what_to_do event =
 					      
 		  (* Call lsof to know which file stopped being accessed *)
 		  let chan =
-		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
+		    Unix.open_process_in ("lsof -w -F cLns +d "^path_quoted)
 		  in
 
 		  let l_opened_files = File_list.get chan in
@@ -451,7 +440,7 @@ let what_to_do event =
                       if ( wd = wd2 &&
 			   not (List.mem f_file l_files_in_progress) ) then
 			
-			(wd2, f_file)::l_stop'
+			(wd2, f_file) :: l_stop'
 		      else
 			l_stop'
                    ) Files_progress.ht []

@@ -19,41 +19,38 @@
 open Types
 open Fdinfo
 
+
+let get pid filepath =
+  let pid = pid_of_int pid in
+  
+  let fds =
+    try
+      get_fds pid
+    with Unix.Unix_error _ -> []
+  in
+  
+  try
+    let fd =
+      List.find (fun fd -> fd.name = filepath) fds
+    in
+    get_offset pid fd
+  with
+    | Unix.Unix_error _ -> print_endline "ERROR A" ; Int64.of_int (-1)
+    | Not_found -> print_endline "ERROR B" ; Int64.of_int (-1)
+;;
+
+
+
+
 let loop_check () =
   
   while true do
 
     Hashtbl.iter (fun (wd, file) (date, _) ->
-      let pid = pid_of_int file.f_program_pid in
-
-      let fds =
-	try
-	  get_fds pid
-	with Unix.Unix_error _ -> []
-      in
-      
-      let offset =
-	try
-	  let fd =
-	    List.find (fun fd ->
-	    (*  print_endline ("'"^fd.name^"'\net\n'"^file.f_path^file.f_name^"'\n"); *)
-	      fd.name = (file.f_path^file.f_name)
-		      ) (List.rev fds)
-	  in
-	  get_offset pid fd
-	with
-	| Unix.Unix_error _ -> Int64.of_int (-1)
-	| Not_found -> Int64.of_int (-1)
-      in
-
-(*
-      Printf.printf "Offset: %s\n" (Int64.to_string offset);
-      Pervasives.flush Pervasives.stdout;
-*)
+      let offset = get file.f_program_pid (file.f_path^file.f_name) in
       Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
-
-		 ) Files_progress.ht ;
-
-    Unix.sleep 5
+    ) Files_progress.ht ;
+    
+    Unix.sleep 5 ;
   done
 ;;
