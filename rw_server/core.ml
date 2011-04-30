@@ -358,29 +358,26 @@ let what_to_do event =
 		  if debug_event then
 		    Printf.printf "[II] Folder: %s\n" path_quoted;
 		  
-		  
+		  (*
 		  let chan =
 		    Unix.open_process_in ("(lsof -w +d "^path_quoted^") | grep REG")
 		  in
 		  
-		    let l_opened_files = File_list.get chan (father.path^"/"^name) in		
+		    let l_opened_files = File_list.get chan (father.path^"/"^name) in		*)
 
-		(*  let chan =
-		    Unix.open_process_in ("lsof -o -F cLo father.path"^"/"^name)
+		  let chan =
+		    Unix.open_process_in ("lsof -F cLs \""^father.path^"/"^name^"\"")
 		  in
-		  let l_opened_files = File_list.get2 chan in
-		  *)
+		  let file_info = File_list.get2 chan father.path name in
+		  
 		  ignore (Unix.close_process_in chan);
 		  
-		  let l_filtered = File_list.filter l_opened_files in
+		  let file_opt = File_list.filter2 file_info in		  		
 		  
-		  if debug_event then
-		    Printf.printf "[II] Opened : %d\tFiltered : %d\n"
-		      (List.length l_opened_files) (List.length l_filtered);
-		  
-		  List.iter (
-		  fun file ->
-		    
+		  begin match file_opt with
+		    | None -> print_endline "filtered"
+		    | Some file ->
+		      
 		    (* This test is here because without it
 		     * we could be notified 3 times for the same thing *)
 		    if not (Hashtbl.mem Files_progress.ht (wd, file)) then
@@ -393,13 +390,14 @@ let what_to_do event =
 			
 			let date = Date.date () in
 			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
-
+			
 			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
 			Report.report ( Sql (file, File_Opened, date, offset) );
 			Report.report ( Notify (New_notif (file, File_Opened)) );
 			Hashtbl.add Files_progress.ht (wd, file) (date, offset)
 		      end
-		   ) l_filtered
+
+		  end (* eo match file_opt *)
 
 	    end (* eo Open, false *)
 					      
