@@ -393,9 +393,8 @@ let what_to_do event =
 			  Report.report ( Sql (file, File_Opened, date, offset) );
 			  Hashtbl.add Files_progress.ht (wd, file) (date, offset) 
 			in
-			print_endline "hello" ;
+
 			ignore (Thread.create wait_to_get_offset ()) ;
-			print_endline "bye" ;
 
 		      end
 			
