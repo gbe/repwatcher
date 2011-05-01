@@ -163,10 +163,11 @@ let sql (f, state, date, offset) =
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
 	Printf.sprintf "INSERT INTO accesses \
-	  (login, program, path, filename, filesize, opening_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, '%s', %s, '1')"
+	  (login, program, program_pid, path, filename, filesize, opening_offset, opening_date, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, '%s', %s, '1')"
           (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
+	  (Mysqldb.ml2int f.f_program_pid)
 	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
@@ -189,6 +190,7 @@ let sql (f, state, date, offset) =
 	  SET CLOSING_DATE = %s, CLOSING_OFFSET = '%s', IN_PROGRESS = '0' \
 	  WHERE LOGIN = %s AND \
 	  PROGRAM = %s AND \
+	  PROGRAM_PID = %s AND \
 	  PATH = %s AND \
 	  FILENAME = %s AND \
 	  IN_PROGRESS = 1 \
@@ -198,6 +200,7 @@ let sql (f, state, date, offset) =
 	  (Int64.to_string offset)
 	  (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
+	  (Mysqldb.ml2int f.f_program_pid)
 	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
       in

@@ -22,6 +22,7 @@ open Types_conf
 open Unix
 
 let ml2str = Mysql.ml2str ;;
+let ml2int = Mysql.ml2int ;;
 
 let connect () =
   try
@@ -146,6 +147,7 @@ let create_table_accesses () =
   `ID` int(4) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
   `PROGRAM` varchar(26) NOT NULL,\
+  `PROGRAM_PID` int(8) NOT NULL,\
   `PATH` varchar(512) NOT NULL,\
   `FILENAME` varchar(256) NOT NULL,\
   `FILESIZE` bigint(20) unsigned NOT NULL,\
