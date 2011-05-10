@@ -26,7 +26,10 @@ let get pid filepath =
   let fds =
     try
       get_fds pid
-    with Unix.Unix_error _ -> []
+    with Unix.Unix_error (error, funct, arg) ->
+      let err = Printf.sprintf "Offset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
+      Log.log (err, Error) ;
+      []
   in
   
   try
@@ -35,8 +38,15 @@ let get pid filepath =
     in
     get_offset pid fd
   with
-    | Unix.Unix_error _ -> print_endline "ERROR A" ; Int64.of_int (-1)
-    | Not_found -> print_endline "ERROR B" ; Int64.of_int (-1)
+    | Unix.Unix_error (error, funct, arg) ->
+      let err = Printf.sprintf "\nOffset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
+      Log.log ("ERROR A"^err, Error) ;
+      Int64.of_int 0
+
+    | Not_found ->
+      Log.log ("ERROR B", Error) ;
+      List.iter (fun fd -> Log.log (fd.name, Error)) fds ;
+      Int64.of_int 0
 ;;
 
 
