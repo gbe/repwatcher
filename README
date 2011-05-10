@@ -1,20 +1,23 @@
+This software is licensed under the GPL v3.
+
 To contact me :
 gregory.bellier@gmail.com
 
 Dependencies for Debian/Ubuntu:
 ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml-dev libinotify-ocaml-dev libnotify-bin libdbus-ocaml-dev camlp4-extra
 
-* Local notifications can be disabled before building RW. Set NO_DBUS=1 in the Makefile. Thus, there is no dependecy on libdbus-ocaml-dev.
+and also the FDinfo library, downloadable here: gatekeeper.fr
+
+* The dependency on dbus can be avoided by disabling once and for all the local notifications. Build the project like this: $ NO_DBUS=1 make
 
 
-You need to create this database and table in MySQL:
+The MySQL database and its "accesses" table are automatically created if they don't already exist. The database name is the one set in the configuration file. However, for your information, this is the accesses table :
 
-CREATE DATABASE `repwatcher` ;
-
-CREATE TABLE IF NOT EXISTS `repwatcher`.`accesses` (
-  `ID` int(4) NOT NULL AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS `accesses` (
+  `ID` int(10) NOT NULL AUTO_INCREMENT,
   `LOGIN` varchar(20) NOT NULL,
   `PROGRAM` varchar(26) NOT NULL,
+  `PROGRAM_PID` int(8) NOT NULL,
   `PATH` varchar(512) NOT NULL,
   `FILENAME` varchar(256) NOT NULL,
   `FILESIZE` bigint(20) unsigned NOT NULL,
@@ -26,11 +29,12 @@ CREATE TABLE IF NOT EXISTS `repwatcher`.`accesses` (
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
 
-To compile : make
-To clean the compiled files : make clean
 
-You need to configure the file repwatcher.conf
+As ususal, to clean the sources and build: make clean && make
+Before running the server, you need to configure the file repwatcher.conf.
 
-You can either run Repwatcher in a "screen" or "nohup ./rw_server &".
+If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You generate a first set with the script in the Certificate folder.
+
+You can either run Repwatcher in a "screen" or with "nohup ./rw_server &".
 
 Don't hesitate to give me some feedbacks.
