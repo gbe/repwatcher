@@ -320,10 +320,9 @@ let check conf =
 let _ =
   at_exit clean_exit;
 
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Gregory Bellier
-This program comes with ABSOLUTELY NO WARRANTY; for details read COPYING file.
-This is free software, and you are welcome to redistribute it
-under certain conditions; for details read COPYING file\n\n";
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Grégory Bellier
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
 
 
