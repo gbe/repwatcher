@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS `accesses` (
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;
 
 
-As ususal, to clean the sources and build: make clean && make
+As usual, to clean the sources and build: make clean && make
 Before running the server, you need to configure the file repwatcher.conf.
 
 If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You generate a first set with the script in the Certificate folder.
