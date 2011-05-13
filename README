@@ -1,7 +1,7 @@
 This software is under the MIT license.
 
-To contact me :
-gregory.bellier@gmail.com
+To contact the author :
+gregory.bellier -- gmail -- com
 
 Dependencies for Debian/Ubuntu:
 ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libmysql-ocaml-dev libinotify-ocaml-dev libnotify-bin libdbus-ocaml-dev camlp4-extra
