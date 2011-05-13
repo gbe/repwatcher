@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `accesses` (
 As usual, to clean the sources and build: make clean && make
 Before running the server, you need to configure the file repwatcher.conf.
 
-If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You generate a first set with the script in the Certificate folder.
+If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You can generate a first set with the script in the Certificate folder.
 
 You can either run Repwatcher in a "screen" or with "nohup ./rw_server &".
 
