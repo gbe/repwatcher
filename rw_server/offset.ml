@@ -18,17 +18,17 @@ let get pid filepath =
     let fd =
       List.find (fun fd -> fd.name = filepath) fds
     in
-    get_offset pid fd
+    Some (get_offset pid fd)
   with
     | Unix.Unix_error (error, funct, arg) ->
       let err = Printf.sprintf "\nOffset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
-      Log.log ("ERROR A"^err, Error) ;
-      Int64.of_int 0
+      Log.log ("get_offset unix error"^err, Error) ;
+      None
 
     | Not_found ->
-      Log.log ("ERROR B", Error) ;
+      Log.log ("get_offset Not_found error", Error) ;
       List.iter (fun fd -> Log.log (fd.name, Error)) fds ;
-      Int64.of_int 0
+      None
 ;;
 
 
@@ -39,10 +39,17 @@ let loop_check () =
   while true do
 
     Hashtbl.iter (fun (wd, file) (date, _) ->
-      let offset = get file.f_program_pid (file.f_path^file.f_name) in
-      Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
+      let offset_opt =
+	get file.f_program_pid (file.f_path^file.f_name)
+      in
+
+      match offset_opt with
+	| None -> Hashtbl.replace Files_progress.ht (wd, file) (date, (Int64.of_int 0))
+	| Some offset ->
+	  Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
+
     ) Files_progress.ht ;
     
-    Unix.sleep 5 ;
+    Thread.delay 3.0 ;
   done
 ;;

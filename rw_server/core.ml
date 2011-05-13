@@ -367,10 +367,17 @@ let what_to_do event =
 			(* But wait a few seconds to get an opening offset != 0 *)
 			let wait_to_get_offset () =
 			  Thread.delay 3.0 ; 
-			  let offset =
+			  let offset_opt =
 			    Offset.get file.f_program_pid (file.f_path^file.f_name)
 			  in
-			  Report.report ( Sql (file, File_Opened, date, offset) );
+
+			  let offset = 
+			    match offset_opt with
+			      | None -> Int64.of_int 0
+			      | Some offset -> offset
+			  in
+
+			  Report.report ( Sql (file, File_Opened, date, offset) ) ;
 
 			  (* Has to be a replace and not a add *)
 			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
