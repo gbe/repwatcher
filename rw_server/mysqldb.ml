@@ -133,7 +133,7 @@ let create_table_accesses () =
   `PATH` varchar(512) NOT NULL,\
   `FILENAME` varchar(256) NOT NULL,\
   `FILESIZE` bigint(20) unsigned NOT NULL,\
-  `OPENING_OFFSET` bigint(20) unsigned NOT NULL,\
+  `OPENING_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `CLOSING_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `OPENING_DATE` datetime NOT NULL,\
   `CLOSING_DATE` datetime DEFAULT NULL,\

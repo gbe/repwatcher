@@ -136,8 +136,14 @@ let notify notification =
 
 
 
-let sql (f, state, date, offset) =
-  
+let sql (f, state, date, offset_opt) =
+
+  let offset =
+    match offset_opt with
+      | None -> "NULL"
+      | Some offset -> Int64.to_string offset
+  in
+
   match state with
   | File_Opened  ->	  
     begin
@@ -145,14 +151,14 @@ let sql (f, state, date, offset) =
       let query =
 	Printf.sprintf "INSERT INTO accesses \
 	  (login, program, program_pid, path, filename, filesize, opening_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, '%s', %s, '1')"
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '1')"
           (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
 	  (Mysqldb.ml2int f.f_program_pid)
 	  (Mysqldb.ml2str f.f_path)
 	  (Mysqldb.ml2str f.f_name)
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
-	  (Int64.to_string offset)
+	  offset
 	  (Mysqldb.ml2str date)
       in
 
@@ -168,7 +174,7 @@ let sql (f, state, date, offset) =
 
       let update_query =
 	Printf.sprintf "UPDATE accesses \
-	  SET CLOSING_DATE = %s, CLOSING_OFFSET = '%s', IN_PROGRESS = '0' \
+	  SET CLOSING_DATE = %s, CLOSING_OFFSET = %s, IN_PROGRESS = '0' \
 	  WHERE LOGIN = %s AND \
 	  PROGRAM = %s AND \
 	  PROGRAM_PID = %s AND \
@@ -178,7 +184,7 @@ let sql (f, state, date, offset) =
 	  ORDER BY OPENING_DATE DESC \
 	  LIMIT 1"
 	  (Mysqldb.ml2str date)
-	  (Int64.to_string offset)
+	  offset
 	  (Mysqldb.ml2str f.f_login)
 	  (Mysqldb.ml2str f.f_program)
 	  (Mysqldb.ml2int f.f_program_pid)

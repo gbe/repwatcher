@@ -20,7 +20,7 @@ type notification =
   | Local_notif of string
 
 type report = | Notify of notification
-	      | Sql    of (f_file * file_state * string * int64)
+	      | Sql    of (f_file * file_state * string * int64 option)
 
 
 type com_net2main =

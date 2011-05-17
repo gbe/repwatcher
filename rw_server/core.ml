@@ -371,22 +371,16 @@ let what_to_do event =
 			    Offset.get file.f_program_pid (file.f_path^file.f_name)
 			  in
 
-			  let offset = 
-			    match offset_opt with
-			      | None -> Int64.of_int 0
-			      | Some offset -> offset
-			  in
-
-			  Report.report ( Sql (file, File_Opened, date, offset) ) ;
+			  Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
 
 			  (* Has to be a replace and not a add *)
-			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset)
+			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
 			in
 
 			ignore (Thread.create wait_to_get_offset ()) ;
 			
 			(* Can't add in the thread otherwise, we got 3 or 4 notifications *)
-			Hashtbl.add Files_progress.ht (wd, file) (date, (Int64.of_int 0))
+			Hashtbl.add Files_progress.ht (wd, file) (date, None)
 
 		      end
 			
