@@ -44,7 +44,8 @@ let loop_check () =
 	get file.f_program_pid (file.f_path^file.f_name)
       in
 
-      Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+      if Hashtbl.mem Files_progress.ht (wd, file) then
+	Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
 
     ) Files_progress.ht ;
     
