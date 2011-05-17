@@ -372,9 +372,9 @@ let what_to_do event =
 			  in
 
 			  Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
-
-			  (* Has to be a replace and not a add *)
-			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+			  if Hashtbl.mem Files_progress.ht (wd, file) then
+			    (* Has to be a replace and not a add *)
+			    Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
 			in
 
 			ignore (Thread.create wait_to_get_offset ()) ;
