@@ -2,7 +2,7 @@ open Types
 open Types_conf
 
 
-let get channel =
+let get cmd =
 
   let file = ref {
     f_name = "" ;
@@ -37,9 +37,18 @@ let get channel =
   let r_fullpath = Str.regexp "^n" in
 
   begin
-    try  
+
+    let channel_opt = ref None in
+
+    try
+      let chan = Unix.open_process_in cmd in
+      
+      (* this is a copy to not make a match None/Some at input_line *)
+      channel_opt := Some chan ;
+      
       while true do
-	let line = input_line channel in
+	
+       let line = input_line chan in
 	
 	if Str.string_match r_process line 0 then
 	  file := { !file with f_program_pid = int_of_string (Str.string_after line 1) }
@@ -64,8 +73,13 @@ let get channel =
 	else
 	  assert false
       done
-    with _ -> close_in channel
-
+    with _ ->
+      match !channel_opt with
+	| None -> ()
+	| Some chan ->
+	  try
+	    ignore (Unix.close_process_in chan)
+	  with _ -> ()
   end ;
   !files
 
@@ -86,7 +100,7 @@ let filter unfiltered_l =
 	    
     (* Remove all the unwanted_programs from the list *)
     | (Unwanted_programs, unwanted_programs) ->	  	  
-	List.filter (fun file -> if List.mem file.f_program unwanted_programs then false else true) unfiltered_l
+	List.filter (fun file -> not (List.mem file.f_program unwanted_programs)) unfiltered_l
 	    
   in
     

@@ -324,69 +324,64 @@ let what_to_do event =
 	| Open, true -> ()
 
 	| Open, false -> 
-	    begin
-	      match get_value wd with
+	  begin
+	    match get_value wd with
 	      | None ->
-		  let err =
-		    sprintf "%s was opened but its wd could not be found\n" name
-		  in
-		  Log.log (err, Error)
+		let err =
+		  sprintf "%s was opened but its wd could not be found\n" name
+		in
+		Log.log (err, Error)
 		    
 	      | Some father ->
 		  
-		  if debug_event then
-		    Printf.printf "[II] Folder: %s\n" father.path;
+		if debug_event then
+		  Printf.printf "[II] Folder: %s\n" father.path;
 
-		  let chan =
-		    Unix.open_process_in ("lsof -w -F cLsn \""^father.path^"/"^name^"\"")
-		  in
-		  let files = File_list.get chan in
+		let cmd = "lsof -w -F cLsn \""^father.path^"/"^name^"\"" in
+		let files = File_list.get cmd in
+		let files_filtered = File_list.filter files in
 		  
-		  ignore (Unix.close_process_in chan);
-		  
-		  let files_filtered = File_list.filter files in		  		
-		  
-		  List.iter (fun file ->
+		List.iter (fun file ->
 		      
-		    (* This test is here because without it
-		     * we could be notified 3 times for the same thing *)
-		    if not (Hashtbl.mem Files_progress.ht (wd, file)) then
-		      begin
-			if debug_event then
-			  printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
-			    file.f_name (Int64.to_string file.f_filesize) name;			
+		  (* This test is here because without it
+		   * we could be notified 3 times for the same thing *)
+		  if not (Hashtbl.mem Files_progress.ht (wd, file)) then
+		    begin
+		      if debug_event then
+			printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
+			  file.f_name (Int64.to_string file.f_filesize) name;			
 
-			(* Notify right away *)
-			let date = Date.date () in
-			print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
+		      (* Notify right away *)
+		      let date = Date.date () in
+		      print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
-			Log.log (file.f_login^" has opened: "^file.f_name, Normal);
-			Report.report ( Notify (New_notif (file, File_Opened)) );
+		      Log.log (file.f_login^" has opened: "^file.f_name, Normal);
+		      Report.report ( Notify (New_notif (file, File_Opened)) );
 
-			
-			(* But wait a few seconds to get an opening offset != 0 *)
-			let wait_to_get_offset () =
-			  Thread.delay 3.0 ; 
-			  let offset_opt =
-			    Offset.get file.f_program_pid (file.f_path^file.f_name)
-			  in
-
-			  Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
-			  if Hashtbl.mem Files_progress.ht (wd, file) then
-			    (* Has to be a replace and not a add *)
-			    Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+		      
+		      (* But wait a few seconds to get an opening offset != 0 *)
+		      let wait_to_get_offset () =
+			Thread.delay 3.0 ; 
+			let offset_opt =
+			  Offset.get file.f_program_pid (file.f_path^file.f_name)
 			in
 
-			ignore (Thread.create wait_to_get_offset ()) ;
+			Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
+			if Hashtbl.mem Files_progress.ht (wd, file) then
+			  (* Has to be a replace and not a add *)
+			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+		      in
+
+		      ignore (Thread.create wait_to_get_offset ()) ;
 			
 			(* Can't add in the thread otherwise, we got 3 or 4 notifications *)
-			Hashtbl.add Files_progress.ht (wd, file) (date, None)
+		      Hashtbl.add Files_progress.ht (wd, file) (date, None)
 
-		      end
+		    end
 			
-		  ) files_filtered
+		) files_filtered
 
-	    end (* eo Open, false *)
+	  end (* eo Open, false *)
 					      
 
 	| Close_write, false -> ()
@@ -422,12 +417,9 @@ let what_to_do event =
 		    Printf.printf "[II] Folder: %s\n" path_quoted ;
 					      
 		  (* Call lsof to know which file stopped being accessed *)
-		  let chan =
-		    Unix.open_process_in ("lsof -w -F cLns +d "^path_quoted)
-		  in
+		  let cmd = "lsof -w -F cLns +d "^path_quoted in
 
-		  let l_opened_files = File_list.get chan in
-		  ignore (Unix.close_process_in chan);
+		  let l_opened_files = File_list.get cmd in
 		  let l_files_in_progress = File_list.filter l_opened_files in
 
                   (* Return the list of the files which stopped being accessed *)
