@@ -39,6 +39,8 @@ let loop_check () =
   
   while true do
 
+    Mutex.lock Files_progress.mutex_ht ;
+
     Hashtbl.iter (fun (wd, file) (date, _) ->
       let offset_opt =
 	get file.f_program_pid (file.f_path^file.f_name)
@@ -48,6 +50,8 @@ let loop_check () =
 	Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
 
     ) Files_progress.ht ;
+
+    Mutex.unlock Files_progress.mutex_ht ;
     
     Thread.delay 3.0 ;
   done

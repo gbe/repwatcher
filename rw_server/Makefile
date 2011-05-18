@@ -17,7 +17,7 @@ $(BIN):$(CMX)
 .SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
 .mli.cmi:
-	ocamlfind ocamlopt $(FLAGS) -c $<
+	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -c $<
 
 .ml.cmx:
 ifeq ($(NO_DBUS), 1)

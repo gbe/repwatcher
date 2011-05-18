@@ -340,7 +340,9 @@ let what_to_do event =
 		let cmd = "lsof -w -F cLsn \""^father.path^"/"^name^"\"" in
 		let files = File_list.get cmd in
 		let files_filtered = File_list.filter files in
-		  
+
+		Mutex.lock Files_progress.mutex_ht ;
+
 		List.iter (fun file ->
 		      
 		  (* This test is here because without it
@@ -367,9 +369,15 @@ let what_to_do event =
 			in
 
 			Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
+
+			Mutex.lock Files_progress.mutex_ht ;
+			
 			if Hashtbl.mem Files_progress.ht (wd, file) then
 			  (* Has to be a replace and not a add *)
-			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt) ;
+
+			Mutex.unlock Files_progress.mutex_ht
+
 		      in
 
 		      ignore (Thread.create wait_to_get_offset ()) ;
@@ -379,7 +387,9 @@ let what_to_do event =
 
 		    end
 			
-		) files_filtered
+		) files_filtered ;
+
+		Mutex.unlock Files_progress.mutex_ht ;
 
 	  end (* eo Open, false *)
 					      
@@ -422,6 +432,8 @@ let what_to_do event =
 		  let l_opened_files = File_list.get cmd in
 		  let l_files_in_progress = File_list.filter l_opened_files in
 
+		  Mutex.lock Files_progress.mutex_ht ;
+
                   (* Return the list of the files which stopped being accessed *)
 		  let l_stop =
 		    Hashtbl.fold (
@@ -447,7 +459,9 @@ let what_to_do event =
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 		    Report.report ( Sql (f_file, File_Closed, date, offset) ) ;
 		    Report.report ( Notify (New_notif (f_file, File_Closed) )) ;
-		   ) l_stop
+		  ) l_stop ;
+
+		  Mutex.unlock Files_progress.mutex_ht ;
 	    end (* eo Close_nowrite, false *)
 
 
