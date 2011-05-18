@@ -337,7 +337,7 @@ let what_to_do event =
 		if debug_event then
 		  Printf.printf "[II] Folder: %s\n" father.path;
 
-		let cmd = "lsof -w -F cLsn \""^father.path^"/"^name^"\"" in
+		let cmd = "lsof -w -F cLsn \""^father.path^"/"^name^"\" 2> /dev/null" in
 		let files = File_list.get cmd in
 		let files_filtered = File_list.filter files in
 
@@ -427,7 +427,7 @@ let what_to_do event =
 		    Printf.printf "[II] Folder: %s\n" path_quoted ;
 					      
 		  (* Call lsof to know which file stopped being accessed *)
-		  let cmd = "lsof -w -F cLns +d "^path_quoted in
+		  let cmd = "lsof -w -F cLns +d "^path_quoted^" 2> /dev/null" in
 
 		  let l_opened_files = File_list.get cmd in
 		  let l_files_in_progress = File_list.filter l_opened_files in
