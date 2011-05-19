@@ -361,29 +361,12 @@ let what_to_do event =
 		      Report.report ( Notify (New_notif (file, File_Opened)) );
 
 		      
-		      (* But wait a few seconds to get an opening offset != 0 *)
-		      let wait_to_get_offset () =
-			Thread.delay 3.0 ; 
-			let offset_opt =
-			  Offset.get file.f_program_pid (file.f_path^file.f_name)
-			in
-
-			Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
-
-			Mutex.lock Files_progress.mutex_ht ;
-			
-			if Hashtbl.mem Files_progress.ht (wd, file) then
-			  (* Has to be a replace and not a add *)
-			  Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt) ;
-
-			Mutex.unlock Files_progress.mutex_ht
-
+		      let offset_opt =
+			Offset.get file.f_program_pid (file.f_path^file.f_name)
 		      in
 
-		      ignore (Thread.create wait_to_get_offset ()) ;
-			
-			(* Can't add in the thread otherwise, we got 3 or 4 notifications *)
-		      Hashtbl.add Files_progress.ht (wd, file) (date, None)
+		      Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
+		      Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt)
 
 		    end
 			
