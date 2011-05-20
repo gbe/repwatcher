@@ -425,20 +425,20 @@ let what_to_do event =
                   (* Return the list of the files which stopped being accessed *)
 		  let l_stop =
 		    Hashtbl.fold (
-		    fun (wd2, f_file) _ l_stop' ->
+		    fun (wd2, f_file) values l_stop' ->
 		      (* if wd2 is wd's child and is not in progress anymore *)
                       if ( wd = wd2 &&
 			   not (List.mem f_file l_files_in_progress) ) then
 			
-			(wd2, f_file) :: l_stop'
+			((wd2, f_file), values) :: l_stop'
 		      else
 			l_stop'
                    ) Files_progress.ht []
 		  in
 					      
 		  List.iter (
-		  fun (wd2, f_file) ->
-		    let (_, offset, _) = Hashtbl.find Files_progress.ht (wd2, f_file) in
+		  fun ((wd2, f_file), (_, offset, _)) ->
+
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
 		    
 		    let date = Date.date () in
