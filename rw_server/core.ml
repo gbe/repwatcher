@@ -436,10 +436,14 @@ let what_to_do event =
                    ) Files_progress.ht []
 		  in
 					      
+		  Mutex.unlock Files_progress.mutex_ht ;
+
 		  List.iter (
 		  fun ((wd2, f_file), (_, offset, _)) ->
 
+		    Mutex.lock Files_progress.mutex_ht ;
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
+		    Mutex.unlock Files_progress.mutex_ht ;
 		    
 		    let date = Date.date () in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
@@ -449,7 +453,6 @@ let what_to_do event =
 		    ignore (Report.report ( Notify (New_notif (f_file, File_Closed) )) );
 		  ) l_stop ;
 
-		  Mutex.unlock Files_progress.mutex_ht ;
 	    end (* eo Close_nowrite, false *)
 
 
