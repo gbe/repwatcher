@@ -136,12 +136,12 @@ let notify notification =
 
 
 
-let sql (f, state, date, offset_opt) =
+let sql (f, state, date, offset_opt, pkey_opt) =
 
   let offset =
     match offset_opt with
       | None -> "NULL"
-      | Some offset -> Int64.to_string offset
+      | Some offset -> Mysqldb.ml2str (Int64.to_string offset)
   in
 
   match state with
@@ -174,32 +174,25 @@ let sql (f, state, date, offset_opt) =
 	
   | File_Closed ->
 
-      let update_query =
-	Printf.sprintf "UPDATE accesses \
-	  SET CLOSING_DATE = %s, LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
-	  WHERE LOGIN = %s AND \
-	  PROGRAM = %s AND \
-	  PROGRAM_PID = %s AND \
-	  PATH = %s AND \
-	  FILENAME = %s AND \
-	  IN_PROGRESS = 1 \
-	  ORDER BY OPENING_DATE DESC \
-	  LIMIT 1"
-	  (Mysqldb.ml2str date)
-	  offset
-	  (Mysqldb.ml2str f.f_login)
-	  (Mysqldb.ml2str f.f_program)
-	  (Mysqldb.ml2int f.f_program_pid)
-	  (Mysqldb.ml2str f.f_path)
-	  (Mysqldb.ml2str f.f_name)
-      in
+    match pkey_opt with
+      | None -> assert false
+      | Some pkey ->
 
-      match Mysqldb.connect () with
-	| None -> Nothing
-	| Some cid ->
-	  ignore (Mysqldb.query cid update_query) ;
-	  Mysqldb.disconnect cid ;
-	  Nothing
+	let update_query =
+	  Printf.sprintf "UPDATE accesses \
+	  SET CLOSING_DATE = %s, LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
+	  WHERE ID = %s"
+	    (Mysqldb.ml2str date)
+	    offset
+	    (Mysqldb.ml2str (Int64.to_string pkey))
+	in
+
+	match Mysqldb.connect () with
+	  | None -> Nothing
+	  | Some cid ->
+	    ignore (Mysqldb.query cid update_query) ;
+	    Mysqldb.disconnect cid ;
+	    Nothing
 ;;
 
 

@@ -20,7 +20,7 @@ type notification =
   | Local_notif of string
 
 type report = | Notify of notification
-	      | Sql    of (f_file * file_state * string * int64 option)
+	      | Sql    of (f_file * file_state * string * int64 option * int64 option)
 
 type report_ret = Nothing | PrimaryKey of int64
 

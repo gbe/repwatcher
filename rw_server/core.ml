@@ -366,7 +366,7 @@ let what_to_do event =
 		      in
 
 		      let report_ret =
-			Report.report (Sql (file, File_Opened, date, offset_opt))
+			Report.report (Sql (file, File_Opened, date, offset_opt, None))
 		      in
 		      match report_ret with
 			| Nothing -> () (* could be triggered by an SQL error *)
@@ -439,7 +439,7 @@ let what_to_do event =
 		  Mutex.unlock Files_progress.mutex_ht ;
 
 		  List.iter (
-		  fun ((wd2, f_file), (_, offset, _)) ->
+		  fun ((wd2, f_file), (_, offset, pkey)) ->
 
 		    Mutex.lock Files_progress.mutex_ht ;
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -449,7 +449,7 @@ let what_to_do event =
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 		    
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
-		    ignore (Report.report ( Sql (f_file, File_Closed, date, offset) ) );
+		    ignore (Report.report ( Sql (f_file, File_Closed, date, offset, Some pkey) ) );
 		    ignore (Report.report ( Notify (New_notif (f_file, File_Closed) )) );
 		  ) l_stop ;
 
