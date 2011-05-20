@@ -358,15 +358,20 @@ let what_to_do event =
 		      print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
 		      Log.log (file.f_login^" has opened: "^file.f_name, Normal);
-		      Report.report ( Notify (New_notif (file, File_Opened)) );
+		      ignore (Report.report (Notify (New_notif (file, File_Opened))));
 
 		      
 		      let offset_opt =
 			Offset.get file.f_program_pid (file.f_path^file.f_name)
 		      in
 
-		      Report.report ( Sql (file, File_Opened, date, offset_opt) ) ;
-		      Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt)
+		      let report_ret =
+			Report.report (Sql (file, File_Opened, date, offset_opt))
+		      in
+		      match report_ret with
+			| Nothing -> () (* could be triggered by an SQL error *)
+			| PrimaryKey pkey ->
+			  Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt, pkey)
 
 		    end
 			
@@ -433,15 +438,15 @@ let what_to_do event =
 					      
 		  List.iter (
 		  fun (wd2, f_file) ->
-		    let (_, offset) = Hashtbl.find Files_progress.ht (wd2, f_file) in
+		    let (_, offset, _) = Hashtbl.find Files_progress.ht (wd2, f_file) in
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
 		    
 		    let date = Date.date () in
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 		    
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
-		    Report.report ( Sql (f_file, File_Closed, date, offset) ) ;
-		    Report.report ( Notify (New_notif (f_file, File_Closed) )) ;
+		    ignore (Report.report ( Sql (f_file, File_Closed, date, offset) ) );
+		    ignore (Report.report ( Notify (New_notif (f_file, File_Closed) )) );
 		  ) l_stop ;
 
 		  Mutex.unlock Files_progress.mutex_ht ;

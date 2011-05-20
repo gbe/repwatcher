@@ -398,7 +398,7 @@ This is free software under the MIT license.\n\n";
 
       ignore (Thread.create Offset.loop_check ()) ;
 
-      Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) ;
+      ignore (Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) );
       Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
 
 

@@ -22,6 +22,7 @@ type notification =
 type report = | Notify of notification
 	      | Sql    of (f_file * file_state * string * int64 option)
 
+type report_ret = Nothing | PrimaryKey of int64
 
 type com_net2main =
   | Log of (string * log_level)

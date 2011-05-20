@@ -163,10 +163,12 @@ let sql (f, state, date, offset_opt) =
       in
 
       match Mysqldb.connect () with
-	| None -> ()
+	| None -> Nothing
 	| Some cid ->
 	  ignore (Mysqldb.query cid query) ;
-	  Mysqldb.disconnect cid
+	  let primary_key = Mysqldb.insert_id cid in
+	  Mysqldb.disconnect cid ;
+	  PrimaryKey primary_key
     end
 	
 	
@@ -193,10 +195,11 @@ let sql (f, state, date, offset_opt) =
       in
 
       match Mysqldb.connect () with
-	| None -> ()
+	| None -> Nothing
 	| Some cid ->
 	  ignore (Mysqldb.query cid update_query) ;
-	  Mysqldb.disconnect cid
+	  Mysqldb.disconnect cid ;
+	  Nothing
 ;;
 
 
@@ -206,10 +209,12 @@ module Report =
 struct
   
   let report = function
-    | Sql (file, state, date, offset) ->
-	sql (file, state, date, offset)
+    | Sql infos ->
+      sql infos
 
     | Notify notification ->
-	notify notification
+      notify notification ;
+      Nothing
+      
 ;;
 end;;

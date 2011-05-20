@@ -20,7 +20,7 @@ let wait_pipe_from_child_process () =
 
 	    let l_current =
 	      Hashtbl.fold (
-	      fun (_,file) (date,_) ret ->
+	      fun (_,file) (date,_,_) ret ->
 		ret@[ (
 		      { file with
 			f_name = (Txt_operations.escape_for_notify file.f_name)
@@ -34,7 +34,7 @@ let wait_pipe_from_child_process () =
 	    
 	    (* Sent to Report.notify only if necessary *)
 	    if List.length l_current > 0 then
-	      Report.report (Notify (Old_notif l_current))
+	      ignore (Report.report (Notify (Old_notif l_current)))
 
 	| Types.Log log -> Log.log log
 

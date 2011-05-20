@@ -5,6 +5,7 @@ open Unix
 
 let ml2str = Mysql.ml2str ;;
 let ml2int = Mysql.ml2int ;;
+let insert_id = Mysql.insert_id ;;
 
 let connect () =
   try

@@ -41,7 +41,7 @@ let loop_check () =
 
     Mutex.lock Files_progress.mutex_ht ;
 
-    Hashtbl.iter (fun (wd, file) (date, _) ->
+    Hashtbl.iter (fun (wd, file) (date, _, sql_pkey) ->
       let offset_opt =
 	get file.f_program_pid (file.f_path^file.f_name)
       in
@@ -53,7 +53,7 @@ let loop_check () =
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
 	  if Hashtbl.mem Files_progress.ht (wd, file) then
-	    Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt)
+	    Hashtbl.replace Files_progress.ht (wd, file) (date, offset_opt, sql_pkey)
 
     ) Files_progress.ht ;
 
