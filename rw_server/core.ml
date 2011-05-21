@@ -365,10 +365,17 @@ let what_to_do event =
 			Offset.get file.f_program_pid (file.f_path^file.f_name)
 		      in
 
-		      let report_ret =
-			Report.report (Sql (file, File_Opened, date, offset_opt, None))
+		      let sql_report = 
+			{
+			  s_file = file ;
+			  s_state = File_Opened ;
+			  s_date = date ;
+			  s_offset = offset_opt ;
+			  s_pkey = None ;
+			}
 		      in
-		      match report_ret with
+
+		      match Report.report (Sql sql_report) with
 			| Nothing -> () (* could be triggered by an SQL error *)
 			| PrimaryKey pkey ->
 			  Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt, pkey)
@@ -449,8 +456,19 @@ let what_to_do event =
 		    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
 		    
 		    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
-		    ignore (Report.report ( Sql (f_file, File_Closed, date, offset, Some pkey) ) );
-		    ignore (Report.report ( Notify (New_notif (f_file, File_Closed) )) );
+
+		    let sql_report = {
+		      s_file = f_file ;
+		      s_state = File_Closed ;
+		      s_date = date ;
+		      s_offset = offset ;
+		      s_pkey = Some pkey ;
+		    }
+		    in
+
+
+		    ignore (Report.report (Sql sql_report));
+		    ignore (Report.report (Notify (New_notif (f_file, File_Closed))));
 		  ) l_stop ;
 
 	    end (* eo Close_nowrite, false *)

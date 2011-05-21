@@ -19,8 +19,16 @@ type notification =
   | Old_notif  of (f_file * string) list
   | Local_notif of string
 
+type sql_report = {
+  s_file : f_file ;
+  s_state : file_state ;
+  s_date : string ;
+  s_offset : int64 option ;
+  s_pkey : int64 option ;
+}
+
 type report = | Notify of notification
-	      | Sql    of (f_file * file_state * string * int64 option * int64 option)
+	      | Sql    of sql_report
 
 type report_ret = Nothing | PrimaryKey of int64
 

@@ -136,15 +136,17 @@ let notify notification =
 
 
 
-let sql (f, state, date, offset_opt, pkey_opt) =
+let sql sql_report =
 
+  let f = sql_report.s_file in
+  
   let offset =
-    match offset_opt with
+    match sql_report.s_offset with
       | None -> "NULL"
       | Some offset -> Mysqldb.ml2str (Int64.to_string offset)
   in
 
-  match state with
+  match sql_report.s_state with
   | File_Opened  ->	  
     begin
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
@@ -159,7 +161,7 @@ let sql (f, state, date, offset_opt, pkey_opt) =
 	  (Mysqldb.ml2str f.f_name)
 	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
 	  offset
-	  (Mysqldb.ml2str date)
+	  (Mysqldb.ml2str sql_report.s_date)
       in
 
       match Mysqldb.connect () with
@@ -174,7 +176,7 @@ let sql (f, state, date, offset_opt, pkey_opt) =
 	
   | File_Closed ->
 
-    match pkey_opt with
+    match sql_report.s_pkey with
       | None -> assert false
       | Some pkey ->
 
@@ -182,7 +184,7 @@ let sql (f, state, date, offset_opt, pkey_opt) =
 	  Printf.sprintf "UPDATE accesses \
 	  SET CLOSING_DATE = %s, LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
 	  WHERE ID = %s"
-	    (Mysqldb.ml2str date)
+	    (Mysqldb.ml2str sql_report.s_date)
 	    offset
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
@@ -202,8 +204,8 @@ module Report =
 struct
   
   let report = function
-    | Sql infos ->
-      sql infos
+    | Sql sql_report ->
+      sql sql_report
 
     | Notify notification ->
       notify notification ;
