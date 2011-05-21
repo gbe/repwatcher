@@ -19,9 +19,15 @@ type notification =
   | Old_notif  of (f_file * string) list
   | Local_notif of string
 
+
+type sql_type =
+  | SQL_File_Opened 
+  | SQL_File_Closed
+  | SQL_File_Offset_Updated
+
 type sql_report = {
   s_file : f_file ;
-  s_state : file_state ;
+  s_state : sql_type ;
   s_date : string ;
   s_offset : int64 option ;
   s_pkey : int64 option ;

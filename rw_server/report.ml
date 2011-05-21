@@ -147,7 +147,7 @@ let sql sql_report =
   in
 
   match sql_report.s_state with
-  | File_Opened  ->	  
+  | SQL_File_Opened  ->	  
     begin
       (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
       let query =
@@ -174,12 +174,12 @@ let sql sql_report =
     end
 	
 	
-  | File_Closed ->
+  | SQL_File_Closed ->
 
-    match sql_report.s_pkey with
+    begin match sql_report.s_pkey with
       | None -> assert false
       | Some pkey ->
-
+	
 	let update_query =
 	  Printf.sprintf "UPDATE accesses \
 	  SET CLOSING_DATE = %s, LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
@@ -188,11 +188,33 @@ let sql sql_report =
 	    offset
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
-
+	
 	match Mysqldb.connect () with
 	  | None -> Nothing
 	  | Some cid ->
 	    ignore (Mysqldb.query cid update_query) ;
+	    Mysqldb.disconnect cid ;
+	    Nothing
+    end
+
+  | SQL_File_Offset_Updated ->
+
+    match sql_report.s_pkey with
+      | None -> assert false
+      | Some pkey ->
+	
+	let update_offset_query =
+	  Printf.sprintf "UPDATE accesses \
+	  SET LAST_KNOWN_OFFSET = %s \
+	  WHERE ID = %s"
+	    offset
+	    (Mysqldb.ml2str (Int64.to_string pkey))
+	in
+
+	match Mysqldb.connect () with
+	  | None -> Nothing
+	  | Some cid ->
+	    ignore (Mysqldb.query cid update_offset_query) ;
 	    Mysqldb.disconnect cid ;
 	    Nothing
 ;;

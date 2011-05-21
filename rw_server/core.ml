@@ -368,7 +368,7 @@ let what_to_do event =
 		      let sql_report = 
 			{
 			  s_file = file ;
-			  s_state = File_Opened ;
+			  s_state = SQL_File_Opened ;
 			  s_date = date ;
 			  s_offset = offset_opt ;
 			  s_pkey = None ;
@@ -459,7 +459,7 @@ let what_to_do event =
 
 		    let sql_report = {
 		      s_file = f_file ;
-		      s_state = File_Closed ;
+		      s_state = SQL_File_Closed ;
 		      s_date = date ;
 		      s_offset = offset ;
 		      s_pkey = Some pkey ;
