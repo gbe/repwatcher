@@ -3,7 +3,7 @@ open Types_conf
 open Unix
 (* open Dbus_call *)
 
-let config_file = "conf/rw_client.conf" ;;
+let config_file = ref "conf/rw_client.conf" ;;
 
 let port = ref 9292 ;;
 let host = ref "" ;;
@@ -26,7 +26,7 @@ let parse_config file =
 let _ =
 
   
-  let usage = "usage: rw_client host [-p port] [-n Folders_nb_for_notifications]" in
+  let usage = "usage: rw_client host [-p port] [-f Configuration file path] [-n Folders_nb_for_notifications]" in
   
   Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
@@ -36,6 +36,9 @@ This is free software under the MIT license.\n\n";
   Arg.parse
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
+
+     "-f", Arg.String (fun path_conf -> config_file := path_conf), "\tConfiguration file path";
+
      "-n", Arg.Int (fun n ->
        if n < 0 then
 	 raise (Arg.Bad ("wrong argument `"^(string_of_int n)^"'; option `-n' expects an unsigned integer"))
@@ -70,7 +73,7 @@ This is free software under the MIT license.\n\n";
       failwith err
   in
 
-  let conf = parse_config config_file in
+  let conf = parse_config !config_file in
   let certs = conf.c_certs in
 
   (* check on CA *)

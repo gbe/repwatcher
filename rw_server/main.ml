@@ -6,7 +6,8 @@ open Types_conf
 open Core
 
 
-let config_file = "conf/repwatcher.conf"    (* Nom du fichier de configuration *)
+(* Configuration file fullpath *)
+let config_file = ref "conf/repwatcher.conf"
 
 
 
@@ -18,12 +19,12 @@ let load_and_watch_config () =
 
   try
     (* Check if the file exists and if the process can read it *)
-    Unix.access config_file [F_OK ; R_OK];
+    Unix.access !config_file [F_OK ; R_OK];
 
     (* Parse the configuration file *)
-    let conf = Config.parse config_file in
+    let conf = Config.parse !config_file in
     (* Watch it *)
-    Core.add_watch config_file None true;
+    Core.add_watch !config_file None true;
     conf
   with Unix_error (error,_,file) ->
     let err = Printf.sprintf "%s: %s" file (error_message error) in
@@ -238,7 +239,7 @@ let check conf =
     if int_of_string (Str.last_chars rights 1) != 0 then
       Log.log ("Warning: "^file^" is accessible by the group 'other'", Error)
   in
-  check_rights config_file ;
+  check_rights !config_file ;
 
 
   (* Does the file exist and can it be read ? *)
@@ -316,16 +317,29 @@ let check conf =
 
 
 
-(* Fonction main *)
-let _ =
-  at_exit clean_exit;
+(* Main function *)
+let _ =  
 
   Printf.printf "\nRepwatcher  Copyright (C) 2009-2011  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
 
+  let usage = "usage: rw_server [-f Configuration file path]" in
 
+  Arg.parse
+    [ 
+      "-f", Arg.String (fun path_conf ->
+	config_file := path_conf),
+      "\tConfiguration file path";
+    ]
+    (fun _ -> print_endline usage ; exit 1 ) usage;  
+
+
+  (* Need to be after Arg.parse, otherwise there are problems to
+   * display usage and the -help and --help options
+   *)
+  at_exit clean_exit;
 
   (* Load and watch the configuration file *)
   let conf = load_and_watch_config () in
