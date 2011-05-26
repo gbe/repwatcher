@@ -357,7 +357,7 @@ let what_to_do event =
 
 		      
 		      let offset_opt =
-			Offset.get file.f_program_pid (file.f_path^file.f_name)
+			Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
 		      in
 
 		      let sql_report = 

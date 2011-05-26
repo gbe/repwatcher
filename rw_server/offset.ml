@@ -2,32 +2,28 @@ open Types
 open Fdinfo
 
 
-let get pid filepath =
+let get_offset pid filepath =
   let pid = pid_of_int pid in
   
   let fds =
     try
-      get_fds pid
-    with Unix.Unix_error (error, funct, arg) ->
-      let err = Printf.sprintf "Offset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
-      Log.log (err, Error) ;
-      []
+      Fdinfo.get pid
+    with
+      | Unix.Unix_error (error, funct, arg) ->
+	let err = Printf.sprintf "Offset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
+	Log.log (err, Error) ;
+	[]
+
+      | Fdinfo_parse_error -> 
+	Log.log ("Offset. Error while parsing data from /proc", Error) ;
+	[]
   in
   
   try
-    let fd =
-      List.find (fun fd -> fd.name = filepath) fds
-    in
-    Some (get_offset pid fd)
-
+    Some ((List.find (fun fd -> fd.name = filepath) fds).offset)
   with
-    | Unix.Unix_error (error, funct, arg) ->
-      let err = Printf.sprintf "\nOffset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
-      Log.log ("get_offset unix error"^err, Error) ;
-      None
-
     | Not_found ->
-      Log.log ("get_offset Not_found error", Error) ;
+      Log.log (("Offset. "^filepath^" not_found in /proc."), Error) ;
       List.iter (fun fd -> Log.log (fd.name, Error)) fds ;
       None
 ;;
@@ -43,7 +39,7 @@ let loop_check () =
 
     Hashtbl.iter (fun (wd, file) (date, _, sql_pkey) ->
       let offset_opt =
-	get file.f_program_pid (file.f_path^file.f_name)
+	get_offset file.f_program_pid (file.f_path^file.f_name)
       in
 
       (* if at None then not Hashtbl update *)
