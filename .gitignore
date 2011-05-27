@@ -1,0 +1,9 @@
+*.cmi
+*.cmo
+*.cma
+*.cmx
+*.cmxa
+*.a
+*.o
+.depend
+rw.log*

@@ -1,12 +1,12 @@
 CMX= lexer.cmx parser.cmx config.cmx rw_client.cmx
 GENERATED = lexer.ml parser.ml parser.mli 
 BIN= rw_client
-FLAGS=-linkpkg -package ssl
+FLAGS=-linkpkg -package str,ssl
 
 all: $(BIN)
 
 $(BIN):$(CMX)
-	ocamlfind ocamlopt $(FLAGS) str.cmxa -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
+	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
 
 .SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
