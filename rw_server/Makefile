@@ -2,7 +2,7 @@ NO_DBUS ?= 0
 CMX = lexer.cmx parser.cmx config.cmx date.cmx log.cmx file_list.cmx mysqldb.cmx txt_operations.cmx pipe.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx offset.cmx core.cmx pipe_listening.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
-PACKAGES = mysql,ssl,inotify,fdinfo
+PACKAGES = str,mysql,ssl,inotify,fdinfo
 FLAGS = -linkpkg -package $(PACKAGES)
 
 ifeq ($(NO_DBUS), 0)
@@ -12,7 +12,7 @@ endif
 all: $(BIN)
 
 $(BIN):$(CMX)
-	ocamlfind ocamlopt $(FLAGS) str.cmxa -I +threads threads.cmxa -I +ssl ssl_threads.cmxa fdinfo.cmxa -o $(BIN) $(CMX)
+	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
 
 .SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
