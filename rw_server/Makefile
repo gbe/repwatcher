@@ -2,8 +2,8 @@ NO_DBUS ?= 0
 CMX = lexer.cmx parser.cmx config.cmx date.cmx log.cmx file_list.cmx mysqldb.cmx txt_operations.cmx pipe.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx offset.cmx core.cmx pipe_listening.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
-PACKAGES = str,mysql,ssl,inotify,fdinfo
-FLAGS = -linkpkg -package $(PACKAGES)
+PACKAGES = str,mysql,ssl,inotify,fdinfo,threads
+FLAGS = -thread -linkpkg -package $(PACKAGES)
 
 ifeq ($(NO_DBUS), 0)
 	PACKAGES +=-package dbus
@@ -12,18 +12,18 @@ endif
 all: $(BIN)
 
 $(BIN):$(CMX)
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -I +ssl ssl_threads.cmxa -o $(BIN) $(CMX)
+	ocamlfind ocamlopt $(FLAGS) -o $(BIN) $(CMX)
 
 .SUFFIXES: .mli .ml .cmi .cmx .mll .mly  
 
 .mli.cmi:
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -c $<
+	ocamlfind ocamlopt $(FLAGS) -c $<
 
 .ml.cmx:
 ifeq ($(NO_DBUS), 1)
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of.opt -DNO_DBUS" -c $<
+	ocamlfind ocamlopt $(FLAGS) -pp "camlp4of.opt -DNO_DBUS" -c $<
 else
-	ocamlfind ocamlopt $(FLAGS) -I +threads threads.cmxa -pp "camlp4of.opt" -c $<
+	ocamlfind ocamlopt $(FLAGS) -pp "camlp4of.opt" -c $<
 endif
 
 .mll.ml:
