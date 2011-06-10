@@ -13,7 +13,7 @@ let localization (pos,e) config_file =
 
 let get () =
   match !conf with
-    | None -> failwith "Failed to retrieve the configuration file"
+    | None -> assert false
     | Some c -> c
 ;;
 
@@ -21,9 +21,11 @@ let parse config_file =
   let c = open_in config_file in
   let lb = Lexing.from_channel c in
     try
-      conf := Some (Parser.configuration Lexer.nexttoken lb) ;
+      let res = Parser.configuration Lexer.nexttoken lb in
+      conf := Some res ;
       close_in c;
-      get()
+      res
+
     with
       | Lexer.Lexing_error s -> 
 	  localization (lexeme_start_p lb, lexeme_end_p lb) config_file;

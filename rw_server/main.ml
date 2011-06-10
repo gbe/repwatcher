@@ -5,9 +5,10 @@ open Types
 open Types_conf
 open Core
 
+let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 (* Configuration file fullpath *)
-let config_file = ref "conf/repwatcher.conf"
+let config_file = ref "repwatcher.conf" ;;
 
 
 
@@ -23,13 +24,22 @@ let load_and_watch_config () =
 
     (* Parse the configuration file *)
     let conf = Config.parse !config_file in
+
     (* Watch it *)
     Core.add_watch !config_file None true;
     conf
-  with Unix_error (error,_,file) ->
-    let err = Printf.sprintf "%s: %s" file (error_message error) in
-    Log.log (err, Error) ;
-    failwith err
+
+  with
+    | Unix_error (error,_,file) ->
+      let err = Printf.sprintf "%s: %s.\n\n%s\n" file (error_message error) usage in
+      (* Do not log because we can't know
+	 what the user decided to do about his log policy.
+	 We could set it to log by default but I'd prefer to
+	 not add extra code just for this. The program crashes and the user
+	 is warned through the terminal that the configuration file
+	 couldn't be accessed. It's enough, no need to log it.
+      *)
+      failwith err
 ;;
 
 
@@ -324,8 +334,6 @@ let _ =
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
-
-  let usage = "usage: rw_server [-f Configuration file path]" in
 
   Arg.parse
     [ 
