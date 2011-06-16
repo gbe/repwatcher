@@ -67,11 +67,11 @@ let is_config_file wd =
 
 
 let del_watch wd =
-  if debug_event then
-    begin
-      printf "To be deleted: %d\n" (int_of_wd wd);
-      Pervasives.flush Pervasives.stdout
-    end;
+
+  if debug_event then begin
+    printf "To be deleted: %d\n" (int_of_wd wd);
+    Pervasives.flush Pervasives.stdout
+  end;
 
   (* Check if the wd is still in the hashtable *)
   if Hashtbl.mem ht_iwatched wd then
@@ -156,93 +156,92 @@ let add_watch path2watch wd_father_opt is_config_file =
     Log.log (error, Error) ;
 
     (* the folder is not already watched therefore we can start watching it *)
-  else
-    if Sys.file_exists path2watch then
-      try
-	(* Start watching the wd in 2 different ways in case it's a configuration file or not *)
-	let wd =
-	  if is_config_file then
-	    Inotify.add_watch fd path2watch [S_Close_write]
+  else if Sys.file_exists path2watch then begin
+    try
+      (* Start watching the wd in 2 different ways 
+       * in case it's a configuration file or not *)
+      let wd =
+	if is_config_file then
+	  Inotify.add_watch fd path2watch [S_Close_write]
 
-	  else
-
-	    Inotify.add_watch fd path2watch
-	      [S_Open ;
-	       S_Close_nowrite ;
-	       S_Create ;
-	       S_Delete ;
-	       S_Moved_from ;
-	       S_Moved_to]
-	in 
+	else
+	  Inotify.add_watch fd path2watch
+	    [S_Open ;
+	     S_Close_nowrite ;
+	     S_Create ;
+	     S_Delete ;
+	     S_Moved_from ;
+	     S_Moved_to]
+      in
 	
-	(* If this inode is not already watched but with a different path.
-	 *  It can occur if mount --bind is used and both folders are set to be watched
-	 *)
-	if not (Hashtbl.mem ht_iwatched wd) then
-	  begin
-
-	    (* if the wd has a father, the entry in the hashtable is different *)
-	    (match wd_father_opt with
-	    | None ->
-		if is_config_file then
-		  Hashtbl.add ht_iwatched wd
-		    {
-		     conf = true ;
-		     path = path2watch ;
-		     wd_father = None ;
-		     wd_children = []
-		   }
-		else
-		  Hashtbl.add ht_iwatched wd
-		    {
-		     conf = false ;
-		     path = path2watch ;
-		     wd_father = None ;
-		     wd_children = []
-		   }
+      (* If this inode is not already watched but with a different path.
+       *  It can occur if mount --bind is used and both folders are set to be watched
+       *)
+      if not (Hashtbl.mem ht_iwatched wd) then begin
+	(* if the wd has a father, the entry in the hashtable is different *)
+	(match wd_father_opt with
+	  | None ->
+	    if is_config_file then
+	      Hashtbl.add ht_iwatched wd
+		{
+		  conf = true ;
+		  path = path2watch ;
+		  wd_father = None ;
+		  wd_children = []
+		}
+	    else
+	      Hashtbl.add ht_iwatched wd
+		{
+		  conf = false ;
+		  path = path2watch ;
+		  wd_father = None ;
+		  wd_children = []
+		}
 		    
-	    | Some wd_father ->
-		Hashtbl.add ht_iwatched wd
-		  {
-		   conf = false ;
-		   path = path2watch ;
-		   wd_father = Some wd_father ;
-		   wd_children = []
-		 };
-		(* Update a father's wd list with the new child *)
-		let add_child wd_father wd_child =
-		  match get_value wd_father with
-		  | None ->
-		      Log.log ("Exception triggered in add_watch. Unknown wd", Error)
-
-		  | Some f_father_info ->
-		      Hashtbl.replace ht_iwatched wd_father
-			{
-			 f_father_info with
-			 wd_children = wd_child :: (f_father_info.wd_children)
-		       }
-		in
-		add_child wd_father wd
-	    );
-	    let txt =
-	      Printf.sprintf "*** %s is now watched, wd = %d\n"
-		path2watch (int_of_wd wd)
+	  | Some wd_father ->
+	    Hashtbl.add ht_iwatched wd
+	      {
+		conf = false ;
+		path = path2watch ;
+		wd_father = Some wd_father ;
+		wd_children = []
+	      };
+	    (* Update a father's wd list with the new child *)
+	    let add_child wd_father wd_child =
+	      match get_value wd_father with
+		| None ->
+		  Log.log ("Exception triggered in add_watch. Unknown wd", Error)
+		    
+		| Some f_father_info ->
+		  Hashtbl.replace ht_iwatched wd_father
+		    {
+		      f_father_info with
+			wd_children = wd_child :: (f_father_info.wd_children)
+		    }
 	    in
-	    Log.log (txt, Normal_Extra)
-	  end
+	    add_child wd_father wd
+	);
+	let txt =
+	  Printf.sprintf "*** %s is now watched, wd = %d\n"
+	    path2watch (int_of_wd wd)
+	in
+	Log.log (txt, Normal_Extra)
+      end
 
-      with 
+    with 
       | Failure err ->
-	  let error =
-	    "Error in function '"^err^"', is the name \
-	of the directory ok ? Here is \
-	    the directory concerned: '"^path2watch^"'\n"
-	  in
-	  prerr_endline error ;
-	  Log.log (error, Error)
-    else
-      let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
-      Log.log (error, Error)
+	let error =
+	  "Error in function '"^err^"', is the name \
+	  of the directory ok ? Here is \
+	  the directory concerned: '"^path2watch^"'\n"
+	in
+	prerr_endline error ;
+	Log.log (error, Error)
+
+  end (* eo else if *)
+  else
+    let error = sprintf "add_watch failed : '%s' doesn't exist" path2watch in
+    Log.log (error, Error)
 ;;
 
 
@@ -282,9 +281,12 @@ let rec add_watch_children l_children =
 
 let print_ht () =
   Hashtbl.iter (fun key value -> 
-		  printf "\n--------------\n'%s'(%d) is the father of :\n" value.path (int_of_wd key);
-		  List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
-	       ) ht_iwatched;
+
+    printf "\n--------------\n'%s'(%d) is the father of :\n"
+      value.path (int_of_wd key);
+    List.iter (fun child -> printf "%d\t" (int_of_wd child)) value.wd_children
+
+  ) ht_iwatched;
   Pervasives.flush Pervasives.stdout
 ;;
 
@@ -304,82 +306,80 @@ let what_to_do event =
     | [] -> ()
     | event_type :: q -> 
 	  
-      if debug_event then
-	begin
-	  if not (string_of_event event_type = "ACCESS") then
-	    printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
-	      (string_of_event event_type)
-	      (string_of_bool is_folder)
-	      name
-	      (int_of_wd wd)
-	end;
+      if debug_event then begin
+	if not (string_of_event event_type = "ACCESS") then
+	  printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
+	    (string_of_event event_type)
+	    (string_of_bool is_folder)
+	    name
+	    (int_of_wd wd)
+      end;
       
       begin match event_type, is_folder with	
 	| Isdir, _ -> action q true
 
 
 	| Open, false -> 
-	  begin
-	    match get_value wd with
-	      | None ->
-		let err =
-		  sprintf "%s was opened but its wd could not be found\n" name
-		in
-		Log.log (err, Error)
+	  begin match get_value wd with
+	    | None ->
+	      let err =
+		sprintf "%s was opened but its wd could not be found\n" name
+	      in
+	      Log.log (err, Error)
 		    
-	      | Some father ->
-		  
-		if debug_event then
-		  Printf.printf "[II] Folder: %s\n" father.path;
+	    | Some father ->
 
-		let cmd = "lsof -w -F cLsn \""^father.path^"/"^name^"\" 2> /dev/null" in
-		let files = File_list.get cmd in
-		let files_filtered = File_list.filter files in
+	      if debug_event then
+		Printf.printf "[II] Folder: %s\n" father.path;
 
-		Mutex.lock Files_progress.mutex_ht ;
+	      let cmd =
+		"lsof -w -F cLsn \""^father.path^"/"^name^"\" 2> /dev/null"
+	      in
+	      let files = File_list.get cmd in
+	      let files_filtered = File_list.filter files in
 
-		List.iter (fun file ->
+	      Mutex.lock Files_progress.mutex_ht ;
+
+	      List.iter (fun file ->
 		      
-		  (* This test is here because without it
-		   * we could be notified 3 times for the same thing *)
-		  if not (Hashtbl.mem Files_progress.ht (wd, file)) then
-		    begin
-		      if debug_event then
-			printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
-			  file.f_name (Int64.to_string file.f_filesize) name;			
+		(* This test is here because without it
+		 * we could be notified 3 times for the same thing *)
+		if not (Hashtbl.mem Files_progress.ht (wd, file)) then begin
+		  if debug_event then
+		    printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name;			
 
-		      (* Notify right away *)
-		      let date = Date.date () in
-		      print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
+		  (* Notify right away *)
+		  let date = Date.date () in
+		  print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
-		      Log.log (file.f_login^" has opened: "^file.f_name, Normal);
-		      ignore (Report.report (Notify (New_notif (file, File_Opened))));
+		  Log.log (file.f_login^" has opened: "^file.f_name, Normal);
+		  ignore (Report.report (Notify (New_notif (file, File_Opened))));
 
 		      
-		      let offset_opt =
-			Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
-		      in
+		  let offset_opt =
+		    Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
+		  in
 
-		      let sql_report = 
-			{
-			  s_file = file ;
-			  s_state = SQL_File_Opened ;
-			  s_date = date ;
-			  s_offset = offset_opt ;
-			  s_pkey = None ;
-			}
-		      in
+		  let sql_report = 
+		    {
+		      s_file = file ;
+		      s_state = SQL_File_Opened ;
+		      s_date = date ;
+		      s_offset = offset_opt ;
+		      s_pkey = None ;
+		    }
+		  in
 
-		      match Report.report (Sql sql_report) with
-			| Nothing -> () (* could be triggered by an SQL error *)
-			| PrimaryKey pkey ->
-			  Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt, pkey)
+		  match Report.report (Sql sql_report) with
+		    | Nothing -> () (* could be triggered by an SQL error *)
+		    | PrimaryKey pkey ->
+		      Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt, pkey)
 
-		    end
+		end
 
-		) files_filtered ;
+	      ) files_filtered ;
 		
-		Mutex.unlock Files_progress.mutex_ht ;
+	      Mutex.unlock Files_progress.mutex_ht ;
 		
 	  end (* eo Open, false *)
 					      
@@ -400,47 +400,46 @@ let what_to_do event =
 
 
 	| Close_nowrite, false ->
-	    begin
-	      match get_value wd with
+	    begin match get_value wd with
 	      | None ->
-		  let err =
-		    sprintf "%s has been closed (nowrite) \
+		let err =
+		  sprintf "%s has been closed (nowrite) \
 		      but I can't report it because I can't find\
 		      its wd info" name
-		  in
-		  Log.log (err, Error)
+		in
+		Log.log (err, Error)
 					  
 	      | Some folder ->
-		  let path_quoted = Filename.quote folder.path in
+		let path_quoted = Filename.quote folder.path in
 					      
-		  if debug_event then
-		    Printf.printf "[II] Folder: %s\n" path_quoted ;
+		if debug_event then
+		  Printf.printf "[II] Folder: %s\n" path_quoted ;
 					      
-		  (* Call lsof to know which file stopped being accessed *)
-		  let cmd = "lsof -w -F cLns +d "^path_quoted^" 2> /dev/null" in
+		(* Call lsof to know which file stopped being accessed *)
+		let cmd = "lsof -w -F cLns +d "^path_quoted^" 2> /dev/null" in
 
-		  let l_opened_files = File_list.get cmd in
-		  let l_files_in_progress = File_list.filter l_opened_files in
+		let l_opened_files = File_list.get cmd in
+		let l_files_in_progress = File_list.filter l_opened_files in
 
-		  Mutex.lock Files_progress.mutex_ht ;
+		Mutex.lock Files_progress.mutex_ht ;
 
-                  (* Return the list of the files which stopped being accessed *)
-		  let l_stop =
-		    Hashtbl.fold (
+                (* Return the list of the files which stopped being accessed *)
+		let l_stop =
+		  Hashtbl.fold (
 		    fun (wd2, f_file) values l_stop' ->
 		      (* if wd2 is wd's child and is not in progress anymore *)
                       if ( wd = wd2 &&
-			   not (List.mem f_file l_files_in_progress) ) then
+			  not (List.mem f_file l_files_in_progress) ) then
 			
 			((wd2, f_file), values) :: l_stop'
 		      else
 			l_stop'
-                   ) Files_progress.ht []
-		  in
+                  ) Files_progress.ht []
+		in
 					      
-		  Mutex.unlock Files_progress.mutex_ht ;
+		Mutex.unlock Files_progress.mutex_ht ;
 
-		  List.iter (
+		List.iter (
 		  fun ((wd2, f_file), (_, offset, pkey)) ->
 
 		    Mutex.lock Files_progress.mutex_ht ;
@@ -460,154 +459,152 @@ let what_to_do event =
 		      s_pkey = Some pkey ;
 		    }
 		    in
-
-
+		    
+		    
 		    ignore (Report.report (Sql sql_report));
 		    ignore (Report.report (Notify (New_notif (f_file, File_Closed))));
-		  ) l_stop ;
+		) l_stop ;
 
 	    end (* eo Close_nowrite, false *)
 
 
 	      
 	| Create, true ->
-	  begin
-	    match get_value wd with
-	      | None ->
-		let err =
-		  sprintf "%s has been created but I \
+	  begin match get_value wd with
+	    | None ->
+	      let err =
+		sprintf "%s has been created but I \
 			    can't start watching it because I \
 			    can't find its father" name
-		in
-		Log.log (err, Error)
-		  
-	      | Some father ->
-		add_watch (father.path^"/"^name) (Some wd) false
+	      in
+	      Log.log (err, Error)
+		
+	    | Some father ->
+	      add_watch (father.path^"/"^name) (Some wd) false
 	  end
 
 					   
 	| Moved_to, true ->
-	  begin
-	    match get_value wd with
-	      | None ->
-		let report =
-		  sprintf "%s has been \"moved from\" but I \
-			    can't find its father. Move cancel" name
-		in
-		Log.log (report, Error)
+	  begin match get_value wd with
+	    | None ->
+	      let report =
+		sprintf "%s has been \"moved from\" but I \
+			 can't find its father. Move cancel" name
+	      in
+	      Log.log (report, Error)
 		  
-	      | Some father ->
-		let path = (father.path)^"/"^name in
+	    | Some father ->
+	      let path = (father.path)^"/"^name in
 		
-		let children =
-			  (* Exception raised if the list returned by Dirs.ls is empty.
-			   * This shouldn't happen because 'folder' should be at least returned
-			   * If raised, it means the folder couldn't be opened by Unix.opendir *)
-		  try
-		    List.tl (Dirs.ls path [])
-		  with Failure _ ->
-		    let error = "For some reasons, '"^path^"' could not be browsed while doing a move_to" in
-		    Log.log (error, Error);
-		    []
-		in
+	      let children =
+		(* Exception raised if the list returned by Dirs.ls is empty.
+		 * This shouldn't happen because 'folder' should be at least returned
+		 * If raised, it means the folder couldn't be opened by Unix.opendir
+		 *)
+		try
+		  List.tl (Dirs.ls path [])
+		with Failure _ ->
+		  let error =
+		    "For some reasons, '"^path^"' could not be browsed \
+                    while doing a move_to"
+		  in
+		  Log.log (error, Error);
+		  []
+	      in
 			
-		(* Watch the new folder *)
-                add_watch path (Some wd) false ;
+	      (* Watch the new folder *)
+              add_watch path (Some wd) false ;
 					       
-		(* Then the folder's children *)
-		add_watch_children children
+	      (* Then the folder's children *)
+	      add_watch_children children
 	  end
 		    
 
 
 		  
 	| Delete, true ->
-	  begin
-	    match get_value wd with
-	      | None ->
-		let err =
-		  sprintf "%s has been deleted but I can't stop \
-			    watching it because I can't find its father" name
-		in
-		Log.log (err, Error)
+	  begin match get_value wd with
+	    | None ->
+	      let err =
+		sprintf "%s has been deleted but I can't stop \
+			 watching it because I can't find its father" name
+	      in
+	      Log.log (err, Error)
 		  
-	      | Some father ->
-		let path = (father.path^"/"^name) in
+	    | Some father ->
+	      let path = (father.path^"/"^name) in
 		
-		match get_key path with
-		  | None ->
-		    let err =
-		      sprintf "%s has been deleted but couldn't \
-				be stopped being watched (not found in Hashtbl)" path
-		    in
-		    Log.log (err, Error)
-		  | Some wd_key -> del_watch wd_key
+	      match get_key path with
+		| None ->
+		  let err =
+		    sprintf "%s has been deleted but couldn't \
+			     be stopped being watched (not found in Hashtbl)" path
+		  in
+		  Log.log (err, Error)
+		| Some wd_key -> del_watch wd_key
 	  end
 	    
 	    
-	      (* Triggered when an existing file is modified
-	       * and when a file is renamed *)
+	(* Triggered when an existing file is modified
+	 * and when a file is renamed *)
 	| Moved_from, false -> ()
 	  
 	  
 	| Moved_from, true ->
-	  begin
-	    match get_value wd with
-	      | None ->
-		let report =
-		  sprintf "Error. %s has been \"moved from\" but I can't find its corresponding value in the Hashtbl. Move canceled" name
-		in
-		Log.log (report, Error)
+	  begin match get_value wd with
+	    | None ->
+	      let report =
+		sprintf "Error. %s has been \"moved from\" but \
+                         I can't find its corresponding value in the Hashtbl. \
+                         Move canceled" name
+	      in
+	      Log.log (report, Error)
 		  
-	      | Some father ->
+	    | Some father ->
 		
-		match get_key (father.path^"/"^name) with
-		  | None ->
-		    Log.log ("Error. Move_from: get_key -> wd_key", Error)
+	      match get_key (father.path^"/"^name) with
+		| None ->
+		  Log.log ("Error. Move_from: get_key -> wd_key", Error)
 		      
-		  | Some wd_key ->						   
-		    match get_value wd_key with
-		      | None ->
-			Log.log ("Error: Move_from: get_value", Error)
+		| Some wd_key ->						   
+		  match get_value wd_key with
+		    | None ->
+		      Log.log ("Error: Move_from: get_value", Error)
 			  
-		      | Some current ->
+		    | Some current ->
 			
-			(* Get the list of ALL the children and descendants *)
-			let rec get_all_descendants l_children =
-			  List.fold_left (
-			    fun acc wd_child ->
-			      match get_value wd_child with
-				| None -> []
-				| Some child ->
-				  (get_all_descendants child.wd_children)@[wd_child]@acc
-			  ) [] l_children
-			in
-			let children_and_descendants = get_all_descendants current.wd_children in
-			
-			(* printf "Children's list :\n";
-			   List.iter (fun el -> printf "%d - " (int_of_wd el)) children_and_descendants;
-			   printf "\n";
-			*)
-			
-			(* Remove the watch on the children and descendants *)
-			List.iter (
-			  fun wd_child ->
+		      (* Get the list of ALL the children and descendants *)
+		      let rec get_all_descendants l_children =
+			List.fold_left (
+			  fun acc wd_child ->
 			    match get_value wd_child with
-			      | None ->
-				Log.log ("Error. What_to_do(move_from): \
-						 Could not find a wd_child to delete", Error)
+			      | None -> []
+			      | Some child ->
+				(get_all_descendants child.wd_children)@[wd_child]@acc
+			) [] l_children
+		      in
+		      let children_and_descendants =
+			get_all_descendants current.wd_children
+		      in
+				       	
+		      (* Remove the watch on the children and descendants *)
+		      List.iter (
+			fun wd_child ->
+			  match get_value wd_child with
+			    | None ->
+			      Log.log ("Error. What_to_do(move_from): \
+				 Could not find a wd_child to delete", Error)
 				  
-			      | Some child -> 
-				Log.log ("move_from of child : "^(child.path), Normal_Extra) ;
-				del_watch wd_child
-			) children_and_descendants
-			;
-			Log.log (("move_from of "^name), Normal_Extra) ;
+			    | Some child -> 
+			      Log.log ("move_from of child : "^(child.path), Normal_Extra) ;
+			      del_watch wd_child
+		      ) children_and_descendants ;
 
-                        (* The children's watch has been deleted,
-                         * let's delete the real target
-                         *)
-			del_watch wd_key
+		      Log.log (("move_from of "^name), Normal_Extra) ;
+
+                      (* The children's watch has been deleted,
+                       * let's delete the real target *)
+		      del_watch wd_key
 			  
 	  end (* eo move_from, true *)
 	    

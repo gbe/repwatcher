@@ -1,7 +1,7 @@
 open Unix
 open Types
 open Types_conf
-
+open Printf
 
 let default_port = 9292
 let backlog      = 15
@@ -38,7 +38,7 @@ let get_common_name cert =
     | [] -> "Unknown user"
     | h :: q ->
 	if Str.string_match cn h 0 then
-	  let lastpos = Str.match_end() in
+	  let lastpos = Str.match_end () in
 	  String.sub h lastpos ((String.length h)-lastpos)
 	else
 	  loop q
@@ -78,17 +78,16 @@ let pipe_waits_for_notifications tor =
   
   while true do
     let recv = Unix.read tor buf 0 bufsize in
-    if recv > 0 then
-      begin
-	let data = String.sub buf 0 recv in
-	let notif = (Marshal.from_string data 0 : Types.notification) in
+    if recv > 0 then begin
+      let data = String.sub buf 0 recv in
+      let notif = (Marshal.from_string data 0 : Types.notification) in
 
-	(* Resend the data already serialized to the clients *)
-        match notif with
+      (* Resend the data already serialized to the clients *)
+      match notif with
 	| Local_notif _ -> assert false
-        | New_notif _   -> send (Notification notif) None
-        | Old_notif _   -> send (Notification notif) (Some (List.hd !connected_clients))
-      end
+        | New_notif _ -> send (Notification notif) None
+        | Old_notif _ -> send(Notification notif) (Some (List.hd !connected_clients))
+    end
   done
 ;;
 
@@ -99,15 +98,15 @@ let client_quit sock_cli =
   
   Mutex.lock m ;
   let (l_clients_left, l_client) =
-    List.partition (
-    fun (s,_,_) -> s != sock_cli
-   ) !connected_clients
+    List.partition (fun (s,_,_) ->
+      s != sock_cli
+    ) !connected_clients
   in
   connected_clients := l_clients_left ;
   Mutex.unlock m ;
   
   let (_,sockaddr_cli,common_name) = List.hd l_client in
-  let log_msg = Printf.sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
+  let log_msg = sprintf "%s has quit (%s)" common_name (get_ip sockaddr_cli) in
   print_endline log_msg;
   tellserver ( Types.Log (log_msg, Normal) );
   Ssl.shutdown sock_cli
@@ -124,7 +123,12 @@ let handle_connection (ssl_s, sockaddr_cli) =
   let subj = Ssl.get_subject cert in	
   let common_name = get_common_name subj in
   
-  let new_client = Printf.sprintf "%s has connected from %s (using: %s)" common_name (get_ip sockaddr_cli) (Ssl.get_cipher_name (Ssl.get_cipher ssl_s)) in
+  let new_client =
+    sprintf "%s has connected from %s (using: %s)"
+      common_name
+      (get_ip sockaddr_cli)
+      (Ssl.get_cipher_name (Ssl.get_cipher ssl_s))
+  in
   print_endline new_client;
   tellserver (Types.Log (new_client, Normal)) ;
   
@@ -132,11 +136,15 @@ let handle_connection (ssl_s, sockaddr_cli) =
   connected_clients := (ssl_s, sockaddr_cli, common_name) :: !connected_clients;
   Mutex.unlock m ;
 
-(* To be moved from there *)
+  (* To be moved from there *)
   let conf = Config.get() in
   
-  (* Tell the new client that he is authorized and send him at the same time the number of last folders to display set in the config file*)
-  send (RW_server_con_ok conf.c_notify.n_parent_folders) (Some(ssl_s, sockaddr_cli, common_name));
+  (* Tell the new client that he is authorized
+   * and send him at the same time the number
+   * of last folders to display set in the config file *)
+  send
+    (RW_server_con_ok conf.c_notify.n_parent_folders)
+    (Some(ssl_s, sockaddr_cli, common_name));
   
   (* Ask father's process for the current accesses to send them to the new client *)
   tellserver Ask_current_accesses;
@@ -148,11 +156,10 @@ let handle_connection (ssl_s, sockaddr_cli) =
     while !loop do
       let msg = Ssl.input_string ssl_s in
       
-      if msg = "rw_client_exit" then
-	begin
-	  client_quit ssl_s;
-	  loop := false
-	end 
+      if msg = "rw_client_exit" then begin
+	client_quit ssl_s;
+	loop := false
+      end 
     done
   with Ssl.Read_error _ -> client_quit ssl_s
 ;;
@@ -161,12 +168,9 @@ let handle_connection (ssl_s, sockaddr_cli) =
 
 
 let run tor server =
-
-
-  
-(* Initialize SSL in this area while the chroot
-   has not been done yet so we can access the certificate and
-   private key *)
+ 
+  (* Initialize SSL in this area while the chroot has not been done yet
+   * so we can access the certificate and private key *)
   Ssl_threads.init ();
   Ssl.init ();
 
@@ -203,11 +207,16 @@ let run tor server =
 	exit 1
   end;
   
-  Ssl.set_verify ctx [Ssl.Verify_fail_if_no_peer_cert] (Some Ssl.client_verify_callback);
+  Ssl.set_verify
+    ctx
+    [Ssl.Verify_fail_if_no_peer_cert]
+    (Some Ssl.client_verify_callback);
   
   begin
     try
-      Ssl.load_verify_locations ctx certs.c_ca_path (Filename.dirname certs.c_ca_path)
+      Ssl.load_verify_locations
+	ctx certs.c_ca_path
+	(Filename.dirname certs.c_ca_path)
 
     with Invalid_argument e ->
       let error = ("Error_load_verify_locations: "^e) in
@@ -218,12 +227,14 @@ let run tor server =
   (*
    * Extracted from the SSL_CTX_set_verify man page
    * The depth count is "level 0:peer
-   * certificate", "level 1: CA certificate", "level 2: higher level CA certificate", and so on.
+   * certificate", "level 1: CA certificate",
+   * "level 2: higher level CA certificate", and so on.
+   *
    * Setting the maximum depth to 2 allows the levels 0, 1,
-   * and 2. The default depth limit is 9, allowing for the peer certificate and additional 9 CA certificates.
-   *)
+   * and 2. The default depth limit is 9,
+   * allowing for the peer certificate and additional 9 CA certificates. *)
   Ssl.set_verify_depth ctx 2;
-(* ********************** *)
+  (* ********************** *)
 
 
 
@@ -232,53 +243,60 @@ let run tor server =
   (* Operations on the process itself *)
   
   (* If the processus' identity is root *)
-  if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-    begin
+  if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
       
-      (* Check needs to be done before chrooting *)
-      let check_identity identity =
-	match identity with
+    (* Check needs to be done before chrooting *)
+    let check_identity identity =
+      match identity with
 	| None -> None
 	| Some new_remote_id ->
-	    try
-	      (* Check in the file /etc/passwd if the user new_remote_id exists *)
-	      Some (Unix.getpwnam new_remote_id)
+	  try
+	    (* Check in the file /etc/passwd if the user new_remote_id exists *)
+	    Some (Unix.getpwnam new_remote_id)
 
-	    with Not_found ->
-	      let error = ("Fatal error. User '"^new_remote_id^"' doesn't exist. The network process can't take this identity") in
-	      tellserver ( Types.Log (error, Error));
-	      failwith error
-      in
-      let passwd_entry_opt = check_identity server.s_process_identity in
+	  with Not_found ->
+	    let error =
+	      ("Fatal error. User '"^new_remote_id^"' doesn't exist. \
+                The network process can't take this identity")
+	    in
+	    tellserver ( Types.Log (error, Error));
+	    failwith error
+    in
+    let passwd_entry_opt = check_identity server.s_process_identity in
       
-      (* Chroot the process *)
-      begin
-	try
-	  match server.s_chroot with
+    (* Chroot the process *)
+    begin
+      try
+	match server.s_chroot with
 	  | None -> ()
 	  | Some dir ->
-	      Unix.chdir dir ; Unix.chroot "." ;
-	      tellserver ( Types.Log (("Network process chrooted in "^dir), Normal_Extra))
+	    Unix.chdir dir ; Unix.chroot "." ;
+	    tellserver
+	      (Types.Log (("Network process chrooted in "^dir), Normal_Extra))
 
-	with Unix_error (error,_,s2) ->
-	  let error = ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error)) in
-	  tellserver (Types.Log (error, Error));
-	  failwith error
-      end;
-
-      (* Change the effective uid and gid after the chroot *)
-      begin
-	match passwd_entry_opt with
-	| None -> ()
-	| Some passwd_entry -> 
-	    setgid passwd_entry.pw_gid;
-	    setuid passwd_entry.pw_uid;
-	    
-	    match server.s_process_identity with
-	    | None -> assert false
-	    | Some new_remote_id -> tellserver (Types.Log (("Network process identity changed to "^new_remote_id), Normal_Extra))
-      end;
+      with Unix_error (error,_,s2) ->
+	let error =
+	  ("Remote process can't chroot in '"^s2^"': "^(Unix.error_message error))
+	in
+	tellserver (Types.Log (error, Error));
+	failwith error
     end;
+
+    (* Change the effective uid and gid after the chroot *)
+    begin match passwd_entry_opt with
+      | None -> ()
+      | Some passwd_entry -> 
+	setgid passwd_entry.pw_gid;
+	setuid passwd_entry.pw_uid;
+	    
+	match server.s_process_identity with
+	  | None -> assert false
+	  | Some new_remote_id ->
+	    tellserver
+	      (Types.Log (("Network process identity changed to "^new_remote_id),
+			  Normal_Extra))
+    end;
+  end;
 
   (* *********************** *)
 
@@ -308,7 +326,10 @@ let run tor server =
     
     Mutex.lock m ;
     (* Close the clients' sockets *)
-    List.iter (fun (ssl_s,_,_) -> Ssl.flush ssl_s ; Ssl.shutdown ssl_s) !connected_clients;
+    List.iter (fun (ssl_s,_,_) ->
+      Ssl.flush ssl_s ; Ssl.shutdown ssl_s
+    ) !connected_clients;
+
     Mutex.unlock m ;
     Unix.shutdown sock SHUTDOWN_ALL
   in
@@ -334,7 +355,6 @@ let run tor server =
       Ssl.verify ssl_s;
 
       Ssl.accept ssl_s;
-
       ignore ( Thread.create handle_connection (ssl_s, sockaddr_cli) )
     with
       | Ssl.Verify_error _ ->

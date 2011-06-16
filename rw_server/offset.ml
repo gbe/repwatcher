@@ -1,6 +1,6 @@
 open Types
 open Fdinfo
-
+open Printf
 
 let get_offset pid filepath =
   let pid = pid_of_int pid in
@@ -10,7 +10,10 @@ let get_offset pid filepath =
       Fdinfo.get pid
     with
       | Unix.Unix_error (error, funct, arg) ->
-	let err = Printf.sprintf "Offset. %s, in function %s, arg %s" (Unix.error_message error) funct arg in
+	let err =
+	  sprintf "Offset. %s, in function %s, arg %s"
+	    (Unix.error_message error) funct arg
+	in
 	Log.log (err, Error) ;
 	[]
 
@@ -48,23 +51,22 @@ let loop_check () =
 	| Some offset ->
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
-	  if Hashtbl.mem Files_progress.ht (wd, file) then
-	    begin
-	      Hashtbl.replace Files_progress.ht
-		(wd, file) (date, offset_opt, sql_pkey) ;
+	  if Hashtbl.mem Files_progress.ht (wd, file) then begin
+	    Hashtbl.replace Files_progress.ht
+	      (wd, file) (date, offset_opt, sql_pkey) ;
 
-	      let sql_report =
-		{
-		  s_file = file ;
-		  s_state = SQL_File_Offset_Updated ;
-		  s_date = date ;
-		  s_offset = offset_opt ;
-		  s_pkey = Some sql_pkey
-		}
-	      in
+	    let sql_report =
+	      {
+		s_file = file ;
+		s_state = SQL_File_Offset_Updated ;
+		s_date = date ;
+		s_offset = offset_opt ;
+		s_pkey = Some sql_pkey
+	      }
+	    in
 
-	      ignore (Report.Report.report (Sql sql_report))
-	    end
+	    ignore (Report.Report.report (Sql sql_report))
+	  end
 
     ) Files_progress.ht ;
 

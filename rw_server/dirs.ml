@@ -42,8 +42,7 @@ let reg_hidden = Str.regexp "[.]";;
 	      (* Test if it's a file or a folder *)
 	      match Sys.is_directory fullpath with
 	      | true ->
-		  begin
-		    match entry with
+		  begin match entry with
 		    | ("." | "..") -> ()
 		    | _            ->
 		      (* Browse if it's not a hidden directory *)
@@ -53,10 +52,13 @@ let reg_hidden = Str.regexp "[.]";;
 			(* Stop browsing the subdirectories if they're ignored *)
 			  let to_be_ignored =
 			    try
-			      ignore (List.find (fun ign_dir_reg -> Str.string_match ign_dir_reg fullpath 0) ignored_directories);
+			      ignore (List.find (fun ign_dir_reg ->
+				Str.string_match ign_dir_reg fullpath 0
+			      ) ignored_directories);
 			      true
 			    with Not_found -> false
 			  in
+
 			  begin match to_be_ignored with
 			    | true -> () (* ignored *)
 			    | false -> l := (!l)@(ls fullpath ignored_directories)

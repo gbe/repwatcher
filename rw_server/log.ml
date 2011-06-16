@@ -74,11 +74,11 @@ let log (txt, log_level) =
     (* Filename.concat automatically adds a "/" if necessary *)
     let pathlog =
       match log_level with
-	  | (Normal | Normal_Extra) ->
-	    Filename.concat conf.c_log.l_directory "rw.log"
+	| (Normal | Normal_Extra) ->
+	  Filename.concat conf.c_log.l_directory "rw.log"
 
-	  | Error ->
-	    Filename.concat conf.c_log.l_directory "rw.log.err"
+	| Error ->
+	  Filename.concat conf.c_log.l_directory "rw.log.err"
     in
 
     match open_fd pathlog with

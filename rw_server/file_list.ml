@@ -87,25 +87,30 @@ let get cmd =
 
 
 
-(* list unfiltered -> list filtered. The filter depends on the mode and if the user is ignored *)
+(* list unfiltered -> list filtered. 
+ *The filter depends on the mode and if the user is ignored *)
 let filter unfiltered_l =
   
   let conf = Config.get() in
     
-  (* Remove all the files according to the specified or unwanted mode from the config file *)
+  (* Remove all the files according to 
+   * the specified or unwanted mode from the config file *)
   let lprogs_filtered =
     match conf.c_mode with
     | (Specified_programs, specified_programs) ->
-	List.filter (fun file -> List.mem file.f_program specified_programs) unfiltered_l
+	List.filter (fun file ->
+	  List.mem file.f_program specified_programs
+	) unfiltered_l
 	    
     (* Remove all the unwanted_programs from the list *)
     | (Unwanted_programs, unwanted_programs) ->	  	  
-	List.filter (fun file -> not (List.mem file.f_program unwanted_programs)) unfiltered_l
-	    
+	List.filter (fun file ->
+	  not (List.mem file.f_program unwanted_programs)
+	) unfiltered_l	    
   in
     
-    (* Remove all the files accessed by one of the ignored users *)
-    List.filter (fun file ->
-		   not (List.mem file.f_login conf.c_watch.w_ignore_users)
-		) lprogs_filtered
+  (* Remove all the files accessed by one of the ignored users *)
+  List.filter (fun file ->
+    not (List.mem file.f_login conf.c_watch.w_ignore_users)
+  ) lprogs_filtered
 ;;	    

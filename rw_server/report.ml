@@ -1,6 +1,6 @@
 open Types
 open Types_conf
-
+open Printf
 
 let dbus img title txt =
   IFNDEF NO_DBUS THEN
@@ -51,54 +51,57 @@ let notify notification =
       begin
 
 	let filename_escaped = Txt_operations.escape_for_notify file.f_name in
-	let conf             = Config.get() in  
+	let conf = Config.get() in  
 
 
-	if conf.c_notify.n_locally then
-	  begin
-	    let msg_state =
-	      match filestate with
+	if conf.c_notify.n_locally then begin
+	  let msg_state =
+	    match filestate with
 	      | File_Opened -> "has opened"
 	      | File_Closed -> "closed"
-	    in
+	  in
 
-	    (* Return the n last folders *)
-	    let rec n_last_elements l n =
-	      match l with
+	  (* Return the n last folders *)
+	  let rec n_last_elements l n =
+	    match l with
 	      | [] -> "./"
 	      | [t] -> t^"/"
 	      | t::q ->
-		  if List.length q < n then
-		    t^"/"^(n_last_elements q n)
-		  else
-		    n_last_elements q n
-	    in
+		if List.length q < n then
+		  t^"/"^(n_last_elements q n)
+		else
+		  n_last_elements q n
+	  in
 
 (*	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
 	      ignore (system call)
 *)	
 
 	    
-	    let r = Str.regexp "/" in
-	    let l_folders = Str.split r file.f_path in
+	  let r = Str.regexp "/" in
+	  let l_folders = Str.split r file.f_path in
 
 	    
-	    let dbus_notif =
-	      match conf.c_notify.n_parent_folders with
-	      | None -> Printf.sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
+	  let dbus_notif =
+	    match conf.c_notify.n_parent_folders with
+	      | None ->
+		sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
+
 	      | Some parent_folders ->
-		  Printf.sprintf "<b>%s</b> %s\n%s%s"
-		    file.f_login msg_state (n_last_elements l_folders parent_folders) filename_escaped
-	    in
-	    dbus "nobody" "Repwatcher" dbus_notif
+		sprintf "<b>%s</b> %s\n%s%s"
+		  file.f_login
+		  msg_state
+		  (n_last_elements l_folders parent_folders)
+		  filename_escaped
+	  in
+	  dbus "nobody" "Repwatcher" dbus_notif
 
-	  end ;
-
+	end ;
 
 
 	if conf.c_notify.n_remotely then
 	  try
-               
+            
 	    let str_notif =
 	      Marshal.to_string 
 		(New_notif ({file with f_name = filename_escaped}, filestate) )
@@ -113,23 +116,20 @@ let notify notification =
       end
 
   | Local_notif info ->
-      let info_escaped = Txt_operations.escape_for_notify info in
-      let conf         = Config.get() in
-      if conf.c_notify.n_locally then
-	begin
-(*
-  let call = Printf.sprintf "notify-send -i nobody Repwatcher \"%s\"" info_escaped in
-  ignore (system call)
- *)
-	  dbus "nobody" "Repwatcher" info_escaped
-	end
+    let info_escaped = Txt_operations.escape_for_notify info in
+    let conf = Config.get() in
+
+    if conf.c_notify.n_locally then
+      dbus "nobody" "Repwatcher" info_escaped
 
 
   | Old_notif l_current ->
       (* Txt_operations.escape_for_notify has already been done on f_name *)
-      let str_current = Marshal.to_string (Old_notif l_current) [Marshal.No_sharing] in
+      let str_current =
+	Marshal.to_string (Old_notif l_current) [Marshal.No_sharing]
+      in
 
-      (* send though the pipe to be processed by the server *)
+      (* send through the pipe to be processed by the server *)
       ignore (Unix.write Pipe.tow str_current 0 (String.length str_current))
 ;;
 

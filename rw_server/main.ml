@@ -24,7 +24,9 @@ let load_config () =
 
   with
     | Unix_error (error,_,file) ->
-      let err = Printf.sprintf "%s: %s.\n\n%s\n" file (error_message error) usage in
+      let err =
+	Printf.sprintf "%s: %s.\n\n%s\n" file (error_message error) usage
+      in
       (* Do not log because we can't know
 	 what the user decided to do about his log policy.
 	 We could set it to log by default but I'd prefer to
@@ -215,19 +217,18 @@ let check conf =
     match conf.c_process_identity with
     | None -> ()
     | Some new_main_identity ->
-	if Unix.geteuid () = 0 && Unix.getegid () = 0 then
-	  begin
-	    try
-	      (* Check in /etc/passwd if the user "new_main_identity" exists *)
-	      ignore (Unix.getpwnam new_main_identity);
-	    with Not_found ->
-	      let error =
-		"Fatal error. User "^new_main_identity^" doesn't exist. \
-                The process can't take this identity"
-	      in
-	      Log.log (error, Error);
-	      failwith error
-	  end
+	if Unix.geteuid () = 0 && Unix.getegid () = 0 then begin
+	  try
+	    (* Check in /etc/passwd if the user "new_main_identity" exists *)
+	    ignore (Unix.getpwnam new_main_identity);
+	  with Not_found ->
+	    let error =
+	      "Fatal error. User "^new_main_identity^" doesn't exist. \
+              The process can't take this identity"
+	    in
+	    Log.log (error, Error);
+	    failwith error
+	end
   end;
 
   (* print and log if others have read permission on file *)
@@ -301,22 +302,21 @@ let check conf =
 	    match server.s_process_identity with
 	    | None -> ()
 	    | Some new_remote_identity ->
-		if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-		  begin
-		    try
-		      (*
-		       * Check in /etc/passwd
-		       * if the user "new_remote_identity" exists
-		       *)
-		      ignore (Unix.getpwnam new_remote_identity);
-		    with Not_found ->
-		      let error =
-			"Fatal error. User "^new_remote_identity^" doesn't exist. \
-                         The network process can't take this identity"
-		      in
-		      Log.log (error, Error);
-		      failwith error
-		  end;
+		if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
+		  try
+		    (*
+		     * Check in /etc/passwd
+		     * if the user "new_remote_identity" exists
+		     *)
+		    ignore (Unix.getpwnam new_remote_identity);
+		  with Not_found ->
+		    let error =
+		      "Fatal error. User "^new_remote_identity^" doesn't exist. \
+                       The network process can't take this identity"
+		    in
+		    Log.log (error, Error);
+		    failwith error
+		end;
 	  end;
     end;
 
