@@ -12,22 +12,15 @@ let config_file = ref "repwatcher.conf" ;;
 
 
 
-(* Check if the config exists and then
- * - Parse it
- * - Watch on it
- *)
-let load_and_watch_config () =
+(* Check if the config exists and then parse it *)
+let load_config () =
 
   try
     (* Check if the file exists and if the process can read it *)
     Unix.access !config_file [F_OK ; R_OK];
 
     (* Parse the configuration file *)
-    let conf = Config.parse !config_file in
-
-    (* Watch it *)
-    Core.add_watch !config_file None true;
-    conf
+    Config.parse !config_file
 
   with
     | Unix_error (error,_,file) ->
@@ -369,12 +362,15 @@ This is free software under the MIT license.\n\n";
   at_exit clean_exit;
 
   (* Load and watch the configuration file *)
-  let conf = load_and_watch_config () in
+  let conf = load_config () in
 
   check conf;
 
   (* Set to zero every files marked as in progress in the SGBD *)
   sgbd_reset_in_progress ();
+
+  (* Watch the config *)
+  Core.add_watch !config_file None true;
 
 
 
