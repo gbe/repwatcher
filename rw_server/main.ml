@@ -190,10 +190,11 @@ let check conf =
 
 
   begin
-  (* if Mysqldb.create_db goes wrong, the program exits *)
     match conf.c_mysql.dbname with
       | None -> assert false
       | Some dbname ->
+
+	(* if Mysqldb.create_db goes wrong, the program exits *)
 	Mysqldb.create_db dbname ;
 
 	(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
@@ -207,7 +208,9 @@ let check conf =
 
 
 
-  (* Check if the identity which should be taken by the main process exists (only if the current identity is root) *) 
+  (* Check if the identity which should be taken
+   * by the main process exists
+   * (only if the current identity is root) *)
   begin
     match conf.c_process_identity with
     | None -> ()
@@ -278,7 +281,9 @@ let check conf =
 		  match Sys.is_directory dir with
 		  | true -> ()
 		  | false ->
-		      let error = "Can't chroot in "^dir^", it's not a directory" in
+		      let error =
+			"Can't chroot in "^dir^", it's not a directory"
+		      in
 		      Log.log (error, Error);
 		      failwith error
 		with Sys_error err ->
@@ -316,7 +321,8 @@ let check conf =
     end;
 
 
-  (* is_directory raises "no such file or directory" if l_directory doesn't exist *)
+  (* is_directory raises "no such file or directory" if l_directory doesn't exist.
+   * The exception isn't caught to let it exit the program *)
   if Sys.is_directory conf.c_log.l_directory then
     can_be_accessed conf.c_log.l_directory [R_OK ; W_OK]
   else
@@ -345,11 +351,10 @@ This is free software under the MIT license.\n\n";
 
 
   (* Need to be after Arg.parse, otherwise there are problems to
-   * display usage and the -help and --help options
-   *)
+   * display usage and the -help and --help options *)
   at_exit clean_exit;
 
-  (* Load and watch the configuration file *)
+  (* Load the configuration file *)
   let conf = load_config () in
 
   check conf;
@@ -364,7 +369,7 @@ This is free software under the MIT license.\n\n";
 
 
 
-(* Fork if remote notifications are activated *)
+  (* Fork if remote notifications are activated *)
   let fd =
     match conf.c_notify.n_remotely with
     | true  ->
@@ -379,7 +384,7 @@ This is free software under the MIT license.\n\n";
   in
   
   
-(* If the process has been forked *)   
+  (* If the process has been forked *)
   match fd with
   | 0 ->
       if conf.c_notify.n_remotely then begin
@@ -388,29 +393,36 @@ This is free software under the MIT license.\n\n";
 	| Some server ->
 	    Ssl_server.run Pipe.tor server
       end
-  | _ ->
 
+  | _ ->
       if conf.c_notify.n_remotely then begin
 	ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
       end;
-	
-	
+
+
       begin
 	match conf.c_process_identity with
 	| None -> ()
 	| Some new_identity ->
-	    (* Drop privileges by changing the processus' identity if its current id is root *)
+	    (* Drop privileges by changing the processus' identity
+	     * if its current id is root *)
 	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then
 	      begin
 		try
-		  (* Check in the file /etc/passwd if the user "new_identity" exists *)
+		  (* Check in the file /etc/passwd
+		   * if the user "new_identity" exists *)
 		  let passwd_entry = Unix.getpwnam new_identity in
 		  setgid passwd_entry.pw_gid;
 		  setuid passwd_entry.pw_uid;
 
 		with Not_found ->
-		  (* This shouldn't be triggered here because the test has been already done in the function check() *)
-		  let error = "Fatal error. User "^new_identity^" doesn't exist. The process can't take this identity" in
+		  (* This shouldn't be triggered here
+		   * because the test has been already done
+		   * in the function check() *)
+		  let error =
+		    "Fatal error. User "^new_identity^" doesn't exist. \
+                     The process can't take this identity"
+		  in
 		  Log.log (error, Error);
 		  failwith error
 	      end
