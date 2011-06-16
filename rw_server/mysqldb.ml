@@ -180,3 +180,17 @@ let create_table_accesses () =
 	    Log.log (error, Error) ;
 	    exit 2
 ;;
+
+
+(* Reset all IN_PROGRESS accesses in the SGBD *)
+let sgbd_reset_in_progress () =
+  let reset_accesses =
+    "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
+  in
+  
+  match connect () with
+    | None -> ()
+    | Some cid -> 
+      ignore (query cid reset_accesses) ;
+      disconnect cid
+;;

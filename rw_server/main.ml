@@ -132,18 +132,6 @@ let watch_dirs directories ignore_directories =
 ;;
 
 
-let sgbd_reset_in_progress () =
-  (* Reset all IN_PROGRESS accesses in the SGBD *)
-  let reset_accesses =
-    "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
-  in
-  
-  match Mysqldb.connect () with
-    | None -> ()
-    | Some cid -> 
-      ignore (Mysqldb.query cid reset_accesses) ;
-      Mysqldb.disconnect cid
-;;
 
 
 
@@ -153,7 +141,7 @@ let clean_exit () =
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proved to be usefull for outside apps *)
-  sgbd_reset_in_progress ()
+  Mysqldb.sgbd_reset_in_progress ()
 ;;
 
 
@@ -366,8 +354,8 @@ This is free software under the MIT license.\n\n";
 
   check conf;
 
-  (* Set to zero every files marked as in progress in the SGBD *)
-  sgbd_reset_in_progress ();
+  (* Set to zero every files marked as 'in progress' in the SGBD *)
+  Mysqldb.sgbd_reset_in_progress ();
 
   (* Watch the config *)
   Core.add_watch !config_file None true;
