@@ -41,6 +41,11 @@ type log_verbosity =
   | Regular
   | Debug
 
+type log = {
+  l_verbosity : log_verbosity ;
+  l_directory : string ;
+}
+
 type configuration = {
     c_watch : watch;
     c_mode : mode;
@@ -48,5 +53,5 @@ type configuration = {
     c_mysql : sql_db;
     c_notify : notify;
     c_server : server_t option;
-    c_log : log_verbosity;
+    c_log : log;
 }

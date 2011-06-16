@@ -154,7 +154,7 @@ let add_watch path2watch wd_father_opt is_config_file =
   if is_value path2watch then
     let error = "Error: "^path2watch^" is already watched" in
     Log.log (error, Error) ;
-    
+
     (* the folder is not already watched therefore we can start watching it *)
   else
     if Sys.file_exists path2watch then
@@ -180,6 +180,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 	 *)
 	if not (Hashtbl.mem ht_iwatched wd) then
 	  begin
+
 	    (* if the wd has a father, the entry in the hashtable is different *)
 	    (match wd_father_opt with
 	    | None ->
@@ -208,7 +209,6 @@ let add_watch path2watch wd_father_opt is_config_file =
 		   wd_father = Some wd_father ;
 		   wd_children = []
 		 };
-		
 		(* Update a father's wd list with the new child *)
 		let add_child wd_father wd_child =
 		  match get_value wd_father with
@@ -222,7 +222,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 			 wd_children = wd_child :: (f_father_info.wd_children)
 		       }
 		in
-		add_child wd_father wd	  
+		add_child wd_father wd
 	    );
 	    let txt =
 	      Printf.sprintf "*** %s is now watched, wd = %d\n"

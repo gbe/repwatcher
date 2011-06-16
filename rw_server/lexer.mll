@@ -42,6 +42,7 @@ rule nexttoken = parse
   | "server_process_identity"          { SERVER_PROCESS_IDENTITY }
   | "server_process_chroot"            { SERVER_PROCESS_CHROOT }
   | "log_level"                        { LOG_LEVEL }
+  | "log_directory"                    { LOG_DIRECTORY }
   | eof                                { EOF }
   | '\n'                               { newline lexbuf; nexttoken lexbuf }
   | space+                             { nexttoken lexbuf }

@@ -184,6 +184,8 @@ let clean_exit () =
    - exist, can be read and rights: key
    - chroot folder
    - server identity
+
+   - if log_directory can be read and written
  *)
 let check conf =
 
@@ -232,11 +234,12 @@ let check conf =
 	if Unix.geteuid () = 0 && Unix.getegid () = 0 then
 	  begin
 	    try
-	      (* Check in the file /etc/passwd if the user "new_main_identity" exists *)
+	      (* Check in /etc/passwd if the user "new_main_identity" exists *)
 	      ignore (Unix.getpwnam new_main_identity);
 	    with Not_found ->
 	      let error =
-		"Fatal error. User "^new_main_identity^" doesn't exist. The process can't take this identity"
+		"Fatal error. User "^new_main_identity^" doesn't exist. \
+                The process can't take this identity"
 	      in
 	      Log.log (error, Error);
 	      failwith error
@@ -253,17 +256,16 @@ let check conf =
 
 
   (* Does the file exist and can it be read ? *)
-  let exists_and_can_be_read file =
+  let can_be_accessed file_dir rights =
     try
       (* Checks if the file exists and if the process can read it *)
-      Unix.access file [F_OK ; R_OK];
+      Unix.access file_dir rights ;
       
-    with Unix_error (error,_,file') ->
-      let err = Printf.sprintf "%s: %s" file' (error_message error) in
+    with Unix_error (error,_,file_dir') ->
+      let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
       Log.log (err, Error) ;
       failwith err
   in
-
 
   (* If the server is enabled *)
   if conf.c_notify.n_remotely then
@@ -276,13 +278,13 @@ let check conf =
 	    | None -> assert false
 	    | Some certs -> 
 		(* checks the CA *)
-		exists_and_can_be_read certs.c_ca_path;
+		can_be_accessed certs.c_ca_path [F_OK ; R_OK];
 
 		(* checks the cert *)
-		exists_and_can_be_read certs.c_serv_cert_path;
+		can_be_accessed certs.c_serv_cert_path [F_OK ; R_OK];
 
 		(* checks the key *)
-		exists_and_can_be_read certs.c_serv_key_path;
+		can_be_accessed certs.c_serv_key_path [F_OK ; R_OK];
 		check_rights certs.c_serv_key_path
 	  end;
 
@@ -299,12 +301,16 @@ let check conf =
 		      Log.log (error, Error);
 		      failwith error
 		with Sys_error err ->
-		  let error = "Can't chroot in "^dir^", it's not a directory. "^err in
+		  let error =
+		    "Can't chroot in "^dir^", it's not a directory. "^err
+		  in
 		  Log.log (error, Error);
 		  failwith error
 	  end;
 
-          (* Check if the identity which should be taken by the remote process exists (only if the current identity is root) *)
+          (* Check if the identity which should be taken by
+	   * the remote process exists (only if the current identity is root)
+	   *)
 	  begin
 	    match server.s_process_identity with
 	    | None -> ()
@@ -312,15 +318,28 @@ let check conf =
 		if Unix.geteuid() = 0 && Unix.getegid() = 0 then
 		  begin
 		    try
-		      (* Check in the file /etc/passwd if the user "new_remote_identity" exists *)
+		      (*
+		       * Check in /etc/passwd
+		       * if the user "new_remote_identity" exists
+		       *)
 		      ignore (Unix.getpwnam new_remote_identity);
 		    with Not_found ->
-		      let error = "Fatal error. User "^new_remote_identity^" doesn't exist. The network process can't take this identity" in
+		      let error =
+			"Fatal error. User "^new_remote_identity^" doesn't exist. \
+                         The network process can't take this identity"
+		      in
 		      Log.log (error, Error);
 		      failwith error
 		  end;
 	  end;
     end;
+
+
+  (* is_directory raises "no such file or directory" if l_directory doesn't exist *)
+  if Sys.is_directory conf.c_log.l_directory then
+    can_be_accessed conf.c_log.l_directory [R_OK ; W_OK]
+  else
+    failwith (conf.c_log.l_directory^" is not a directory")
 ;;
 
 
@@ -354,8 +373,7 @@ This is free software under the MIT license.\n\n";
 
   check conf;
 
-
-(* Set to zero every files marked as in progress in the SGBD *)
+  (* Set to zero every files marked as in progress in the SGBD *)
   sgbd_reset_in_progress ();
 
 

@@ -9,27 +9,32 @@ let insert_id = Mysql.insert_id ;;
 
 let connect () =
   try
+
     let cid = Mysql.connect (Config.get()).c_mysql in
     Log.log ("Connected to MySQL", Normal_Extra) ;
     Some cid
 
-  with Mysql.Error error ->
-    Log.log (error, Error);
-    None
+  with
+    | Mysql.Error error ->
+      Log.log (error, Error);
+      None
+    | Config.Config_error -> None
 ;;
 
 let connect_without_db () =
 
-  let m = (Config.get()).c_mysql in
-
   try
+    let m = (Config.get()).c_mysql in
+
     let cid = Mysql.connect { m with dbname = None } in
     Log.log ("Connected to MySQL", Normal_Extra) ;
     Some cid
 
-  with Mysql.Error error ->
-    Log.log (error, Error);
-    None
+  with
+    | Mysql.Error error ->
+      Log.log (error, Error);
+      None
+    | Config.Config_error -> None
 ;;
 
 let disconnect cid =
