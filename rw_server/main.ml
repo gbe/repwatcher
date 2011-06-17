@@ -174,6 +174,9 @@ This is free software under the MIT license.\n\n";
 
   let conf = load_config () in
 
+  (* All the checks should not be done now
+     because in case of errors, they won't be
+     logged in a file *)
   Check_conf.check conf !config_file;
 
 
@@ -210,26 +213,25 @@ This is free software under the MIT license.\n\n";
 	| Some new_identity ->
 	    (* Drop privileges by changing the processus' identity
 	     * if its current id is root *)
-	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then
-	      begin
-		try
-		  (* Check in the file /etc/passwd
-		   * if the user "new_identity" exists *)
-		  let passwd_entry = Unix.getpwnam new_identity in
-		  setgid passwd_entry.pw_gid;
-		  setuid passwd_entry.pw_uid;
+	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
+	      try
+		(* Check in the file /etc/passwd
+		 * if the user "new_identity" exists *)
+		let passwd_entry = Unix.getpwnam new_identity in
+		setgid passwd_entry.pw_gid;
+		setuid passwd_entry.pw_uid;
 
-		with Not_found ->
-		  (* This shouldn't be triggered here
-		   * because the test has been already done
-		   * in the function check() *)
-		  let error =
-		    "Fatal error. User "^new_identity^" doesn't exist. \
-                     The process can't take this identity"
-		  in
-		  Log.log (error, Error);
-		  failwith error
-	      end
+	      with Not_found ->
+		(* This shouldn't be triggered here
+		 * because the test has been already done
+		 * in the function check() *)
+		let error =
+		  "Fatal error. User "^new_identity^" doesn't exist. \
+                  The process can't take this identity"
+		in
+		Log.log (error, Error);
+		failwith error
+	    end
       end;
 
 

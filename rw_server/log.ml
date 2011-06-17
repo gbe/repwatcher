@@ -36,7 +36,7 @@ let disable () =
 ;;
 
 
-let log (txt, log_level) =
+let log ?(transition_from_root_to_user_time=false) (txt, log_level) =
 
   let conf = Config.get() in
   let to_log = Printf.sprintf "%s\t%s\n" (Date.date()) txt in
@@ -121,7 +121,14 @@ let log (txt, log_level) =
     match log_level with
       | Normal -> ()
       | Normal_Extra -> ()
-      | Error -> prerr_endline to_log
+      | Error ->
+	(* Add this test otherwise errors could be printed twice :
+	   - When they're added to the FIFO
+	   - when they're extracted from the FIFO
+	   Now, they're not printed when they're extracted
+	*)
+	if transition_from_root_to_user_time = false then
+	  prerr_endline to_log
   end;
 
 
@@ -145,6 +152,8 @@ let start_really_logging () =
   match Queue.is_empty fifo with
     | true -> ()
     | false ->      
-      Queue.iter log fifo ;
+      Queue.iter (fun txt_level ->
+	log ~transition_from_root_to_user_time:true txt_level
+      ) fifo ;
       Queue.clear fifo
 ;;

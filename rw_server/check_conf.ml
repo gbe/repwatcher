@@ -53,9 +53,6 @@ let check conf conf_path =
 
 
 
- Log.log ("helloOOooo", Error);
-
-
 
   (* Check if the identity which should be taken
    * by the main process exists
