@@ -86,7 +86,7 @@ let pipe_waits_for_notifications tor =
       match notif with
 	| Local_notif _ -> assert false
         | New_notif _ -> send (Notification notif) None
-        | Old_notif _ -> send(Notification notif) (Some (List.hd !connected_clients))
+        | Old_notif _ -> send (Notification notif) (Some (List.hd !connected_clients))
     end
   done
 ;;
