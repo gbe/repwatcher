@@ -627,6 +627,12 @@ let what_to_do event =
 		print_ht ();
 		end
 	      *)
+
+
+	(* have to be there or they're triggered by the "I don't do" *)
+	| Open, true -> ()
+	| Close_nowrite, true -> ()
+
 	| _ ->
 	  Log.log ("I don't do: "^(string_of_event event_type)^", "
 		   ^(string_of_bool is_folder)^" yet.", Normal_Extra)
