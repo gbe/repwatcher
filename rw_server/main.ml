@@ -14,7 +14,6 @@ let config_file = ref "repwatcher.conf" ;;
 
 (* Check if the config exists and then parse it *)
 let load_config () =
-
   try
     (* Check if the file exists and if the process can read it *)
     Unix.access !config_file [F_OK ; R_OK];
@@ -36,104 +35,6 @@ let load_config () =
 
 
 
-(* Watch the directories from the config file *) 
-let watch_dirs directories ignore_directories =   
-  
-  let rem_slash l_directories =
-    List.map (
-    fun dir ->
-      (* If the directory name ends with a '/' then it is deleted *)
-      if String.get dir ((String.length dir) -1) = '/' then
-	String.sub dir 0 ((String.length dir)-1)
-      else dir
-   ) l_directories
-  in
-  
-  let directories = ref (rem_slash directories) in
-  let ign_dirs_without_slash = rem_slash ignore_directories in
-  
-  let filter directories l_regexp =
-    List.filter (
-    fun dir ->
-      try
-	if Sys.is_directory dir then						
-	  try
-	    ignore (List.find (fun reg  -> Str.string_match reg dir 0) l_regexp);
-	    false (* false = taken off the list *)
-	  with Not_found -> true
-	else
-	  false
-	    
-      (* No such file or directory *)
-      with Sys_error e ->
-	let error = "Error: "^e in 
-	prerr_endline error ;
-	Log.log (error, Error) ;
-	false
-   ) directories
-  in
-
-
-  (*
-   * Filter
-   * - if it doesn't exist
-   * - the subdirectories of an ignored one like /home/dest/Ftp/ignored/dir (set to be watched) and /home/dest/Ftp/ignored (set to be ignored)
-   * /home/dest/Ftp/ignored/dir is taken off of the list
-   *)
-  let l_regexp_ign_dirs_slash_ending =
-    List.map (
-      fun ign_dir ->
-	(* Str.quote escapes special chars which causes problems: $^.*+?[]
-	 * Refer to Str manpage
-	 *)
-	Str.regexp ((Str.quote ign_dir)^"/")
-    ) ign_dirs_without_slash
-  in
-  directories := filter !directories l_regexp_ign_dirs_slash_ending;
-
-
-  (* This dollar is used for the regexp to keep *only* the folder "test - etc" (derivative names) in the following example :
-     - /home/dest/test - etc
-     - /home/dest/test      <---  this one is the ignored folder
-   * Without it both directories would be ignored
-   *
-   * This regexp also takes off of the list an entry
-   * which is the exact same one if it's set to be watched and ignored (what stupid people can do) :
-     - to be watched: /home/dest/Ftp
-     - to be ignored: /home/dest/Ftp
-   *)
-  let l_regexp_ign_dirs_dollar =
-    List.map (
-      fun ign_dir ->
-	Str.regexp ((Str.quote ign_dir)^"$")
-    ) ign_dirs_without_slash
-  in
-  directories := filter !directories l_regexp_ign_dirs_dollar;
-  
-
-  let children =
-    List.fold_left (
-    fun dirs2watch dir ->
-      let children_of_a_branch =
-	try
-	  List.tl (Dirs.ls dir l_regexp_ign_dirs_dollar)
-	with Failure _ -> []
-      in
-      children_of_a_branch@dirs2watch
-   ) [] !directories
-  in
-  
-  (* Watch the folders given in the config file... *)
-  List.iter (fun dir -> Core.add_watch dir None false) !directories;
-
-  (* ... then watch their subfolders *)
-  Core.add_watch_children children
-;;
-
-
-
-
-
 let clean_exit () =
   Unix.close Core.fd ;
 
@@ -142,12 +43,6 @@ let clean_exit () =
    * This has been proved to be usefull for outside apps *)
   Mysqldb.sgbd_reset_in_progress ()
 ;;
-
-
-
-
-
-
 
 
 
@@ -173,7 +68,6 @@ This is free software under the MIT license.\n\n";
   at_exit clean_exit;
 
   let conf = load_config () in
-
 
 
   (* Fork if remote notifications are activated *)
@@ -209,8 +103,7 @@ This is free software under the MIT license.\n\n";
 
     | _ ->
 
-      begin
-	match conf.c_process_identity with
+      begin match conf.c_process_identity with
 	| None -> ()
 	| Some new_identity ->
 
@@ -291,8 +184,16 @@ This is free software under the MIT license.\n\n";
       end;
 
 
-      (* watch the directories given in the config file *)
-      watch_dirs conf.c_watch.w_directories conf.c_watch.w_ignore_directories;
+      (* Filter the directories given in the config file with the ignored ones *)
+      let (dirs, children) =
+	Dirs.filter_and_get_children
+	  conf.c_watch.w_directories
+	  conf.c_watch.w_ignore_directories
+      in
+
+      (* Watch the directories and their children *)
+      List.iter (fun dir -> Core.add_watch dir None false) dirs;
+      Core.add_watch_children children;
 
       ignore (Thread.create Offset.loop_check ()) ;
 
