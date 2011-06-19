@@ -174,23 +174,25 @@ This is free software under the MIT license.\n\n";
 
   let conf = load_config () in
 
-  (* All the checks should not be done now
-     because in case of errors, they won't be
-     logged in a file *)
-  Check_conf.check conf !config_file;
 
 
   (* Fork if remote notifications are activated *)
   let fd =
     match conf.c_notify.n_remotely with
     | true  ->
-	(* Match left here willingly *)
-	begin match conf.c_server with
+
+      (* Should be performed before dropping root rights (if any) *)
+      Check_conf.remote_process_identity conf;
+      (* Should be performed before dropping root rights (if any) *)
+      Check_conf.chroot conf ;
+
+      (* Match left here willingly *)
+      begin match conf.c_server with
 	| None -> assert false
 	| Some server ->
-	    Log.log ("Start server for remote notifications", Normal_Extra) ;
-	    Unix.fork();
-	end
+	  Log.log ("Start server for remote notifications", Normal_Extra) ;
+	  Unix.fork();
+      end
     | false -> -1
   in
   
@@ -211,9 +213,14 @@ This is free software under the MIT license.\n\n";
 	match conf.c_process_identity with
 	| None -> ()
 	| Some new_identity ->
+
 	    (* Drop privileges by changing the processus' identity
 	     * if its current id is root *)
 	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
+
+	      (* Should be performed before dropping root rights (if any) *)
+	      Check_conf.process_identity conf ;
+
 	      try
 		(* Check in the file /etc/passwd
 		 * if the user "new_identity" exists *)
@@ -251,6 +258,27 @@ This is free software under the MIT license.\n\n";
       *)
       Log.start_really_logging ();
 
+      Check_conf.sql_connection ();
+
+      begin
+	match conf.c_mysql.dbname with
+	  | None -> assert false
+	  | Some dbname ->
+	    
+	    (* if Mysqldb.create_db goes wrong, the program exits *)
+	    Mysqldb.create_db dbname ;
+
+	    (* if Mysqldb.create_table_accesses goes wrong, the program exits *)
+	    Mysqldb.create_table_accesses () ;
+      end ;
+
+      Check_conf.rights !config_file ;
+      
+      (* If the server is enabled *)
+      if conf.c_notify.n_remotely then
+	Check_conf.server_certs conf ;
+  
+      Check_conf.log_directory conf.c_log.l_directory;
 
       (* Set to zero every files marked as 'in progress' in the SGBD *)
       Mysqldb.sgbd_reset_in_progress ();
