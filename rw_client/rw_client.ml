@@ -3,7 +3,7 @@ open Types_conf
 open Unix
 (* open Dbus_call *)
 
-let config_file = ref "conf/rw_client.conf" ;;
+let config_file = ref "rw_client.conf" ;;
 
 let port = ref 9292 ;;
 let host = ref "" ;;
@@ -37,7 +37,7 @@ This is free software under the MIT license.\n\n";
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
 
-     "-f", Arg.String (fun path_conf -> config_file := path_conf), "\tConfiguration file path";
+     "-f", Arg.String (fun path_conf -> config_file := path_conf), "\tConfiguration file path: /<some_path>/rw_client.conf";
 
      "-n", Arg.Int (fun n ->
        if n < 0 then
