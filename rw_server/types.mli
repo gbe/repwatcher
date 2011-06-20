@@ -15,15 +15,16 @@ type log_level = | Normal
 
 
 type notification =
-  | New_notif  of f_file * file_state
-  | Old_notif  of (f_file * string) list
+  | New_notif of f_file * file_state
+  | Old_notif of (f_file * string) list
   | Local_notif of string
 
 
 type sql_type =
   | SQL_File_Opened 
   | SQL_File_Closed
-  | SQL_File_Offset_Updated
+  | SQL_FK_Offset (* First Known *)
+  | SQL_LK_Offset (* Last Known *)
 
 type sql_report = {
   s_file : f_file ;

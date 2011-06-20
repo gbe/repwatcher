@@ -40,12 +40,12 @@ let loop_check () =
 
     Mutex.lock Files_progress.mutex_ht ;
 
-    Hashtbl.iter (fun (wd, file) (date, _, sql_pkey) ->
+    Hashtbl.iter (fun (wd, file) (date, (isfirstoffsetknown, _), sql_pkey) ->
       let offset_opt =
 	get_offset file.f_program_pid (file.f_path^file.f_name)
       in
 
-      (* if at None then not Hashtbl update *)
+      (* if at None then no Hashtbl update *)
       match offset_opt with
 	| None -> ()
 	| Some offset ->
@@ -53,12 +53,20 @@ let loop_check () =
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
 	  if Hashtbl.mem Files_progress.ht (wd, file) then begin
 	    Hashtbl.replace Files_progress.ht
-	      (wd, file) (date, offset_opt, sql_pkey) ;
+	      (wd, file) (date, (true, offset_opt), sql_pkey) ;
 
 	    let sql_report =
 	      {
 		s_file = file ;
-		s_state = SQL_File_Offset_Updated ;
+		s_state =
+
+		  (* Because the First_Known value in the SGBD is NULL,
+		     instead of updating the Last Known value, this update
+		     the First Known field *)
+		  begin match isfirstoffsetknown with
+		    | true -> SQL_LK_Offset
+		    | false -> SQL_FK_Offset
+		  end;
 		s_date = date ;
 		s_offset = offset_opt ;
 		s_pkey = Some sql_pkey

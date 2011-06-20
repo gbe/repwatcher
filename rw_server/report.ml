@@ -147,35 +147,35 @@ let sql sql_report =
   in
 
   match sql_report.s_state with
-  | SQL_File_Opened  ->	  
-    begin
-      (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
-      let query =
-	Printf.sprintf "INSERT INTO accesses \
-	  (login, program, program_pid, path, filename, filesize, first_known_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '1')"
-          (Mysqldb.ml2str f.f_login)
-	  (Mysqldb.ml2str f.f_program)
-	  (Mysqldb.ml2int f.f_program_pid)
-	  (Mysqldb.ml2str f.f_path)
-	  (Mysqldb.ml2str f.f_name)
-	  (Mysqldb.ml2str (Int64.to_string f.f_filesize))
-	  offset
-	  (Mysqldb.ml2str sql_report.s_date)
-      in
+  | SQL_File_Opened  ->
 
-      match Mysqldb.connect () with
-	| None -> Nothing
-	| Some cid ->
-	  ignore (Mysqldb.query cid query) ;
-	  let primary_key = Mysqldb.insert_id cid in
-	  Mysqldb.disconnect cid ;
-	  PrimaryKey primary_key
+    (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
+    let query =
+      Printf.sprintf "INSERT INTO accesses \
+      (login, program, program_pid, path, filename, filesize, first_known_offset, opening_date, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '1')"
+        (Mysqldb.ml2str f.f_login)
+	(Mysqldb.ml2str f.f_program)
+	(Mysqldb.ml2int f.f_program_pid)
+	(Mysqldb.ml2str f.f_path)
+	(Mysqldb.ml2str f.f_name)
+	(Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	offset
+	(Mysqldb.ml2str sql_report.s_date)
+    in
+
+    begin match Mysqldb.connect () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (Mysqldb.query cid query) ;
+	let primary_key = Mysqldb.insert_id cid in
+	Mysqldb.disconnect cid ;
+	PrimaryKey primary_key
     end
 	
 	
   | SQL_File_Closed ->
-
+    
     begin match sql_report.s_pkey with
       | None -> assert false
       | Some pkey ->
@@ -197,8 +197,29 @@ let sql sql_report =
 	    Nothing
     end
 
-  | SQL_File_Offset_Updated ->
 
+  | SQL_FK_Offset ->
+    begin match sql_report.s_pkey with
+      | None -> assert false
+      | Some pkey ->
+	
+	let update_offset_query =
+	  Printf.sprintf "UPDATE accesses \
+	  SET FIRST_KNOWN_OFFSET = %s \
+	  WHERE ID = %s"
+	    offset
+	    (Mysqldb.ml2str (Int64.to_string pkey))
+	in
+	
+	match Mysqldb.connect () with
+	  | None -> Nothing
+	  | Some cid ->
+	    ignore (Mysqldb.query cid update_offset_query) ;
+	    Mysqldb.disconnect cid ;
+	    Nothing
+    end
+
+  | SQL_LK_Offset ->
     match sql_report.s_pkey with
       | None -> assert false
       | Some pkey ->
@@ -210,7 +231,7 @@ let sql sql_report =
 	    offset
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
-
+	
 	match Mysqldb.connect () with
 	  | None -> Nothing
 	  | Some cid ->

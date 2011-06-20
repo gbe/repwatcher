@@ -346,11 +346,16 @@ let what_to_do event =
 		 * we could be notified 3 times for the same thing *)
 		if not (Hashtbl.mem Files_progress.ht (wd, file)) then begin
 		  if debug_event then
-		    printf "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n" file.f_name (Int64.to_string file.f_filesize) name;			
+		    printf
+		      "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
+		      file.f_name
+		      (Int64.to_string file.f_filesize)
+		      name;
 
 		  (* Notify right away *)
 		  let date = Date.date () in
-		  print_endline (date^" - "^file.f_login^" has opened: "^file.f_name);
+		  print_endline
+		    (date^" - "^file.f_login^" has opened: "^file.f_name);
 			
 		  Log.log (file.f_login^" has opened: "^file.f_name, Normal);
 		  ignore (Report.report (Notify (New_notif (file, File_Opened))));
@@ -373,7 +378,14 @@ let what_to_do event =
 		  match Report.report (Sql sql_report) with
 		    | Nothing -> () (* could be triggered by an SQL error *)
 		    | PrimaryKey pkey ->
-		      Hashtbl.add Files_progress.ht (wd, file) (date, offset_opt, pkey)
+		      let isfirstoffsetknown =
+			match offset_opt with
+			  | None -> false
+			  | Some _ -> true
+		      in
+		      Hashtbl.add Files_progress.ht
+			(wd, file)
+			(date, (isfirstoffsetknown, offset_opt), pkey)
 
 		end
 
@@ -440,7 +452,7 @@ let what_to_do event =
 		Mutex.unlock Files_progress.mutex_ht ;
 
 		List.iter (
-		  fun ((wd2, f_file), (_, offset, pkey)) ->
+		  fun ((wd2, f_file), (_, (_, offset), pkey)) ->
 
 		    Mutex.lock Files_progress.mutex_ht ;
                     Hashtbl.remove Files_progress.ht (wd2, f_file);
