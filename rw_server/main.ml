@@ -58,7 +58,7 @@ This is free software under the MIT license.\n\n";
     [ 
       "-f", Arg.String (fun path_conf ->
 	config_file := path_conf),
-      "\tConfiguration file path";
+      ("\tConfiguration file path: /<some_path>/"^(!config_file));
     ]
     (fun _ -> print_endline usage ; exit 1 ) usage;  
 

@@ -37,7 +37,7 @@ This is free software under the MIT license.\n\n";
     [
      "-p", Arg.Int (fun i -> port := i), "\tPort";
 
-     "-f", Arg.String (fun path_conf -> config_file := path_conf), "\tConfiguration file path: /<some_path>/rw_client.conf";
+     "-f", Arg.String (fun path_conf -> config_file := path_conf), ("\tConfiguration file path: /<some_path>/"^(!config_file));
 
      "-n", Arg.Int (fun n ->
        if n < 0 then
