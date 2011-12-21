@@ -7,7 +7,7 @@ let get_offset pid filepath =
   
   let fds =
     try
-      Fdinfo.get pid
+      Fdinfo.get_fds pid
     with
       | Unix.Unix_error (error, funct, arg) ->
 	let err =
@@ -23,11 +23,12 @@ let get_offset pid filepath =
   in
   
   try
-    Some ((List.find (fun fd -> fd.name = filepath) fds).offset)
+    let fd = fst (List.find (fun (_, fd_path) -> fd_path = filepath) fds) in
+    Some ((get_infos pid fd).offset)
   with
     | Not_found ->
       Log.log (("Offset. "^filepath^" not_found in /proc."), Error) ;
-      List.iter (fun fd -> Log.log (fd.name, Error)) fds ;
+      List.iter (fun (_, fdname) -> Log.log (fdname, Error)) fds ;
       None
 ;;
 
