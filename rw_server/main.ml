@@ -216,7 +216,7 @@ This is free software under the MIT license.\n\n";
 	try
 	  let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
 	  let event_l = Inotify.read Core.fd in
-	  List.iter (fun event -> Core.what_to_do event) event_l
+	  List.iter Events.what_to_do event_l
 	with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
       done;
 ;;

@@ -14,9 +14,9 @@ type w_info = {
   wd_children  : Inotify.wd list
 }
 
-exception Found of Inotify.wd;;
+exception Found of Inotify.wd ;;
 
-let fd          = Inotify.init()
+let fd          = Inotify.init ()
 let ht_iwatched = Hashtbl.create 4001
 
 
@@ -145,8 +145,9 @@ let del_watch wd =
 module Core =
 struct
 
-(* fd is now viewable from the outside *)
+(* fd and debug_event are now viewable from the outside *)
 let fd = fd ;;
+let debug_event = debug_event ;;
 
 let add_watch path2watch wd_father_opt is_config_file =
   
@@ -586,65 +587,5 @@ let directory_deleted wd name =
 	  Log.log (err, Error)
 	| Some wd_key -> del_watch wd_key
 ;;
-
-
-
-let what_to_do event =
-  let (wd, tel, _, str_opt) = event in
-
-  let name =
-    match str_opt with
-    | None -> "nothing"
-    | Some x -> x
-  in  
-    
-  let rec action event_type_list is_folder =
-    match event_type_list with
-    | [] -> ()
-    | event_type :: q -> 
-	  
-      if debug_event then begin
-	if not (string_of_event event_type = "ACCESS") then
-	  printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
-	    (string_of_event event_type)
-	    (string_of_bool is_folder)
-	    name
-	    (int_of_wd wd)
-      end;
-      
-      match event_type, is_folder with	
-	| Isdir, _ -> action q true
-
-	| Open, false -> file_opened wd name      					      
-	| Close_write, false -> file_w_closed ()
-	| Close_nowrite, false -> file_nw_closed wd name
-
-	| Create, true -> directory_created wd name
-	| Moved_from, true -> directory_moved_from wd name
-	| Moved_to, true -> directory_moved_to wd name
-	| Delete, true -> directory_deleted wd name
-
-	    
-        (* When IGNORED is triggered it means the wd
-	 * is not watched anymore. Therefore, we need
-	 * to take this wd out of the Hashtbl *)		    
-	| Ignored, _  -> ()
-
-	(* have to be there or they're triggered by the "I don't do" *)
-	| Open, true -> ()
-	| Close_nowrite, true -> ()
-	(* Triggered when an existing file is modified
-	 * and when a file is renamed *)
-	| Moved_from, false -> ()
-
-	| _ ->
-	  Log.log ("I don't do: "^(string_of_event event_type)^", "
-		   ^(string_of_bool is_folder)^" yet.", Normal_Extra)
- 
-  in
-  action tel false;
-  Pervasives.flush Pervasives.stdout
-;;
-
 
 end;; (* eo module *)

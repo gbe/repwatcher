@@ -1,6 +1,7 @@
 module Core :
 sig
 	val fd : Unix.file_descr
+	val debug_event : bool
 
 	val add_watch : string -> Inotify.wd option -> bool -> unit
 	val add_watch_children : string list -> unit
@@ -12,6 +13,5 @@ sig
 	val directory_moved_from : Inotify.wd -> string -> unit
 	val directory_moved_to : Inotify.wd -> string -> unit
 	val directory_deleted : Inotify.wd -> string -> unit
-	val what_to_do : Inotify.event -> unit
 end
 
