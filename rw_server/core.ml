@@ -369,6 +369,8 @@ let file_opened wd name =
 (* eo Open, false *)
 ;;
 
+
+(* TO DO *)
 let file_w_closed () =
 (*
   if Hashtbl.mem ht_iwatched wd then
