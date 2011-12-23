@@ -16,14 +16,13 @@ let what_to_do event =
     | [] -> ()
     | event_type :: q -> 
 	  
-      if Core.debug_event then begin
-	if not (string_of_event event_type = "ACCESS") then
+      if Core.debug_event &&
+	not (string_of_event event_type = "ACCESS") then
 	  Printf.printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
 	    (string_of_event event_type)
 	    (string_of_bool is_folder)
 	    name
-	    (int_of_wd wd)
-      end;
+	    (int_of_wd wd);
       
       match event_type, is_folder with	
 	| Isdir, _ -> action q true

@@ -306,12 +306,15 @@ let file_opened wd name =
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" father.path;
       
-      let cmd =
+      (*let cmd =
 	"lsof -w -F cLsn \""^father.path^"/"^name^"\" 2> /dev/null"
       in
       let files = File_list.get cmd in
       let files_filtered = File_list.filter files in
-      
+      *)
+
+      let files_filtered = File_list.get2 (father.path^"/"^name) in
+
       Mutex.lock Files_progress.mutex_ht ;
       
       List.iter (fun file ->
