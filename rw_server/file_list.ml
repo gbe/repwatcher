@@ -3,10 +3,11 @@ open Types_conf
 open Fdinfo
 open Unix
 
-let get2 fullpath =
+let get path name =
 
   let conf = Config.get() in
   let pids = Fdinfo.get_pids () in
+  let fullpath = path^"/"^name in
 
   List.fold_left (fun acc pid ->
     try
@@ -17,7 +18,7 @@ let get2 fullpath =
       let uid = (Unix.stat ("/proc/"^pid_str)).st_uid in
       let login = (Unix.getpwuid uid).pw_name in
 
-      (* Filter if user ignored *)
+      (* Filtered if user ignored *)
       match (List.mem login conf.c_watch.w_ignore_users) with
 	| true -> acc
 	| false ->
@@ -29,14 +30,16 @@ let get2 fullpath =
 	     * The processus may have opened several times the same file,
 	     * thus List.find_all and not List.find.
 	     * If not found, then acc is returned through the try/with *)
-
-	    (* TO DO: réutiliser les fds pour les injecter dans les fichiers ouverts *)
-	    let _ =
-	      List.find_all (fun (fd, fd_filename) ->
-		fullpath = fd_filename
-	      ) fds
+	    let file_fds =
+	      fst (
+		List.split (
+		  List.find_all (fun (fd, fd_filename) ->
+		    fullpath = fd_filename
+		  ) fds
+		)
+	      )
 	    in    
-      
+
 	    let size = (Unix.stat fullpath).st_size in
 	    
 	    let prog_c = open_in ("/proc/"^pid_str^"/comm") in
@@ -47,12 +50,13 @@ let get2 fullpath =
 	      | (Specified_programs, specified_programs) ->
 		if List.mem prog specified_programs then
 		  {
-		    f_name = (Filename.basename fullpath) ;
-		    f_path = (Filename.dirname fullpath)^"/" ;
+		    f_name = name ;
+		    f_path = path^"/" ;
 		    f_login = login ;
 		    f_filesize = (Int64.of_int size) ;
 		    f_program = prog ;
 		    f_program_pid = pid_int ;
+		    f_descriptors = file_fds ;
 		  } :: acc
 		else
 		  acc
@@ -62,12 +66,13 @@ let get2 fullpath =
 		  acc
 		else
 		  {
-		    f_name = (Filename.basename fullpath) ;
-		    f_path = (Filename.dirname fullpath)^"/" ;
+		    f_name = name ;
+		    f_path = path^"/" ;
 		    f_login = login ;
 		    f_filesize = (Int64.of_int size) ;
 		    f_program = prog ;
 		    f_program_pid = pid_int ;
+		    f_descriptors = file_fds ;
 		  } :: acc
 	  end
     with
@@ -76,8 +81,8 @@ let get2 fullpath =
   ) [] pids
 ;;
 
-
-let get cmd =
+(*
+let get_old cmd =
 
   let file = ref {
     f_name = "" ;
@@ -86,6 +91,7 @@ let get cmd =
     f_filesize = (Int64.of_int 0) ;
     f_program = "" ;
     f_program_pid = -1 ;
+    f_descriptors = [] ;
   } in
 
   let files = ref [] in
@@ -159,7 +165,7 @@ let get cmd =
   !files
 
 ;;
-
+*)
 
 
 (* list unfiltered -> list filtered. 
