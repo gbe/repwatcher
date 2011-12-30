@@ -27,6 +27,7 @@ let what_to_do event =
       match event_type, is_folder with	
 	| Isdir, _ -> action q true
 
+	| Create, false -> Core.file_created ()
 	| Open, false -> Core.file_opened wd name      					      
 	| Close_write, false -> Core.file_w_closed ()
 	| Close_nowrite, false -> Core.file_nw_closed wd name

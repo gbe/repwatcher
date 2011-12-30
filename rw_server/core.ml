@@ -168,6 +168,7 @@ let add_watch path2watch wd_father_opt is_config_file =
 	else
 	  Inotify.add_watch fd path2watch
 	    [S_Open ;
+	     S_Close_write ;
 	     S_Close_nowrite ;
 	     S_Create ;
 	     S_Delete ;
@@ -291,6 +292,10 @@ let print_ht () =
   Pervasives.flush Pervasives.stdout
 ;;
 
+
+let file_created () =
+  ()
+;;
 
 
 let file_opened wd name = 
