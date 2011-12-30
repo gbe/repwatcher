@@ -5,7 +5,7 @@ type f_file = {
   f_filesize    : int64  ;
   f_program     : string ;
   f_program_pid : int    ;
-  f_descriptors  : Fdinfo.fd list ;
+  f_descriptor  : Fdinfo.fd ;
 }
 
 type file_state = File_Opened | File_Closed

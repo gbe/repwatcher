@@ -139,6 +139,7 @@ let create_table_accesses () =
   `PATH` varchar(512) NOT NULL,\
   `FILENAME` varchar(256) NOT NULL,\
   `FILESIZE` bigint(20) unsigned NOT NULL,\
+  `FILEDESCRIPTOR` int(7) unsigned NOT NULL,\
   `FIRST_KNOWN_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `LAST_KNOWN_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `OPENING_DATE` datetime NOT NULL,\

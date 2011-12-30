@@ -305,21 +305,8 @@ let file_opened wd name =
       
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" father.path;
-      
-(*      let cmd =
-	"lsof -w -F cLsn \""^father.path^"/"^name^"\" 2> /dev/null"
-      in
-      let files = File_list.get_old cmd in
-    let files_filtered = File_list.filter files in *)
-      
 
-      let files_filtered = File_list.get father.path name in
-
-(*
-      List.iter (fun f ->
-	Printf.printf "f_name: %s\nf_path: %s\nf_login: %s\nf_filesize: %d\nf_prog: %s\nf_pid: %d\nf_desc_len: %d\n" f.f_name f.f_path f.f_login (Int64.to_int f.f_filesize) f.f_program f.f_program_pid (List.length f.f_descriptors)
-      ) files_filtered ;
-*)
+      let files = File_list.get father.path name in
 
       Mutex.lock Files_progress.mutex_ht ;
       
@@ -372,7 +359,7 @@ let file_opened wd name =
 		
 	end
 	  
-      ) files_filtered ;
+      ) files ;
       
       Mutex.unlock Files_progress.mutex_ht ;
 		
@@ -411,26 +398,8 @@ let file_nw_closed wd name =
       
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" path_quoted ;
-      
-      (* Call lsof to know which file stopped being accessed *)
-      (* let cmd = "lsof -w -F cLns +d "^path_quoted^" 2> /dev/null" in
-      
-      let l_opened_files = File_list.get_old cmd in
-      let l_files_in_progress2 = File_list.filter l_opened_files in
-      *)
     
       let l_files_in_progress = File_list.get folder.path name in
-
-      (*
-	List.iter (fun f ->
-	Printf.printf "1 f_name: %s\nf_path: %s\nf_login: %s\nf_filesize: %d\nf_prog: %s\nf_pid: %d\nf_desc_len: %d\n\n" f.f_name f.f_path f.f_login (Int64.to_int f.f_filesize) f.f_program f.f_program_pid (List.length f.f_descriptors);
-
-	List.iter (fun fd -> Printf.printf "%d\t" (Fdinfo.int_of_fd fd)) f.f_descriptors;
-      
-      ) l_files_in_progress ;
-
-      Printf.printf "Files_progress.ht length: %d\n" (Hashtbl.length Files_progress.ht);
-      *)
       
       Mutex.lock Files_progress.mutex_ht ;
       
@@ -469,8 +438,7 @@ let file_nw_closed wd name =
 	    s_offset = offset ;
 	    s_pkey = Some pkey ;
 	  }
-	  in
-	  
+	  in	  
 	  
 	  ignore (Report.report (Sql sql_report));
 	  ignore (Report.report (Notify (New_notif (f_file, File_Closed))));

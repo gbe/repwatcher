@@ -152,14 +152,16 @@ let sql sql_report =
     (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
     let query =
       Printf.sprintf "INSERT INTO accesses \
-      (login, program, program_pid, path, filename, filesize, first_known_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, '1')"
+      (login, program, program_pid, path, filename, filesize, \
+      filedescriptor, first_known_offset, opening_date, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
         (Mysqldb.ml2str f.f_login)
 	(Mysqldb.ml2str f.f_program)
 	(Mysqldb.ml2int f.f_program_pid)
 	(Mysqldb.ml2str f.f_path)
 	(Mysqldb.ml2str f.f_name)
 	(Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	(Mysqldb.ml2int (Fdinfo.int_of_fd f.f_descriptor))
 	offset
 	(Mysqldb.ml2str sql_report.s_date)
     in
