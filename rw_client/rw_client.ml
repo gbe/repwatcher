@@ -212,18 +212,19 @@ This is free software under the MIT license.\n\n";
 		  
 		  let msg_state =
 		    match filestate with
+		    | File_Created -> "has created"
 		    | File_Opened -> "has opened"
 		    | File_Closed -> "closed"
 		  in
 		  
-		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f_login msg_state file.f_name;
+		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f2_login msg_state file.f2_name;
 		  Pervasives.flush Pervasives.stdout;
 
-		  let l_folders = Str.split regexp_slash file.f_path in
+		  let l_folders = Str.split regexp_slash file.f2_path in
 		  let call =
 		    match !nb_parent_folders with
-		      | 0 -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f_login msg_state file.f_name
-		      | _ -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f_login msg_state (n_last_elements l_folders) file.f_name
+		      | 0 -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f2_login msg_state file.f2_name
+		      | _ -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f2_login msg_state (n_last_elements l_folders) file.f2_name
 		  in
 		  ignore (Unix.system call)
 		    
@@ -235,7 +236,7 @@ This is free software under the MIT license.\n\n";
 
 		  List.iter (
 		  fun (file, date) ->
-		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date file.f_login file.f_name;
+		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date file.f2_login file.f2_name;
 		    Pervasives.flush Pervasives.stdout;
 		    
 		    let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
@@ -244,12 +245,12 @@ This is free software under the MIT license.\n\n";
 		      (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		    in
 
-		    let l_folders = Str.split regexp_slash file.f_path in
+		    let l_folders = Str.split regexp_slash file.f2_path in
 
 		    let call =
 		      match !nb_parent_folders with
-			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s\"" h_m file.f_login file.f_name
-			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s%s\"" h_m file.f_login (n_last_elements l_folders) file.f_name
+			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s\"" h_m file.f2_login file.f2_name
+			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s%s\"" h_m file.f2_login (n_last_elements l_folders) file.f2_name
 		    in
 
 		    ignore (Unix.system call)

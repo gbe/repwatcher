@@ -2,6 +2,15 @@ open Types
 open Types_conf
 open Printf
 
+let prepare_data file =
+  {
+    f2_name = file.f_name ;
+    f2_path = file.f_path ;
+    f2_login = file.f_login ;
+    f2_program = file.f_program ;
+  }
+;;
+
 let dbus img title txt =
   IFNDEF NO_DBUS THEN
 
@@ -50,13 +59,14 @@ let notify notification =
   | New_notif (file, filestate) ->
       begin
 
-	let filename_escaped = Txt_operations.escape_for_notify file.f_name in
-	let conf = Config.get() in  
+	let filename_escaped = Txt_operations.escape_for_notify file.f2_name in
+	let conf = Config.get () in  
 
 
 	if conf.c_notify.n_locally then begin
 	  let msg_state =
 	    match filestate with
+	      | File_Created -> "has created"
 	      | File_Opened -> "has opened"
 	      | File_Closed -> "closed"
 	  in
@@ -79,17 +89,17 @@ let notify notification =
 
 	    
 	  let r = Str.regexp "/" in
-	  let l_folders = Str.split r file.f_path in
+	  let l_folders = Str.split r file.f2_path in
 
 	    
 	  let dbus_notif =
 	    match conf.c_notify.n_parent_folders with
 	      | None ->
-		sprintf "<b>%s</b> %s\n%s" file.f_login msg_state filename_escaped 
+		sprintf "<b>%s</b> %s\n%s" file.f2_login msg_state filename_escaped 
 
 	      | Some parent_folders ->
 		sprintf "<b>%s</b> %s\n%s%s"
-		  file.f_login
+		  file.f2_login
 		  msg_state
 		  (n_last_elements l_folders parent_folders)
 		  filename_escaped
@@ -103,8 +113,8 @@ let notify notification =
 	  try
             
 	    let str_notif =
-	      Marshal.to_string 
-		(New_notif ({file with f_name = filename_escaped}, filestate) )
+	      Marshal.to_string
+		(New_notif ({file with f2_name = filename_escaped}, filestate) )
 		[Marshal.No_sharing]
 	    in
 	    
@@ -117,7 +127,7 @@ let notify notification =
 
   | Local_notif info ->
     let info_escaped = Txt_operations.escape_for_notify info in
-    let conf = Config.get() in
+    let conf = Config.get () in
 
     if conf.c_notify.n_locally then
       dbus "nobody" "Repwatcher" info_escaped
@@ -248,6 +258,8 @@ let sql sql_report =
 module Report =
 struct
   
+  let prepare_data file = prepare_data file ;;
+
   let report = function
     | Sql sql_report ->
       sql sql_report

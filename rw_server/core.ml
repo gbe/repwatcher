@@ -349,7 +349,15 @@ let file_opened ?(created=false) wd name =
 	    (date^" - "^file.f_login^has_what^file.f_name);
 
 	  Log.log (file.f_login^has_what^file.f_name, Normal);
-	  ignore (Report.report (Notify (New_notif (file, File_Opened))));
+
+	  let file_prepared = Report.prepare_data file in
+
+	  begin match created with
+	    | false ->
+	      ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))))
+	    | true ->
+	      ignore (Report.report (Notify (New_notif (file_prepared, File_Created))))
+	  end;
 	  
 	  
 	  let offset_opt =
@@ -472,7 +480,8 @@ let file_nw_closed wd name =
 	  in	  
 	  
 	  ignore (Report.report (Sql sql_report));
-	  ignore (Report.report (Notify (New_notif (f_file, File_Closed))));
+	  let file_prepared = Report.prepare_data f_file in
+	  ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
       ) l_stop
 
 (* eo Close_nowrite, false *)

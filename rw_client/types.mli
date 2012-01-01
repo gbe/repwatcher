@@ -1,12 +1,11 @@
-type f_file = {
-  f_name        : string ;
-  f_path        : string ;
-  f_login       : string ;
-  f_filesize    : int64  ;
-  f_prog_source : string ;
+type file2clients = {
+  f2_name        : string ;
+  f2_path        : string ;
+  f2_login       : string ;
+  f2_program     : string ;
 }
 
-type file_state = File_Opened | File_Closed;;
+type file_state = File_Created | File_Opened | File_Closed
 
 (* New of file
  * Old of file * date) list
@@ -14,8 +13,8 @@ type file_state = File_Opened | File_Closed;;
 *)
 
 type notification =
-  | New_notif  of f_file * file_state
-  | Old_notif  of (f_file * string) list
+  | New_notif  of file2clients * file_state
+  | Old_notif  of (file2clients * string) list
   | Local_notif of string
 
 type com_server2clients =

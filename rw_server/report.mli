@@ -1,4 +1,5 @@
 module Report :
 sig
-	val report       : Types.report -> Types.report_ret
+  val prepare_data : Types.f_file -> Types.file2clients
+  val report       : Types.report -> Types.report_ret
 end

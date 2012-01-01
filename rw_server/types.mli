@@ -7,16 +7,23 @@ type f_file = {
   f_descriptor  : Fdinfo.fd ;
 }
 
-type file_state = File_Opened | File_Closed
+type file_state = File_Created | File_Opened | File_Closed
 
 type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
+(* file to send to clients, this way we don't send useless infos *)
+type file2clients = {
+  f2_name        : string ;
+  f2_path        : string ;
+  f2_login       : string ;
+  f2_program     : string ;
+}
 
 type notification =
-  | New_notif of f_file * file_state
-  | Old_notif of (f_file * string) list
+  | New_notif of file2clients * file_state
+  | Old_notif of (file2clients * string) list
   | Local_notif of string
 
 
