@@ -50,15 +50,14 @@ let get path name =
 	      | (Specified_programs, specified_programs) ->
 		if List.mem prog specified_programs then
 		  List.fold_left (fun acc' file_fd ->
-		    {
+		    ({
 		      f_name = name ;
 		      f_path = path^"/" ;
 		      f_login = login ;
-		      f_filesize = (Int64.of_int size) ;
 		      f_program = prog ;
 		      f_program_pid = pid_int ;
 		      f_descriptor = file_fd ;
-		    } :: acc'
+		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
 		else
 		  acc
@@ -68,15 +67,14 @@ let get path name =
 		  acc
 		else
 		  List.fold_left (fun acc' file_fd ->
-		    {
+		    ({
 		      f_name = name ;
 		      f_path = path^"/" ;
 		      f_login = login ;
-		      f_filesize = (Int64.of_int size) ;
 		      f_program = prog ;
 		      f_program_pid = pid_int ;
 		      f_descriptor = file_fd ;
-		    } :: acc'
+		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
 	  end
     with

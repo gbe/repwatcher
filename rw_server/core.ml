@@ -293,12 +293,24 @@ let print_ht () =
 ;;
 
 
-let file_created () =
-  ()
+let print_file file =
+  Printf.printf
+    "Name: %s\n\
+     Path: %s\n\
+     Login: %s\n\
+     Program: %s (pid: %d)\n\
+     Descr: %d\n\n"
+    file.f_name
+    file.f_path
+    file.f_login
+    file.f_program
+    file.f_program_pid
+    (Fdinfo.int_of_fd file.f_descriptor)
 ;;
 
 
-let file_opened wd name = 
+let file_opened ?(created=false) wd name =
+
   match get_value wd with
     | None ->
       let err =
@@ -315,24 +327,28 @@ let file_opened wd name =
 
       Mutex.lock Files_progress.mutex_ht ;
       
-      List.iter (fun file ->
+      List.iter (fun (file, filesize) ->
 	
 	(* This test is here because without it
 	 * we could be notified 3 times for the same thing *)
 	if not (Hashtbl.mem Files_progress.ht (wd, file)) then begin
+
 	  if debug_event then
-	    printf
-	      "AAAAAAAAAAAAHHHH : Filename: %s et Filesize: %s et name: %s\n"
-	      file.f_name
-	      (Int64.to_string file.f_filesize)
-	      name;
+		print_file file;
 	  
 	  (* Notify right away *)
 	  let date = Date.date () in
+
+	  let has_what =
+	    match created with
+	    | false -> " has opened: "
+	    | true  -> " has created: "
+	  in
+
 	  print_endline
-	    (date^" - "^file.f_login^" has opened: "^file.f_name);
-	  
-	  Log.log (file.f_login^" has opened: "^file.f_name, Normal);
+	    (date^" - "^file.f_login^has_what^file.f_name);
+
+	  Log.log (file.f_login^has_what^file.f_name, Normal);
 	  ignore (Report.report (Notify (New_notif (file, File_Opened))));
 	  
 	  
@@ -344,6 +360,7 @@ let file_opened wd name =
 	    {
 	      s_file = file ;
 	      s_state = SQL_File_Opened ;
+	      s_size = filesize ;
 	      s_date = date ;
 	      s_offset = offset_opt ;
 	      s_pkey = None ;
@@ -360,7 +377,7 @@ let file_opened wd name =
 	      in
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
-		(date, (isfirstoffsetknown, offset_opt), pkey)
+		(date, filesize, (isfirstoffsetknown, offset_opt), pkey)
 		
 	end
 	  
@@ -369,6 +386,11 @@ let file_opened wd name =
       Mutex.unlock Files_progress.mutex_ht ;
 		
 (* eo Open, false *)
+;;
+
+
+let file_created wd name =
+  file_opened ~created:true wd name
 ;;
 
 
@@ -404,7 +426,10 @@ let file_nw_closed wd name =
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" path_quoted ;
     
-      let l_files_in_progress = File_list.get folder.path name in
+      let l_files_in_progress =
+	(* Get rid of filesize list *)
+	fst (List.split (File_list.get folder.path name))
+      in
       
       Mutex.lock Files_progress.mutex_ht ;
       
@@ -425,7 +450,7 @@ let file_nw_closed wd name =
       Mutex.unlock Files_progress.mutex_ht ;
 
       List.iter (
-	fun ((wd2, f_file), (_, (_, offset), pkey)) ->
+	fun ((wd2, f_file), (_, filesize, (_, offset), pkey)) ->
 	  
 	  Mutex.lock Files_progress.mutex_ht ;
           Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -439,6 +464,7 @@ let file_nw_closed wd name =
 	  let sql_report = {
 	    s_file = f_file ;
 	    s_state = SQL_File_Closed ;
+	    s_size = filesize ;
 	    s_date = date ;
 	    s_offset = offset ;
 	    s_pkey = Some pkey ;

@@ -6,8 +6,8 @@ sig
 	val add_watch : string -> Inotify.wd option -> bool -> unit
 	val add_watch_children : string list -> unit
 	val print_ht : unit -> unit
-	val file_created : unit -> unit
-	val file_opened : Inotify.wd -> string -> unit
+	val file_created : Inotify.wd -> string -> unit
+	val file_opened : ?created:bool -> Inotify.wd -> string -> unit
 	val file_w_closed : unit -> unit
 	val file_nw_closed : Inotify.wd -> string -> unit
 	val directory_created : Inotify.wd -> string -> unit

@@ -2,7 +2,6 @@ type f_file = {
   f_name        : string ;
   f_path        : string ;
   f_login       : string ;
-  f_filesize    : int64  ;
   f_program     : string ;
   f_program_pid : int    ;
   f_descriptor  : Fdinfo.fd ;
@@ -30,6 +29,7 @@ type sql_type =
 type sql_report = {
   s_file : f_file ;
   s_state : sql_type ;
+  s_size : int64 ;
   s_date : string ;
   s_offset : int64 option ;
   s_pkey : int64 option ;

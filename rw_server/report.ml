@@ -160,7 +160,7 @@ let sql sql_report =
 	(Mysqldb.ml2int f.f_program_pid)
 	(Mysqldb.ml2str f.f_path)
 	(Mysqldb.ml2str f.f_name)
-	(Mysqldb.ml2str (Int64.to_string f.f_filesize))
+	(Mysqldb.ml2str (Int64.to_string sql_report.s_size))
 	(Mysqldb.ml2int (Fdinfo.int_of_fd f.f_descriptor))
 	offset
 	(Mysqldb.ml2str sql_report.s_date)
