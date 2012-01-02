@@ -1,6 +1,6 @@
 open Printf
 open Inotify
-
+open Unix
 open Types
 open Types_conf
 open Report
@@ -403,23 +403,8 @@ let file_created wd name =
 ;;
 
 
-(* TO DO *)
-let file_w_closed () =
-(*
-  if Hashtbl.mem ht_iwatched wd then
-  
-(* To avoid an error when updating the configuration file.
-  * It's kind of a hack.
-  * Sometimes when you change several times the configuration file,
-  * this event is triggered and the conf file loses its watch *)
-  if is_config_file wd then
-  Log.log ("Configuration file modified and REwatch it", Normal_Extra)
-*)
 
-()
-;;
-
-let file_nw_closed wd name =
+let file_closed ?(written=false) wd name =
   match get_value wd with
     | None ->
       let err =
@@ -470,6 +455,29 @@ let file_nw_closed wd name =
 	  
 	  Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 	  
+	  (* update filesize in database if written *)
+	  let filesize =
+	    match written with
+	      | false -> filesize
+	      | true ->
+		let size = (Unix.stat (f_file.f_path^f_file.f_name)).st_size in
+		Int64.of_int size
+	  in
+
+	  (* update last known offset according to filesize if written is true *)
+	  let offset =
+	    match written with
+	      | false -> offset
+	      | true ->
+		match offset with
+		  | None -> None
+		  | Some offset' ->
+		    if filesize > offset' then
+		      Some filesize
+		    else
+		      offset
+	  in
+
 	  let sql_report = {
 	    s_file = f_file ;
 	    s_state = SQL_File_Closed ;
@@ -477,7 +485,7 @@ let file_nw_closed wd name =
 	    s_date = date ;
 	    s_offset = offset ;
 	    s_pkey = Some pkey ;
-	    s_created = false ;
+	    s_created = written ;
 	  }
 	  in	  
 	  
@@ -486,8 +494,11 @@ let file_nw_closed wd name =
 	  ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
       ) l_stop
 
-(* eo Close_nowrite, false *)
+(* eo file_closed, false *)
 ;;
+
+
+
 
 let directory_created wd name =
   match get_value wd with

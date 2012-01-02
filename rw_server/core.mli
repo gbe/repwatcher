@@ -8,8 +8,7 @@ sig
 	val print_ht : unit -> unit
 	val file_created : Inotify.wd -> string -> unit
 	val file_opened : ?created:bool -> Inotify.wd -> string -> unit
-	val file_w_closed : unit -> unit
-	val file_nw_closed : Inotify.wd -> string -> unit
+	val file_closed : ?written:bool -> Inotify.wd -> string -> unit
 	val directory_created : Inotify.wd -> string -> unit
 	val directory_moved_from : Inotify.wd -> string -> unit
 	val directory_moved_to : Inotify.wd -> string -> unit

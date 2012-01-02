@@ -201,9 +201,11 @@ let sql sql_report =
 	
 	let update_query =
 	  Printf.sprintf "UPDATE accesses \
-	  SET CLOSING_DATE = %s, LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
+	  SET CLOSING_DATE = %s, FILESIZE = %s, \
+          LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
 	  WHERE ID = %s"
 	    (Mysqldb.ml2str sql_report.s_date)
+	    (Mysqldb.ml2str (Int64.to_string sql_report.s_size))
 	    offset
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in

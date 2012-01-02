@@ -29,8 +29,8 @@ let what_to_do event =
 
 	| Create, false -> Core.file_created wd name
 	| Open, false -> Core.file_opened wd name      					      
-	| Close_write, false -> Core.file_w_closed ()
-	| Close_nowrite, false -> Core.file_nw_closed wd name
+	| Close_write, false -> Core.file_closed ~written:true wd name
+	| Close_nowrite, false -> Core.file_closed ~written:false wd name
 
 	| Create, true -> Core.directory_created wd name
 	| Moved_from, true -> Core.directory_moved_from wd name
