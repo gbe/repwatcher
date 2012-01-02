@@ -48,7 +48,11 @@ let loop_check () =
 
       (* if at None then no Hashtbl update *)
       match offset_opt with
-	| None -> ()
+	| None ->
+	  (* if an offset couldn't be retrieved, then this key must
+	   * be removed from the files in progress hashtable *)
+	  Hashtbl.remove Files_progress.ht (wd, file)
+
 	| Some offset ->
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
