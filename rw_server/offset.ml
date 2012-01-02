@@ -71,7 +71,8 @@ let loop_check () =
 		s_size = filesize ;
 		s_date = date ;
 		s_offset = offset_opt ;
-		s_pkey = Some sql_pkey
+		s_pkey = Some sql_pkey ;
+		s_created = false ;
 	      }
 	    in
 

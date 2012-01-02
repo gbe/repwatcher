@@ -40,6 +40,7 @@ type sql_report = {
   s_date : string ;
   s_offset : int64 option ;
   s_pkey : int64 option ;
+  s_created : bool ;
 }
 
 type report = | Notify of notification

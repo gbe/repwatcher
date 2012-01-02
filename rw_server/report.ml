@@ -159,12 +159,18 @@ let sql sql_report =
   match sql_report.s_state with
   | SQL_File_Opened  ->
 
+    let created =
+      match sql_report.s_created with
+	| true -> "1"
+	| false -> "0"
+    in
+
     (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
     let query =
       Printf.sprintf "INSERT INTO accesses \
       (login, program, program_pid, path, filename, filesize, \
-      filedescriptor, first_known_offset, opening_date, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
+      filedescriptor, first_known_offset, opening_date, created, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
         (Mysqldb.ml2str f.f_login)
 	(Mysqldb.ml2str f.f_program)
 	(Mysqldb.ml2int f.f_program_pid)
@@ -174,6 +180,7 @@ let sql sql_report =
 	(Mysqldb.ml2int (Fdinfo.int_of_fd f.f_descriptor))
 	offset
 	(Mysqldb.ml2str sql_report.s_date)
+	(Mysqldb.ml2str created)
     in
 
     begin match Mysqldb.connect () with

@@ -372,6 +372,7 @@ let file_opened ?(created=false) wd name =
 	      s_date = date ;
 	      s_offset = offset_opt ;
 	      s_pkey = None ;
+	      s_created = created ;
 	    }
 	  in
 	  
@@ -465,7 +466,7 @@ let file_nw_closed wd name =
 	  Mutex.unlock Files_progress.mutex_ht ;
 	  
 	  let date = Date.date () in
-	  print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name);
+	  print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 	  
 	  Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 	  
@@ -476,6 +477,7 @@ let file_nw_closed wd name =
 	    s_date = date ;
 	    s_offset = offset ;
 	    s_pkey = Some pkey ;
+	    s_created = false ;
 	  }
 	  in	  
 	  

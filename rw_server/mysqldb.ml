@@ -144,6 +144,7 @@ let create_table_accesses () =
   `LAST_KNOWN_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `OPENING_DATE` datetime NOT NULL,\
   `CLOSING_DATE` datetime DEFAULT NULL,\
+  `CREATED` tinyint(1) unsigned NOT NULL,\
   `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
   PRIMARY KEY (`ID`)\
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
