@@ -138,7 +138,7 @@ let create_table_accesses () =
   `PROGRAM_PID` int(8) NOT NULL,\
   `PATH` varchar(512) NOT NULL,\
   `FILENAME` varchar(256) NOT NULL,\
-  `FILESIZE` bigint(20) unsigned NOT NULL,\
+  `FILESIZE` bigint(20) unsigned DEFAULT NULL,\
   `FILEDESCRIPTOR` int(7) unsigned NOT NULL,\
   `FIRST_KNOWN_OFFSET` bigint(20) unsigned DEFAULT NULL,\
   `LAST_KNOWN_OFFSET` bigint(20) unsigned DEFAULT NULL,\
