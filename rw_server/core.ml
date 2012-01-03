@@ -363,6 +363,15 @@ let file_opened ?(created=false) wd name =
 	  let offset_opt =
 	    Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
 	  in
+
+	  (* if the file is being created then the
+	   * filesize is unknown for the moment
+	   *)
+	  let filesize =
+	    match created with
+	      | false -> Some filesize
+	      | true -> None
+	  in
 	  
 	  let sql_report = 
 	    {
@@ -460,8 +469,10 @@ let file_closed ?(written=false) wd name =
 	    match written with
 	      | false -> filesize
 	      | true ->
-		let size = (Unix.stat (f_file.f_path^f_file.f_name)).st_size in
-		Int64.of_int size
+		let size =
+		  (Unix.stat (f_file.f_path^f_file.f_name)).st_size
+		in
+		Some (Int64.of_int size)
 	  in
 
 	  (* update last known offset according to filesize if written is true *)
@@ -472,10 +483,13 @@ let file_closed ?(written=false) wd name =
 		match offset with
 		  | None -> None
 		  | Some offset' ->
-		    if filesize > offset' then
-		      Some filesize
-		    else
-		      offset
+		    match filesize with
+		      | None -> assert false
+		      | Some filesize' ->
+			if filesize' > offset' then
+			  Some filesize'
+			else
+			  offset
 	  in
 
 	  let sql_report = {

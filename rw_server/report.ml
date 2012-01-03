@@ -156,6 +156,12 @@ let sql sql_report =
       | Some offset -> Mysqldb.ml2str (Int64.to_string offset)
   in
 
+  let filesize =
+    match sql_report.s_size with
+      | None -> "NULL"
+      | Some filesize -> Mysqldb.ml2str (Int64.to_string filesize)
+  in
+
   match sql_report.s_state with
   | SQL_File_Opened  ->
 
@@ -176,7 +182,7 @@ let sql sql_report =
 	(Mysqldb.ml2int f.f_program_pid)
 	(Mysqldb.ml2str f.f_path)
 	(Mysqldb.ml2str f.f_name)
-	(Mysqldb.ml2str (Int64.to_string sql_report.s_size))
+	filesize
 	(Mysqldb.ml2int (Fdinfo.int_of_fd f.f_descriptor))
 	offset
 	(Mysqldb.ml2str sql_report.s_date)
@@ -205,7 +211,7 @@ let sql sql_report =
           LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
 	  WHERE ID = %s"
 	    (Mysqldb.ml2str sql_report.s_date)
-	    (Mysqldb.ml2str (Int64.to_string sql_report.s_size))
+	    filesize
 	    offset
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in

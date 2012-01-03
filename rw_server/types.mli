@@ -36,7 +36,7 @@ type sql_type =
 type sql_report = {
   s_file : f_file ;
   s_state : sql_type ;
-  s_size : int64 ;
+  s_size : int64 option ;
   s_date : string ;
   s_offset : int64 option ;
   s_pkey : int64 option ;
