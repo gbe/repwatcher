@@ -56,32 +56,30 @@ let loop_check () =
 	| Some offset ->
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
-	  if Hashtbl.mem Files_progress.ht (wd, file) then begin
-	    Hashtbl.replace Files_progress.ht
-	      (wd, file) (date, filesize, (true, offset_opt), sql_pkey) ;
+	  Hashtbl.replace Files_progress.ht
+	    (wd, file) (date, filesize, (true, offset_opt), sql_pkey) ;
 
-	    let sql_report =
-	      {
-		s_file = file ;
-		s_state =
+	  let sql_report =
+	    {
+	      s_file = file ;
+	      s_state =
 
-		  (* Because the First_Known value in the SGBD is NULL,
-		     instead of updating the Last Known value, this update
-		     the First Known field *)
-		  begin match isfirstoffsetknown with
-		    | true -> SQL_LK_Offset
-		    | false -> SQL_FK_Offset
-		  end;
-		s_size = filesize ;
-		s_date = date ;
-		s_offset = offset_opt ;
-		s_pkey = Some sql_pkey ;
-		s_created = false ;
-	      }
-	    in
+		(* Because the First_Known value in the SGBD is NULL,
+		   instead of updating the Last Known value, this update
+		   the First Known field *)
+		begin match isfirstoffsetknown with
+		  | true -> SQL_LK_Offset
+		  | false -> SQL_FK_Offset
+		end;
+	      s_size = filesize ;
+	      s_date = date ;
+	      s_offset = offset_opt ;
+	      s_pkey = Some sql_pkey ;
+	      s_created = false ;
+	    }
+	  in
 
-	    ignore (Report.Report.report (Sql sql_report))
-	  end
+	  ignore (Report.Report.report (Sql sql_report))
 
     ) Files_progress.ht ;
 
