@@ -6,7 +6,7 @@ gregory.bellier -- gmail -- com
 Dependencies for Debian/Ubuntu:
 ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libnotify-bin libdbus-ocaml-dev camlp4-extra
 
-and also the ocaml-fdinfo library version 0.2.1 or above, downloadable here: gatekeeper.fr
+and also the ocaml-fdinfo library version 0.3 or above, downloadable here: gatekeeper.fr
 
 * The dependency on dbus can be avoided by disabling once and for all the local notifications. Build the project like this: $ NO_DBUS=1 make
 
