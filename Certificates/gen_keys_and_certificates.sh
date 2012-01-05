@@ -16,7 +16,7 @@ function create_ca_key {
 	clear &&
 	echo    "1/8 Create the CA key" &&
 	echo -e "---------------------\n" &&
-	openssl genrsa -aes256 1024 > CA/CA.key
+	openssl genrsa -aes256 4096 > CA/CA.key
 }
 
 function create_ca_cert {
@@ -36,7 +36,7 @@ function create_key {
 	echo $TXT;
 	underline "$TXT"
 
-	openssl genrsa 1024 > $1 &&
+	openssl genrsa 2048 > $1 &&
 	echo -e "==> Key $1 created\n\n"
 }
 
@@ -59,9 +59,13 @@ function sign_cert {
 	echo $TXT;
 	underline "$TXT";
 
+	echo "How many days should this certificate be valid ?" &&
+	echo -n "Number of days: " &&
+	read cert_days &&
+
 	certsigned_out=${1:0:$((${#1}-4))}
 	openssl x509 -req -in $1 -out $certsigned_out.crt -CA CA/CA.crt\
-	-CAkey CA/CA.key -CAcreateserial -CAserial CA.srl
+	-CAkey CA/CA.key -CAcreateserial -CAserial CA.srl -days $cert_days
 }
 
 function failure {
