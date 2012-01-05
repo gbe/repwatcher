@@ -41,7 +41,7 @@ let loop_check () =
 
     Mutex.lock Files_progress.mutex_ht ;
 
-    Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _), sql_pkey) ->
+    Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), sql_pkey) ->
       let offset_opt =
 	get_offset file.f_program_pid (file.f_path^file.f_name)
       in
@@ -49,15 +49,32 @@ let loop_check () =
       (* if at None then no Hashtbl update *)
       match offset_opt with
 	| None ->
+	  let error_counter' = error_counter+1 in
+
 	  (* if an offset couldn't be retrieved, then this key must
-	   * be removed from the files in progress hashtable *)
-	  Hashtbl.remove Files_progress.ht (wd, file)
+	   * be removed from the files in progress hashtable
+	   * Removable is done at the second time so that time is given to a close event
+	   * to be processed by core (concurrency between offset and core)
+	   * The removable is actually done through the file_closed event which is forced here
+	   *)
+	  if error_counter' < 2 then begin
+	    Hashtbl.replace Files_progress.ht
+	      (wd, file)
+	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), sql_pkey);
+	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
+	  end else begin
+	    Hashtbl.remove Files_progress.ht (wd, file) ;
+	    Log.log (
+	      ("Offset. "^file.f_name^" gets a second and final warning. It's now deleted from hashtable"), Error) ;
+	  end
+
 
 	| Some offset ->
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
 	  Hashtbl.replace Files_progress.ht
-	    (wd, file) (date, filesize, (true, offset_opt), sql_pkey) ;
+	    (wd, file)
+	    (date, filesize, (true, offset_opt, 0), sql_pkey) ;
 
 	  let sql_report =
 	    {

@@ -395,7 +395,7 @@ let file_opened ?(created=false) wd name =
 	      in
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
-		(date, filesize, (isfirstoffsetknown, offset_opt), pkey)
+		(date, filesize, (isfirstoffsetknown, offset_opt, 0), pkey)
 		
 	end
 	  
@@ -453,7 +453,7 @@ let file_closed ?(written=false) wd name =
       Mutex.unlock Files_progress.mutex_ht ;
 
       List.iter (
-	fun ((wd2, f_file), (_, filesize, (_, offset), pkey)) ->
+	fun ((wd2, f_file), (_, filesize, (_, offset, _), pkey)) ->
 	  
 	  Mutex.lock Files_progress.mutex_ht ;
           Hashtbl.remove Files_progress.ht (wd2, f_file);
