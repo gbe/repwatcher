@@ -1,7 +1,3 @@
-let print_dbus_ty_list l =
-	List.iter (fun o -> Printf.printf "%s\n" (DBus.string_of_ty o)) l
-;;
-
 let dbus img title txt =   
   let notif_interface = "org.freedesktop.Notifications" in
   let notif_name = notif_interface in
@@ -18,17 +14,15 @@ let dbus img title txt =
 
       let bus = DBus.Bus.get DBus.Bus.Session in
 	let params = [
-	  DBus.String "n";
+	  DBus.String title; (* Name of the program which triggers the notification *)
 	  DBus.UInt32 1l;
-	  DBus.String img;
-	  DBus.String title;
-	  DBus.String txt;
+	  DBus.String img; (* The picture displayed *)
+	  DBus.String title; (* Title of the notification window *)
+	  DBus.String txt; (* The content *)
 	  DBus.Array (DBus.Strings []);
 	  DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
-	  DBus.Int32 4000l;
+	  DBus.Int32 15000l; (* milliseconds the notification must be seen *)
 	] in	
-	  let r = send_notif_msg ~bus ~serv:"Notify" ~params in
-	  print_dbus_ty_list r;
-	  ()
+	  ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
 ;;
 

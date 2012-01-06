@@ -1,7 +1,7 @@
-CMX= lexer.cmx parser.cmx config.cmx rw_client.cmx
+CMX= lexer.cmx parser.cmx config.cmx dbus_call.cmx rw_client.cmx
 GENERATED = lexer.ml parser.ml parser.mli 
 BIN= rw_client
-FLAGS=-thread -linkpkg -package str,ssl,threads
+FLAGS=-thread -linkpkg -package str,ssl,threads,dbus
 
 all: $(BIN)
 

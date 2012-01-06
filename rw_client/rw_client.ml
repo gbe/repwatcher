@@ -1,13 +1,15 @@
 open Types
 open Types_conf
 open Unix
-(* open Dbus_call *)
+open Dbus_call
 
 let config_file = ref "rw_client.conf" ;;
 
 let port = ref 9292 ;;
 let host = ref "" ;;
-let nb_parent_folders = ref (-1) ;; (* will be changed if set on the CLI or when connected to the server *)
+
+(* will be changed if set on the CLI or when connected to the server *)
+let nb_parent_folders = ref (-1) ;;
 
 
 let parse_config file =
@@ -199,8 +201,7 @@ This is free software under the MIT license.\n\n";
 		| _ -> () (* It has been set by the client on the command line. *)
 	      
 	    end;
-	    ignore (Unix.system ("notify-send -i nobody Repwatcher \"Successfully connected to "^(!host)^"\""))
-(*	    | RW_server_con_ok -> dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host)) *)
+	    dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host))
 	      
 	| Notification notif ->
 	    begin
@@ -221,17 +222,14 @@ This is free software under the MIT license.\n\n";
 		  Pervasives.flush Pervasives.stdout;
 
 		  let l_folders = Str.split regexp_slash file.f2_path in
-		  let call =
+		  let dbus_notif =
 		    match !nb_parent_folders with
-		      | 0 -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" file.f2_login msg_state file.f2_name
-		      | _ -> Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s%s\"" file.f2_login msg_state (n_last_elements l_folders) file.f2_name
+		      | 0 -> "<b>"^file.f2_login^"</b> "^msg_state^"\n"^file.f2_name
+		      | _ -> "<b>"^file.f2_login^"</b> "^msg_state^"\n"^(n_last_elements l_folders)^file.f2_name
 		  in
-		  ignore (Unix.system call)
-		    
-(*		let dbus_notif = Printf.sprintf "<b>%s</b> %s\n%s" login msg_state filename in
-  dbus "nobody" "Repwatcher" dbus_notif
- *)		  
-		    
+		  dbus "nobody" "Repwatcher" dbus_notif
+
+
 	      | Old_notif dls_l ->
 
 		  List.iter (
@@ -246,18 +244,13 @@ This is free software under the MIT license.\n\n";
 		    in
 
 		    let l_folders = Str.split regexp_slash file.f2_path in
-
-		    let call =
+		    let dbus_notif =
 		      match !nb_parent_folders with
-			| 0 -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s\"" h_m file.f2_login file.f2_name
-			| _ -> Printf.sprintf "notify-send -i nobody \"Repwatcher @ %s\" \"<b>%s</b> opened\n%s%s\"" h_m file.f2_login (n_last_elements l_folders) file.f2_name
+			| 0 -> "<b>"^file.f2_login^"</b> opened\n"^file.f2_name
+			| _ -> "<b>"^file.f2_login^"</b> opened\n"^(n_last_elements l_folders)^file.f2_name
 		    in
-
-		    ignore (Unix.system call)
-		      
-(*		  let dbus_notif = Printf.sprintf "<b>%s</b> opened\n%s" login filename in
- *		    dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
- *)
+ 		    dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
+ 
 		 ) dls_l
 	    end		
     done
@@ -265,8 +258,7 @@ This is free software under the MIT license.\n\n";
   end;
   
   Ssl.shutdown s_ssl;
-  ignore (Unix.system "notify-send -i nobody Repwatcher \"Server is down. Closing the client...\"");
-  (* dbus "nobody" "Repwatcher" "Server is down. Closing the client..."; *)
+  dbus "nobody" "Repwatcher" "Server is down. Closing the client...";
   
   exit 0	   
 ;;

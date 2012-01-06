@@ -82,12 +82,7 @@ let notify notification =
 		else
 		  n_last_elements q n
 	  in
-
-(*	    let call = Printf.sprintf "notify-send -i nobody Repwatcher \"<b>%s</b> %s\n%s\"" login msg_state filename_escaped in
-	      ignore (system call)
-*)	
-
-	    
+   
 	  let r = Str.regexp "/" in
 	  let l_folders = Str.split r file.f2_path in
 
