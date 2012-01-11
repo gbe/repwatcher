@@ -1,6 +1,8 @@
 val mutex_ht : Mutex.t
 
-(* string = date
+(*
+ * int = times the file has been opened
+ * string = date
  * int64 = filesize
  *
  * bool = is the first offset known (meaning, is the offset a None) ?
@@ -9,4 +11,4 @@ val mutex_ht : Mutex.t
  *
  * int64 = SQL primary key
 *)
-val ht : (Inotify.wd * Types.f_file, (string * int64 option * (bool * int64 option * int) * int64)) Hashtbl.t
+val ht : (Inotify.wd * Types.f_file, (int * string * int64 option * (bool * int64 option * int) * int64)) Hashtbl.t

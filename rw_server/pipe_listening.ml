@@ -18,7 +18,7 @@ let wait_pipe_from_child_process () =
 	  Mutex.lock Files_progress.mutex_ht ;
 
 	  let l_current =
-	    Hashtbl.fold (fun (_,file) (date,_,_,_) ret ->
+	    Hashtbl.fold (fun (_,file) (_,date,_,_,_) ret ->
 	      let file_prepared = Report.prepare_data file in
 
 	      ret@[ (

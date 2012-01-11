@@ -41,7 +41,7 @@ let loop_check () =
 
     Mutex.lock Files_progress.mutex_ht ;
 
-    Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), sql_pkey) ->
+    Hashtbl.iter (fun (wd, file) (times_opened, date, filesize, (isfirstoffsetknown, _, error_counter), sql_pkey) ->
       let offset_opt =
 	get_offset file.f_program_pid (file.f_path^file.f_name)
       in
@@ -60,7 +60,7 @@ let loop_check () =
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), sql_pkey);
+	      (times_opened, date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), sql_pkey);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
 	    Hashtbl.remove Files_progress.ht (wd, file) ;
@@ -74,7 +74,7 @@ let loop_check () =
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
 	  Hashtbl.replace Files_progress.ht
 	    (wd, file)
-	    (date, filesize, (true, offset_opt, 0), sql_pkey) ;
+	    (times_opened, date, filesize, (true, offset_opt, 0), sql_pkey) ;
 
 	  let sql_report =
 	    {
