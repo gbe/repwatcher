@@ -1,7 +1,6 @@
 val mutex_ht : Mutex.t
 
 (*
- * int = times the file has been opened
  * string = date
  * int64 = filesize
  *
@@ -13,8 +12,7 @@ val mutex_ht : Mutex.t
  * bool = created (true) or not (false)
 *)
 val ht : (Inotify.wd * Types.f_file, 
-	  (int 
-	   * string 
+	  (string 
 	   * int64 option 
 	   * (bool * int64 option * int) 
 	   * int64 

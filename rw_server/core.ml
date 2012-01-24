@@ -329,25 +329,12 @@ let file_opened ?(created=false) wd name =
       
       List.iter (fun (file, filesize) ->
 	
-	try
-	  let (times_opened, date, filesize_opt, offset_uplet, sql_pkey, created') =
-	    Hashtbl.find Files_progress.ht (wd, file)
-	  in
-	  (* print_endline ((string_of_int times_opened)^" ->"^(string_of_int (times_opened+1))^" ("^(string_of_int (Fdinfo.int_of_fd file.f_descriptor))^")"); *)
-
-	  Hashtbl.replace Files_progress.ht (wd, file)
-	    (times_opened + 1,
-	     date,
-	     filesize_opt,
-	     offset_uplet,
-	     sql_pkey,
-	     created')
-
-	with Not_found ->
-	  begin
+	match Hashtbl.mem Files_progress.ht (wd, file) with
+	  | true -> ()
+	  | false ->
 	    if debug_event then
 	      print_file file;
-	  
+
 	    (* Notify right away *)
 	    let date = Date.date () in
 
@@ -370,7 +357,6 @@ let file_opened ?(created=false) wd name =
 	      | true ->
 		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))))
 	    end;
-
 
 	    let offset_opt =
 	      Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
@@ -406,22 +392,13 @@ let file_opened ?(created=false) wd name =
 		    | Some _ -> true
 		in
 
-		let times_opened =
-		  match created with
-		    | true -> 0
-		    | false -> 1
-		in
-
-(*		print_endline (string_of_int times_opened); *)
 		Hashtbl.add Files_progress.ht
 		  (wd, file)
-		  (times_opened,
-		   date,
+		  (date,
 		   filesize,
 		   (isfirstoffsetknown, offset_opt, 0),
 		   pkey,
 		   created)
-	  end
 
       ) files ;
       
@@ -438,106 +415,113 @@ let file_created wd name =
 
 
 let file_closed ?(written=false) wd name =
-  match get_value wd with
-    | None ->
-      let err =
-	sprintf "%s has been closed (nowrite) \
+
+  if debug_event then begin
+    match get_value wd with
+      | None ->
+	let err =
+	  sprintf "%s has been closed (nowrite) \
 		      but I can't report it because I can't find\
 		      its wd info" name
-      in
-      Log.log (err, Error)
+	in
+	Log.log (err, Error)
 	
-    | Some folder ->
-      let path_quoted = Filename.quote folder.path in
-      
-      if debug_event then
+      | Some folder ->
+	let path_quoted = Filename.quote folder.path in       
 	Printf.printf "[II] Folder: %s\n" path_quoted ;
+  end;
 
-      Mutex.lock Files_progress.mutex_ht ;
+  Mutex.lock Files_progress.mutex_ht ;
       
-      (* Return the list of the files which stopped being accessed *)
-      let l_stop =
-	Hashtbl.fold (
-	  fun (wd2, f_file) values l_stop' ->
-	    (* if wd2 is wd's child and is not in progress anymore *)
-            if (wd = wd2) then
-	      ((wd2, f_file), values) :: l_stop'
-	    else
-	      l_stop'
-        ) Files_progress.ht []
-      in
+  (* Return the list of the files which stopped being accessed *)
+  let l_stop =
+    Hashtbl.fold (
+      fun (wd2, f_file) values l_stop' ->
+
+	(* Return new infos on a specific fdnum.
+	 * If the process is already closed, a Sys_error is triggered
+	 * by Fdinfo.get_fds
+	 *)
+	let fdinprogress =
+	  try
+	    Some (List.find (fun (fd, fdval) ->
+	      fd = f_file.f_descriptor
+	    ) (Fdinfo.get_fds (Fdinfo.pid_of_int f_file.f_program_pid)))
+	  with _ -> None
+	in
+
+	match fdinprogress with
+	  | None -> ((wd2, f_file), values) :: l_stop'
+	  | Some (_, fdval) ->
+
+	    try
+	      (* if it's a real path then true otherwise it's something like pipe:[160367] *)
+	      match Sys.file_exists fdval with
+		| false -> ((wd2, f_file), values) :: l_stop'
+		| true -> l_stop'
+	    with
+	      | _ -> ((wd2, f_file), values) :: l_stop'
+    ) Files_progress.ht []
+  in
 					      
+  Mutex.unlock Files_progress.mutex_ht ;
+
+  List.iter (
+    fun ((wd2, f_file), (d, filesize, (isoffsetknown, offset, err_counter), pkey, created)) ->
+
+      Mutex.lock Files_progress.mutex_ht ;	  
+      Hashtbl.remove Files_progress.ht (wd2, f_file);
       Mutex.unlock Files_progress.mutex_ht ;
 
-      List.iter (
-	fun ((wd2, f_file), (times_opened, d, filesize, (isoffsetknown, offset, err_counter), pkey, created)) ->
+      let date = Date.date () in
+      print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
-	  (*
-	    print_string ("("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^") "^(string_of_int times_opened)^" ->");
-	  *)
+      Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
-	  if times_opened > 1 then begin
-	    (* print_endline (string_of_int (times_opened-1)); *)
-	    Mutex.lock Files_progress.mutex_ht ;
-	    Hashtbl.replace Files_progress.ht (wd2, f_file)
-	      (times_opened - 1, d, filesize, (isoffsetknown, offset, err_counter), pkey, created);
-	    Mutex.unlock Files_progress.mutex_ht ;
-	  end
-	  else begin
-	    Mutex.lock Files_progress.mutex_ht ;
-	    (* print_endline "Au revoir !!"; *)
-            Hashtbl.remove Files_progress.ht (wd2, f_file);
-	    Mutex.unlock Files_progress.mutex_ht ;
-	  
-	    let date = Date.date () in
-	    print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
-	  
-	    Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
-	  
-	    (* update filesize in database if written *)
-	    let filesize =
-	      match written with
-		| false -> filesize
-		| true ->
-		  let size =
-		    (Unix.stat (f_file.f_path^f_file.f_name)).st_size
-		  in
-		  Some (Int64.of_int size)
+      (* update filesize in database if written *)
+      let filesize =
+	match written with
+	  | false -> filesize
+	  | true ->
+	    let size =
+	      (Unix.stat (f_file.f_path^f_file.f_name)).st_size
 	    in
+	    Some (Int64.of_int size)
+      in
 
-	    (* update last known offset according to filesize if written is true *)
-	    let offset =
-	      match written with
-		| false -> offset
-		| true ->
-		  match offset with
-		    | None -> None
-		    | Some offset' ->
-		      match filesize with
-			| None -> assert false
-			| Some filesize' ->
-			  if filesize' > offset' then
-			    Some filesize'
-			  else
-			    offset
-	    in
+      (* update last known offset according to filesize if written is true *)
+      let offset =
+	match written with
+	  | false -> offset
+	  | true ->
+	    match offset with
+	      | None -> None
+	      | Some offset' ->
+		match filesize with
+		  | None -> assert false
+		  | Some filesize' ->
+		    if filesize' > offset' then
+		      Some filesize'
+		    else
+		      offset
+      in
 
-	    let sql_report = {
-	      s_file = f_file ;
-	      s_state = SQL_File_Closed ;
-	      s_size = filesize ;
-	      s_date = date ;
-	      s_offset = offset ;
-	      s_pkey = Some pkey ;
-	      s_created = created ;
-	    }
-	    in	  
-	  
-	    ignore (Report.report (Sql sql_report));
-	    let file_prepared = Report.prepare_data f_file in
-	    ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
-	  end
-      ) l_stop
+      let sql_report = {
+	s_file = f_file ;
+	s_state = SQL_File_Closed ;
+	s_size = filesize ;
+	s_date = date ;
+	s_offset = offset ;
+	s_pkey = Some pkey ;
+	s_created = created ;
+      }
+      in	  
+
+      ignore (Report.report (Sql sql_report));
+      let file_prepared = Report.prepare_data f_file in
+      ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
+
+  ) l_stop
 
 (* eo file_closed, false *)
 ;;
