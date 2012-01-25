@@ -483,10 +483,14 @@ let file_closed ?(written=false) wd name =
 	match written with
 	  | false -> filesize
 	  | true ->
-	    let size =
-	      (Unix.stat (f_file.f_path^f_file.f_name)).st_size
-	    in
-	    Some (Int64.of_int size)
+	    try
+	      let size =
+		(Unix.stat (f_file.f_path^f_file.f_name)).st_size
+	      in
+	      Some (Int64.of_int size)
+	    with Unix_error (err_code, funct_name, fullpath) ->
+	      Log.log ("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
+	      None
       in
 
       (* update last known offset according to filesize if written is true *)
@@ -498,7 +502,7 @@ let file_closed ?(written=false) wd name =
 	      | None -> None
 	      | Some offset' ->
 		match filesize with
-		  | None -> assert false
+		  | None -> offset (* in this case, the offset is the best answer we have *)
 		  | Some filesize' ->
 		    if filesize' > offset' then
 		      Some filesize'
