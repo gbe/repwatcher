@@ -213,13 +213,10 @@ This is free software under the MIT license.\n\n";
       (* **************************** *)
 
       while !loop do
-	begin
-	  try
-	    ignore (Unix.select [ Core.fd ] [] [] (-1.));
-	  with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
-	end;
-	let event_l = Inotify.read Core.fd in
-	List.iter Events.what_to_do event_l
-
+	try
+	  let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
+	  let event_l = Inotify.read Core.fd in
+	  List.iter Events.what_to_do event_l
+	with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
       done;
 ;;
