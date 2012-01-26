@@ -180,7 +180,7 @@ This is free software under the MIT license.\n\n";
       Core.add_watch !config_file None true;
       
       if conf.c_notify.n_remotely then begin
-	ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
+	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
       end;
 
 
