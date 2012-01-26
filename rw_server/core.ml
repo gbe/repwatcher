@@ -323,7 +323,7 @@ let file_opened ?(created=false) wd name =
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" father.path;
 
-      let files = File_list.get father.path name in
+      let files = Files.get father.path name in
 
       Mutex.lock Files_progress.mutex_ht ;
       
@@ -359,7 +359,7 @@ let file_opened ?(created=false) wd name =
 	    end;
 
 	    let offset_opt =
-	      Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
+	      Files.get_offset file.f_program_pid (file.f_path^file.f_name)
 	    in
 
 	    (* if the file is being created then the

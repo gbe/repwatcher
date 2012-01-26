@@ -195,7 +195,7 @@ This is free software under the MIT license.\n\n";
       List.iter (fun dir -> Core.add_watch dir None false) dirs;
       Core.add_watch_children children;
 
-      ignore (Thread.create Offset.loop_check ()) ;
+      ignore (Thread.create Offset_thread.loop_check ()) ;
 
       ignore (Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) );
       Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
