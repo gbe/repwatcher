@@ -7,7 +7,7 @@ let loop_check () =
   
   while true do
 
-    Mutex.lock Files_progress.mutex_ht ;
+(*    Mutex.lock Files_progress.mutex_ht ;*)
 
     Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), sql_pkey, created) ->
       let offset_opt =
@@ -31,9 +31,11 @@ let loop_check () =
 	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), sql_pkey, created);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
-	    Hashtbl.remove Files_progress.ht (wd, file) ;
+	   (* Hashtbl.remove Files_progress.ht (wd, file) ;*)
+	    let event = (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name) in
 	    Log.log (
 	      ("Offset. "^file.f_name^" gets a second and final warning. It's now deleted from hashtable"), Error) ;
+	    Events.what_to_do event
 	  end
 
 
@@ -68,7 +70,7 @@ let loop_check () =
 
     ) Files_progress.ht ;
 
-    Mutex.unlock Files_progress.mutex_ht ;
+(*    Mutex.unlock Files_progress.mutex_ht ;*)
     
     Thread.delay 3.0 ;
   done
