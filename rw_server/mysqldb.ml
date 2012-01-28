@@ -134,6 +134,7 @@ let create_table_accesses () =
     Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(10) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
+  `USERNAME` varchar(256) DEFAULT NULL,\
   `PROGRAM` varchar(26) NOT NULL,\
   `PROGRAM_PID` int(8) NOT NULL,\
   `PATH` varchar(512) NOT NULL,\

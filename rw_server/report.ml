@@ -160,6 +160,12 @@ let sql sql_report =
       | Some filesize -> Mysqldb.ml2str (Int64.to_string filesize)
   in
 
+  let username =
+    match Txt_operations.name f.f_login with
+      | None -> "NULL"
+      | Some username -> (Mysqldb.ml2str username)
+  in
+
   match sql_report.s_state with
   | SQL_File_Opened  ->
 
@@ -172,10 +178,11 @@ let sql sql_report =
     (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
     let query =
       Printf.sprintf "INSERT INTO accesses \
-      (login, program, program_pid, path, filename, filesize, \
+      (login, username, program, program_pid, path, filename, filesize, \
       filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
         (Mysqldb.ml2str f.f_login)
+	username
 	(Mysqldb.ml2str f.f_program)
 	(Mysqldb.ml2int f.f_program_pid)
 	(Mysqldb.ml2str f.f_path)
