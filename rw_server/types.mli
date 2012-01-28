@@ -7,7 +7,9 @@ type f_file = {
   f_descriptor  : Fdinfo.fd ;
 }
 
-type file_state = File_Created | File_Opened | File_Closed
+type file_state = | File_Created
+		  | File_Opened
+		  | File_Closed
 
 type log_level = | Normal
 		 | Normal_Extra
