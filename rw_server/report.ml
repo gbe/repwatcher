@@ -6,7 +6,10 @@ let prepare_data file =
   {
     f2_name = file.f_name ;
     f2_path = file.f_path ;
-    f2_login = file.f_login ;
+    f2_username =
+      (match Txt_operations.name (file.f_login) with
+	| None -> file.f_login
+	| Some username -> username);
     f2_program = file.f_program ;
   }
 ;;
@@ -90,11 +93,11 @@ let notify notification =
 	  let dbus_notif =
 	    match conf.c_notify.n_parent_folders with
 	      | None ->
-		sprintf "<b>%s</b> %s\n%s" file.f2_login msg_state filename_escaped 
+		sprintf "<b>%s</b> %s\n%s" file.f2_username msg_state filename_escaped 
 
 	      | Some parent_folders ->
 		sprintf "<b>%s</b> %s\n%s%s"
-		  file.f2_login
+		  file.f2_username
 		  msg_state
 		  (n_last_elements l_folders parent_folders)
 		  filename_escaped

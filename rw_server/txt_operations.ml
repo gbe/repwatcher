@@ -1,3 +1,5 @@
+open Unix;;
+
 let l_encoded_chars =
 (* &amp; needs to be the first one in the list.
  * Otherwise, &gt; (for example) will be changed in &amp;gt;
@@ -20,3 +22,11 @@ let escape_for_notify txt =
   ) txt l_encoded_chars
 ;;
 
+let name login =
+  let gecos = (getpwnam login).pw_gecos in
+  
+  let r = Str.regexp "[^',']+" in
+  match Str.string_match r gecos 0 with
+    | false -> None
+    | true -> Some (Str.matched_string gecos)
+;;
