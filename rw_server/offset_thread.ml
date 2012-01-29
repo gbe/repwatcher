@@ -17,7 +17,7 @@ let loop_check () =
       (* if at None then no Hashtbl update *)
       match offset_opt with
 	| None ->
-	  let error_counter' = error_counter+1 in
+	  let error_counter' = error_counter + 1 in
 
 	  (* if an offset couldn't be retrieved, then this key must
 	   * be removed from the files in progress hashtable
@@ -31,8 +31,13 @@ let loop_check () =
 	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), sql_pkey, created);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
-	   (* Hashtbl.remove Files_progress.ht (wd, file) ;*)
-	    let event = (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name) in
+	    let event =
+	      match created with
+		| true ->
+		  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
+		| false ->
+		  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
+	    in
 	    Log.log (
 	      ("Offset. "^file.f_name^" gets a second and final warning. It's now deleted from hashtable"), Error) ;
 	    Events.what_to_do event
