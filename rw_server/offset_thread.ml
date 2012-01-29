@@ -39,7 +39,7 @@ let loop_check () =
 		  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
 	    in
 	    Log.log (
-	      ("Offset. "^file.f_name^" gets a second and final warning. It's now deleted from hashtable"), Error) ;
+	      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Error) ;
 	    Events.what_to_do event
 	  end
 
