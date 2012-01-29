@@ -3,6 +3,7 @@ open Types_conf
 open Fdinfo
 open Unix
 
+
 let get path name =
 
   let conf = Config.get () in
@@ -84,8 +85,16 @@ let get path name =
 ;;
 
 
+let get_offset pid fd =
 
-let get_offset pid filepath =
+  try
+    Some (get_infos (pid_of_int pid) fd).offset
+  with _ -> None
+;;
+
+
+(*
+let get_offset_old pid filepath =
   let pid = pid_of_int pid in
   
   let fds =
@@ -114,3 +123,4 @@ let get_offset pid filepath =
       List.iter (fun (_, fdname) -> Log.log (fdname, Error)) fds ;
       None
 ;;
+*)

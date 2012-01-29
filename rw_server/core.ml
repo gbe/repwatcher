@@ -359,7 +359,7 @@ let file_opened ?(created=false) wd name =
 	    end;
 
 	    let offset_opt =
-	      Files.get_offset file.f_program_pid (file.f_path^file.f_name)
+	      Files.get_offset file.f_program_pid file.f_descriptor
 	    in
 
 	    (* if the file is being created then the

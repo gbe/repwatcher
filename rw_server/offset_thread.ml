@@ -11,7 +11,7 @@ let loop_check () =
 
     Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), sql_pkey, created) ->
       let offset_opt =
-	Files.get_offset file.f_program_pid (file.f_path^file.f_name)
+	Files.get_offset file.f_program_pid file.f_descriptor
       in
 
       (* if at None then no Hashtbl update *)
