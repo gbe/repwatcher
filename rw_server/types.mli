@@ -3,7 +3,7 @@ type f_file = {
   f_path        : string ;
   f_login       : string ;
   f_program     : string ;
-  f_program_pid : int    ;
+  f_program_pid : Fdinfo.pid;
   f_descriptor  : Fdinfo.fd ;
 }
 

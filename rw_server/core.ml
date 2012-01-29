@@ -304,7 +304,7 @@ let print_file file =
     file.f_path
     file.f_login
     file.f_program
-    file.f_program_pid
+    (Fdinfo.int_of_pid file.f_program_pid)
     (Fdinfo.int_of_fd file.f_descriptor)
 ;;
 
@@ -446,7 +446,7 @@ let file_closed ?(written=false) wd name =
 	  try
 	    Some (List.find (fun (fd, fdval) ->
 	      fd = f_file.f_descriptor
-	    ) (Fdinfo.get_fds (Fdinfo.pid_of_int f_file.f_program_pid)))
+	    ) (Fdinfo.get_fds f_file.f_program_pid))
 	  with _ -> None
 	in
 

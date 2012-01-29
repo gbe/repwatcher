@@ -184,7 +184,7 @@ let sql sql_report =
         (Mysqldb.ml2str f.f_login)
 	username
 	(Mysqldb.ml2str f.f_program)
-	(Mysqldb.ml2int f.f_program_pid)
+	(Mysqldb.ml2int (Fdinfo.int_of_pid f.f_program_pid))
 	(Mysqldb.ml2str f.f_path)
 	(Mysqldb.ml2str f.f_name)
 	filesize

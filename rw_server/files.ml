@@ -56,7 +56,7 @@ let get path name =
 		      f_path = path^"/" ;
 		      f_login = login ;
 		      f_program = prog ;
-		      f_program_pid = pid_int ;
+		      f_program_pid = pid ;
 		      f_descriptor = file_fd ;
 		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
@@ -73,7 +73,7 @@ let get path name =
 		      f_path = path^"/" ;
 		      f_login = login ;
 		      f_program = prog ;
-		      f_program_pid = pid_int ;
+		      f_program_pid = pid ;
 		      f_descriptor = file_fd ;
 		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
@@ -88,7 +88,7 @@ let get path name =
 let get_offset pid fd =
 
   try
-    Some (get_infos (pid_of_int pid) fd).offset
+    Some (get_infos pid fd).offset
   with _ -> None
 ;;
 
