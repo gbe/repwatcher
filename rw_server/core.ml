@@ -467,7 +467,7 @@ let file_closed ?(written=false) wd name =
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
-    fun ((wd2, f_file), (d, filesize, (isoffsetknown, offset, err_counter), pkey, created)) ->
+    fun ((wd2, f_file), (_, filesize, (_, offset, _), pkey, created)) ->
 
       Mutex.lock Files_progress.mutex_ht ;	  
       Hashtbl.remove Files_progress.ht (wd2, f_file);
