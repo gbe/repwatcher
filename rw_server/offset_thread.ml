@@ -46,7 +46,9 @@ let loop_check () =
 
 	| Some offset ->
 
-	  (* Add the offset_opt in the Hashtbl because of Open events in Core *)
+	  (* Add the offset_opt in the Hashtbl because of Open events in Core
+	   * Also reset the error_counter.
+	   *)
 	  Hashtbl.replace Files_progress.ht
 	    (wd, file)
 	    (date, filesize, (true, offset_opt, 0), sql_pkey, created) ;
