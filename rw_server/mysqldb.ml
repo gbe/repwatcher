@@ -7,11 +7,14 @@ let ml2str = Mysql.ml2str ;;
 let ml2int = Mysql.ml2int ;;
 let insert_id = Mysql.insert_id ;;
 
-let connect () =
+let connect ?(log=true) () =
   try
 
     let cid = Mysql.connect (Config.get()).c_mysql in
-    Log.log ("Connected to MySQL", Normal_Extra) ;
+
+    if log then
+      Log.log ("Connected to MySQL", Normal_Extra) ;
+
     Some cid
 
   with
@@ -37,10 +40,12 @@ let connect_without_db () =
     | Config.Config_error -> None
 ;;
 
-let disconnect cid =
+let disconnect ?(log=true) cid =
   try
     Mysql.disconnect cid;
-    Log.log ("Disconnected from MySQL", Normal_Extra)
+
+    if log then
+      Log.log ("Disconnected from MySQL", Normal_Extra)
 
   with Mysql.Error error ->
     Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
@@ -62,17 +67,21 @@ let map res =
 ;;
 
 
-let query cid q =
+let query ?(log=true) cid q =
   
-  Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
+  if log then
+    Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
   
   try
     let res = exec cid q in
     
     match status cid with
     | (StatusOK | StatusEmpty) ->
+      if log then
 	Log.log ("Query successfully executed", Normal_Extra);
-	Some res
+
+      Some res
+
     | StatusError _ ->
 	begin match errmsg cid with
 	| None ->

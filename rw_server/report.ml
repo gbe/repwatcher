@@ -243,11 +243,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect () with
+	match Mysqldb.connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query cid update_offset_query) ;
-	    Mysqldb.disconnect cid ;
+	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
+	    Mysqldb.disconnect ~log:false cid ;
 	    Nothing
     end
 
@@ -264,11 +264,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect () with
+	match Mysqldb.connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query cid update_offset_query) ;
-	    Mysqldb.disconnect cid ;
+	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
+	    Mysqldb.disconnect ~log:false cid ;
 	    Nothing
 ;;
 
