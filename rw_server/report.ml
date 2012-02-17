@@ -288,5 +288,7 @@ struct
       notify notification ;
       Nothing
       
+    | Mail tobemailed ->
+      Mail.send tobemailed
 ;;
 end;;

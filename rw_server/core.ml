@@ -353,9 +353,11 @@ let file_opened ?(created=false) wd name =
 
 	    begin match created with
 	      | false ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))))
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
+		ignore (Report.report (Mail (File_Opened, file_prepared)))
 	      | true ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))))
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
+		ignore (Report.report (Mail (File_Created, file_prepared)))
 	    end;
 
 	    let offset_opt =
@@ -381,7 +383,7 @@ let file_opened ?(created=false) wd name =
 		s_pkey = None ;
 		s_created = created ;
 	      }
-	    in
+	    in	  
 
 	    match Report.report (Sql sql_report) with
 	      | Nothing -> () (* could be triggered by an SQL error *)

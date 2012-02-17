@@ -47,6 +47,7 @@ type sql_report = {
 
 type report = | Notify of notification
 	      | Sql    of sql_report
+	      | Mail   of (file_state * file2clients)
 
 type report_ret = Nothing | PrimaryKey of int64
 
