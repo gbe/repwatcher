@@ -34,6 +34,11 @@ let check_options cert =
 %token SERVER_PORT
 %token SERVER_PROCESS_IDENTITY
 %token SERVER_PROCESS_CHROOT
+%token EMAIL_OPEN
+%token EMAIL_CLOSE
+%token EMAIL_SENDER_NAME
+%token EMAIL_SENDER_ADDRESS
+%token EMAIL_RECIPIENTS
 %token PARENT_FOLDERS
 %token LOG_LEVEL
 %token LOG_DIRECTORY
@@ -51,7 +56,7 @@ let check_options cert =
 %%
 
 
-configuration: watch mode process_identity mysql notify server log EOF {
+configuration: watch mode process_identity mysql notify server email log EOF {
    {
       c_watch = $1;
       c_mode = $2;
@@ -59,7 +64,8 @@ configuration: watch mode process_identity mysql notify server log EOF {
       c_mysql = $4;
       c_notify = $5;
       c_server = $6;
-      c_log = $7;
+      c_email = $7;
+      c_log = $8;
    }
 }
 ;
@@ -226,6 +232,50 @@ s_chroot:
 ;
 
 
+email:
+| EMAIL_OPEN EQUAL true_or_false
+  EMAIL_CLOSE EQUAL true_or_false
+    {
+     match $3 || $6 with
+     | true -> raise Parse_error
+     | false ->
+	 {
+	  e_open = false;
+	  e_close = false;
+	  e_sender_name = "";
+	  e_sender_address = "";
+	  e_recipients = [];
+	}
+   }
+
+| EMAIL_OPEN EQUAL true_or_false
+  EMAIL_CLOSE EQUAL true_or_false
+  EMAIL_SENDER_NAME EQUAL txt_plus
+  EMAIL_SENDER_ADDRESS EQUAL txt_plus
+  EMAIL_RECIPIENTS EQUAL txt_plus_list
+    {
+     match $3 || $6 with
+     | false ->
+	 {
+	  e_open = false;
+	  e_close = false;
+	  e_sender_name = "";
+	  e_sender_address = "";
+	  e_recipients = [];
+	}
+     | true ->
+	 if List.length $15 == 0 then
+	   raise Parse_error
+	 else
+	   {
+	    e_open = $3;
+	    e_close = $6;
+	    e_sender_name = $9;
+	    e_sender_address = $12;
+	    e_recipients = $15;
+	  }
+   }
+;
 
 log: log_verbosity log_directory {
   
