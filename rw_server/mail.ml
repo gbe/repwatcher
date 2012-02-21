@@ -25,8 +25,10 @@ let send (filestate, file) =
       conf.e_recipients
   in
 
+  let subject = file.f2_username^" "^filestate_str^" "^file.f2_name in
+
   let m =
-    compose ~from_addr:(conf.e_sender_name, conf.e_sender_address) ~to_addrs:recipients ~subject:"Repwatcher event" ~in_charset:`Enc_utf8 ~out_charset:`Enc_utf8 txt
+    compose ~from_addr:(conf.e_sender_name, conf.e_sender_address) ~to_addrs:recipients ~subject:subject ~in_charset:`Enc_utf8 ~out_charset:`Enc_utf8 txt
   in
   sendmail ~mailer:"sendmail" m
 ;;
