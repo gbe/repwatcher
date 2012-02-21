@@ -526,7 +526,7 @@ let file_closed ?(written=false) wd name =
       ignore (Report.report (Sql sql_report));
       let file_prepared = Report.prepare_data f_file in
       ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
-
+      ignore (Report.report (Mail (File_Closed, file_prepared)))
   ) l_stop
 
 (* eo file_closed, false *)

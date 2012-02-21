@@ -273,6 +273,19 @@ let sql sql_report =
 ;;
 
 
+let mail (filestate, file) =
+  let conf = (Config.get ()).c_email in
+
+  begin match filestate with
+  | (File_Opened | File_Created) ->
+      if conf.e_open then
+	Mail.send (filestate, file)
+
+  | File_Closed ->
+      if conf.e_close then
+	Mail.send (filestate, file)
+  end
+;;  
 
 
 module Report =
@@ -289,6 +302,7 @@ struct
       Nothing
       
     | Mail tobemailed ->
-      Mail.send tobemailed
+      mail tobemailed;
+      Nothing
 ;;
 end;;
