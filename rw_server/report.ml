@@ -102,7 +102,9 @@ let notify notification =
 		  (n_last_elements l_folders parent_folders)
 		  filename_escaped
 	  in
-	  dbus "nobody" "Repwatcher" dbus_notif
+	  try
+	    dbus "nobody" "Repwatcher" dbus_notif
+	  with _ -> Log.log ("An error occured with dBus", Error)
 
 	end ;
 
@@ -128,7 +130,10 @@ let notify notification =
     let conf = Config.get () in
 
     if conf.c_notify.n_locally then
-      dbus "nobody" "Repwatcher" info_escaped
+      begin try
+	dbus "nobody" "Repwatcher" info_escaped
+      with _ -> Log.log ("An error occured with dBus", Error)
+      end
 
 
   | Old_notif l_current ->

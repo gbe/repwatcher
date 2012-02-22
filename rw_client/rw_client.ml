@@ -227,7 +227,11 @@ This is free software under the MIT license.\n\n";
 		      | 0 -> "<b>"^file.f2_username^"</b> "^msg_state^"\n"^file.f2_name
 		      | _ -> "<b>"^file.f2_username^"</b> "^msg_state^"\n"^(n_last_elements l_folders)^file.f2_name
 		  in
-		  dbus "nobody" "Repwatcher" dbus_notif
+
+		  begin try
+		    dbus "nobody" "Repwatcher" dbus_notif
+		  with _ -> prerr_endline "An error occured with dBus"
+		  end
 
 
 	      | Old_notif dls_l ->
@@ -249,8 +253,12 @@ This is free software under the MIT license.\n\n";
 			| 0 -> "<b>"^file.f2_username^"</b> opened\n"^file.f2_name
 			| _ -> "<b>"^file.f2_username^"</b> opened\n"^(n_last_elements l_folders)^file.f2_name
 		    in
- 		    dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
- 
+
+		    begin try
+ 		      dbus "nobody" ("Repwatcher @ "^h_m) dbus_notif
+		    with _ -> prerr_endline "An error occured with dBus"
+		    end
+
 		 ) dls_l
 	    end		
     done
@@ -258,7 +266,11 @@ This is free software under the MIT license.\n\n";
   end;
   
   Ssl.shutdown s_ssl;
-  dbus "nobody" "Repwatcher" "Server is down. Closing the client...";
-  
+
+  begin try
+    dbus "nobody" "Repwatcher" "Server is down. Closing the client...";
+  with _ -> prerr_endline "An error occured with dBus"
+  end;
+
   exit 0	   
 ;;
