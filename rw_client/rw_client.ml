@@ -201,7 +201,10 @@ This is free software under the MIT license.\n\n";
 		| _ -> () (* It has been set by the client on the command line. *)
 	      
 	    end;
-	    dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host))
+	    begin try
+	      dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host))
+	    with _ -> prerr_endline "An error occured with dBus"
+	    end
 	      
 	| Notification notif ->
 	    begin
