@@ -2,7 +2,7 @@ NO_DBUS ?= 0
 CMX = lexer.cmx parser.cmx config.cmx date.cmx log.cmx mysqldb.cmx txt_operations.cmx pipe.cmx mail.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx files.cmx core.cmx check_conf.cmx events.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
-PACKAGES = str,mysql,ssl,inotify,fdinfo,threads,netsys,pcre,netstring
+PACKAGES = str,mysql,ssl,inotify,fdinfo,threads,netsys,pcre,netstring,syslog
 FLAGS = -thread -linkpkg -package $(PACKAGES)
 
 ifeq ($(NO_DBUS), 0)

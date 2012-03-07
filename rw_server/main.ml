@@ -134,23 +134,6 @@ This is free software under the MIT license.\n\n";
 	    end
       end;
 
-
-
-      (* From this point, if the program's identity was root then
-	 it's not anymore (if another id was given in replacement).
-	 This is what I call a transition between root_time and user_time.
-      *)
-
-
-
-
-      (* Until this point every logs were put into a FIFO.
-	 From this point on, the futur logs are really written
-	 into a file. Also, the logs saved into the FIFO are
-	 really written. This is to prevent root writing the files.
-      *)
-      Log.start_really_logging ();
-
       Check_conf.sql_connection ();
 
       begin
