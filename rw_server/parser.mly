@@ -41,7 +41,6 @@ let check_options cert =
 %token EMAIL_RECIPIENTS
 %token PARENT_FOLDERS
 %token LOG_LEVEL
-%token LOG_DIRECTORY
 %token <string>TXT
 %token EOF
 
@@ -277,24 +276,7 @@ email:
    }
 ;
 
-log: log_verbosity log_directory {
-  
-  let directory =
-    match $2 with
-      | None ->
-	(* "./" for Unix *)
-	Filename.current_dir_name^Filename.dir_sep
-
-      | Some d -> d
-  in
-  {
-    l_verbosity = $1 ;
-    l_directory = directory ;
-  }
-}
-;
-
-log_verbosity:
+log:
 /* If the log part is commented then it means logging is disabled */
 | { Disabled }
 | LOG_LEVEL EQUAL uint {
@@ -305,10 +287,6 @@ log_verbosity:
   | _ -> raise Parse_error
 }
 ;
-
-log_directory:
-| { None }
-| LOG_DIRECTORY EQUAL txt_plus { Some $3 }
 
 txt_plus_list:
 | txt_plus { [$1] }

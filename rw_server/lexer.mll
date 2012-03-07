@@ -47,7 +47,6 @@ rule nexttoken = parse
   | "email_sender_address"             { EMAIL_SENDER_ADDRESS }
   | "email_recipients"                 { EMAIL_RECIPIENTS }
   | "log_level"                        { LOG_LEVEL }
-  | "log_directory"                    { LOG_DIRECTORY }
   | eof                                { EOF }
   | '\n'                               { newline lexbuf; nexttoken lexbuf }
   | space+                             { nexttoken lexbuf }

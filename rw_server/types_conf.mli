@@ -49,11 +49,6 @@ type email = {
     e_recipients : string list;
 }
 
-type log = {
-  l_verbosity : log_verbosity ;
-  l_directory : string ;
-}
-
 type configuration = {
     c_watch : watch;
     c_mode : mode;
@@ -62,5 +57,5 @@ type configuration = {
     c_notify : notify;
     c_server : server_t option;
     c_email : email;
-    c_log : log;
+    c_log : log_verbosity;
 }

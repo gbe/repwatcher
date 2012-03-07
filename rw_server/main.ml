@@ -154,8 +154,6 @@ This is free software under the MIT license.\n\n";
       if conf.c_notify.n_remotely then
 	Check_conf.server_certs conf ;
   
-      Check_conf.log_directory conf.c_log.l_directory;
-
       (* Set to zero every files marked as 'in progress' in the SGBD *)
       Mysqldb.sgbd_reset_in_progress ();
     

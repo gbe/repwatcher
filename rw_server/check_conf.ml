@@ -16,8 +16,6 @@ open Unix ;;
    - exist, can be read and rights: key
    - chroot folder
    - server identity
-
-   - if log_directory can be read and written
  *)
 
 
@@ -151,14 +149,4 @@ let remote_process_identity conf =
 	      in
 	      Log.log (error, Error);
 	      failwith error
-;;
-
-
-let log_directory directory =
-  (* is_directory raises "no such file or directory" if l_directory doesn't exist.
-   * The exception isn't caught to let it exit the program *)
-  if Sys.is_directory directory then
-    can_be_accessed directory [R_OK ; W_OK]
-  else
-    failwith (directory^" is not a directory")
 ;;

@@ -19,7 +19,7 @@ let log (txt, log_level) =
     in
 *)
     begin
-      match conf.c_log.l_verbosity with
+      match conf.c_log with
 	| Disabled -> () (* don't log *)
 	| Regular  ->
 	  begin
