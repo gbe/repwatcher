@@ -351,15 +351,6 @@ let file_opened ?(created=false) wd name =
 
 	    let file_prepared = Report.prepare_data file in
 
-	    begin match created with
-	      | false ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
-		ignore (Report.report (Mail (File_Opened, file_prepared)))
-	      | true ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
-		ignore (Report.report (Mail (File_Created, file_prepared)))
-	    end;
-
 	    let offset_opt =
 	      Files.get_offset file.f_program_pid file.f_descriptor
 	    in
@@ -372,6 +363,15 @@ let file_opened ?(created=false) wd name =
 		| false -> Some filesize
 		| true -> None
 	    in
+
+	    begin match created with
+	      | false ->
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
+		ignore (Report.report (Mail (File_Opened, file_prepared, offset_opt, filesize)))
+	      | true ->
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
+		ignore (Report.report (Mail (File_Created, file_prepared, offset_opt, filesize)))
+	    end;
 
 	    let sql_report = 
 	      {
@@ -526,7 +526,7 @@ let file_closed ?(written=false) wd name =
       ignore (Report.report (Sql sql_report));
       let file_prepared = Report.prepare_data f_file in
       ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
-      ignore (Report.report (Mail (File_Closed, file_prepared)))
+      ignore (Report.report (Mail (File_Closed, file_prepared, offset, filesize)))
   ) l_stop
 
 (* eo file_closed, false *)

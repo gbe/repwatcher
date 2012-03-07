@@ -278,17 +278,17 @@ let sql sql_report =
 ;;
 
 
-let mail (filestate, file) =
+let mail (filestate, file, offset, filesize) =
   let conf = (Config.get ()).c_email in
 
   begin match filestate with
   | (File_Opened | File_Created) ->
       if conf.e_open then
-	Mail.send (filestate, file)
+	Mail.send (filestate, file, offset, filesize)
 
   | File_Closed ->
       if conf.e_close then
-	Mail.send (filestate, file)
+	Mail.send (filestate, file, offset, filesize)
   end
 ;;  
 
