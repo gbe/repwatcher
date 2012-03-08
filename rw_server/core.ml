@@ -367,10 +367,33 @@ let file_opened ?(created=false) wd name =
 	    begin match created with
 	      | false ->
 		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
-		ignore (Report.report (Mail (File_Opened, file_prepared, offset_opt, filesize)))
+		let tobemailed =
+		  {
+		    m_filestate = File_Opened;
+		    m_file = file_prepared;
+		    m_offset = offset_opt;
+		    m_filesize = filesize;
+
+		    (* Irrevelevant since the mail will tell the date *)
+		    m_opening_date = None;
+		  }
+		in
+
+		ignore (Report.report (Mail tobemailed))
 	      | true ->
+		let tobemailed =
+		  {
+		    m_filestate = File_Created;
+		    m_file = file_prepared;
+		    m_offset = offset_opt;
+		    m_filesize = filesize;
+
+		    (* Irrevelevant since the mail will tell the date *)
+		    m_opening_date = None;
+		  }
+		in
 		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
-		ignore (Report.report (Mail (File_Created, file_prepared, offset_opt, filesize)))
+		ignore (Report.report (Mail tobemailed))
 	    end;
 
 	    let sql_report = 
@@ -469,14 +492,14 @@ let file_closed ?(written=false) wd name =
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
-    fun ((wd2, f_file), (_, filesize, (_, offset, _), pkey, created)) ->
+    fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), pkey, created)) ->
 
       Mutex.lock Files_progress.mutex_ht ;	  
       Hashtbl.remove Files_progress.ht (wd2, f_file);
       Mutex.unlock Files_progress.mutex_ht ;
 
-      let date = Date.date () in
-      print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+      let current_date = Date.date () in
+      print_endline (current_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
       Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
@@ -496,7 +519,7 @@ let file_closed ?(written=false) wd name =
       in
 
       (* update last known offset according to filesize if written is true *)
-      let offset =
+      let offset_opt =
 	match written with
 	  | false -> offset
 	  | true ->
@@ -516,8 +539,8 @@ let file_closed ?(written=false) wd name =
 	s_file = f_file ;
 	s_state = SQL_File_Closed ;
 	s_size = filesize ;
-	s_date = date ;
-	s_offset = offset ;
+	s_date = current_date ;
+	s_offset = offset_opt ;
 	s_pkey = Some pkey ;
 	s_created = created ;
       }
@@ -525,8 +548,18 @@ let file_closed ?(written=false) wd name =
 
       ignore (Report.report (Sql sql_report));
       let file_prepared = Report.prepare_data f_file in
+      let tobemailed =
+	{
+	  m_filestate = File_Closed;
+	  m_file = file_prepared;
+	  m_offset = offset_opt;
+	  m_filesize = filesize;
+	  m_opening_date = Some opening_date;
+	}
+      in
+
       ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
-      ignore (Report.report (Mail (File_Closed, file_prepared, offset, filesize)))
+      ignore (Report.report (Mail tobemailed))
   ) l_stop
 
 (* eo file_closed, false *)

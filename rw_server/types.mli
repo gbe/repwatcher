@@ -45,9 +45,17 @@ type sql_report = {
   s_created : bool ;
 }
 
+type mail_t = {
+  m_filestate: file_state;
+  m_file: file2clients;
+  m_offset: int64 option;
+  m_filesize: int64 option;
+  m_opening_date: string option;
+}
+
 type report = | Notify of notification
 	      | Sql    of sql_report
-	      | Mail   of (file_state * file2clients * int64 option * int64 option)
+	      | Mail   of mail_t
 
 type report_ret = Nothing | PrimaryKey of int64
 

@@ -3,12 +3,13 @@ open Types ;;
 open Types_conf ;;
 
 
-let send (filestate, file, offset_opt, filesize_opt) =
+let send mail =
 
-  let conf = (Config.get ()).c_email in  
+  let file = mail.m_file in
+  let conf = (Config.get ()).c_email in
 
   let filestate_str =
-    match filestate with
+    match mail.m_filestate with
       | File_Created -> "has created"
       | File_Opened  -> "has opened"
       | File_Closed  -> "closed"
@@ -20,11 +21,11 @@ let send (filestate, file, offset_opt, filesize_opt) =
       ref (Printf.sprintf "%s %s %s\nPath: %s\nProgram: %s" file.f2_username filestate_str file.f2_name file.f2_path file.f2_program)
     in
 
-    if filestate = File_Closed then begin
+    if mail.m_filestate = File_Closed then begin
       let progression_float = ref (-1.) in
 
       let (off_str, filesize_str) =
-	match (offset_opt, filesize_opt) with
+	match (mail.m_offset, mail.m_filesize) with
 	| (None, None) -> ("Unknown", "Unknown")
 	| (None, Some filesize) -> ("Unknown", Int64.to_string filesize)
 	| (Some offset, None) -> (Int64.to_string offset, "Unknown")
