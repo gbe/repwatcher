@@ -67,6 +67,14 @@ let send mail =
   in
 
   let subject = file.f2_username^" "^filestate_str^" "^file.f2_name in
+  
+  (***** Let's log it *****)
+  List.iter (fun recipient ->
+    let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^filestate_str^" "^file.f2_name in
+
+    Log.log (txt2log, Normal_Extra)
+  ) conf.e_recipients;
+  (************************)
 
   let m =
     compose ~from_addr:(conf.e_sender_name, conf.e_sender_address) ~to_addrs:recipients ~subject:subject ~in_charset:`Enc_utf8 ~out_charset:`Enc_utf8 (gentxt ())
