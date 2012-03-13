@@ -41,6 +41,6 @@ If you want remote notifications, you need a CA, private keys and certificates f
 
 You can either run Repwatcher in a "screen" or with "nohup ./rw_server &".
 
-Use the -f argument to tell the server where the configuration file is. It searches iby default in the directory rw_server runs.
+Use the -f argument to tell the server where the configuration file is. It searches by default in the directory rw_server runs.
 
 Don't hesitate to give me some feedbacks.
