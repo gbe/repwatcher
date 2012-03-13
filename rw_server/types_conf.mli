@@ -41,17 +41,21 @@ type log_verbosity =
   | Regular
   | Debug
 
-type log = {
-  l_verbosity : log_verbosity ;
-  l_directory : string ;
+type email = {
+    e_open : bool;
+    e_close : bool;
+    e_sender_name : string;
+    e_sender_address : string;
+    e_recipients : string list;
 }
 
 type configuration = {
     c_watch : watch;
     c_mode : mode;
     c_process_identity : string option;
-    c_mysql : sql_db;
+    c_mysql : sql_db option;
     c_notify : notify;
     c_server : server_t option;
-    c_log : log;
+    c_email : email;
+    c_log : log_verbosity;
 }

@@ -221,14 +221,14 @@ This is free software under the MIT license.\n\n";
 		    | File_Closed -> "closed"
 		  in
 		  
-		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f2_login msg_state file.f2_name;
+		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f2_username msg_state file.f2_name;
 		  Pervasives.flush Pervasives.stdout;
 
 		  let l_folders = Str.split regexp_slash file.f2_path in
 		  let dbus_notif =
 		    match !nb_parent_folders with
-		      | 0 -> "<b>"^file.f2_login^"</b> "^msg_state^"\n"^file.f2_name
-		      | _ -> "<b>"^file.f2_login^"</b> "^msg_state^"\n"^(n_last_elements l_folders)^file.f2_name
+		      | 0 -> "<b>"^file.f2_username^"</b> "^msg_state^"\n"^file.f2_name
+		      | _ -> "<b>"^file.f2_username^"</b> "^msg_state^"\n"^(n_last_elements l_folders)^file.f2_name
 		  in
 
 		  begin try
@@ -241,7 +241,7 @@ This is free software under the MIT license.\n\n";
 
 		  List.iter (
 		  fun (file, date) ->
-		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date file.f2_login file.f2_name;
+		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date file.f2_username file.f2_name;
 		    Pervasives.flush Pervasives.stdout;
 		    
 		    let h_m_s = List.hd (List.tl (Str.split regexp_space date)) in
@@ -253,8 +253,8 @@ This is free software under the MIT license.\n\n";
 		    let l_folders = Str.split regexp_slash file.f2_path in
 		    let dbus_notif =
 		      match !nb_parent_folders with
-			| 0 -> "<b>"^file.f2_login^"</b> opened\n"^file.f2_name
-			| _ -> "<b>"^file.f2_login^"</b> opened\n"^(n_last_elements l_folders)^file.f2_name
+			| 0 -> "<b>"^file.f2_username^"</b> opened\n"^file.f2_name
+			| _ -> "<b>"^file.f2_username^"</b> opened\n"^(n_last_elements l_folders)^file.f2_name
 		    in
 
 		    begin try

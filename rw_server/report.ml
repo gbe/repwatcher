@@ -6,7 +6,10 @@ let prepare_data file =
   {
     f2_name = file.f_name ;
     f2_path = file.f_path ;
-    f2_login = file.f_login ;
+    f2_username =
+      (match Txt_operations.name (file.f_login) with
+	| None -> file.f_login
+	| Some username -> username);
     f2_program = file.f_program ;
   }
 ;;
@@ -90,11 +93,11 @@ let notify notification =
 	  let dbus_notif =
 	    match conf.c_notify.n_parent_folders with
 	      | None ->
-		sprintf "<b>%s</b> %s\n%s" file.f2_login msg_state filename_escaped 
+		sprintf "<b>%s</b> %s\n%s" file.f2_username msg_state filename_escaped 
 
 	      | Some parent_folders ->
 		sprintf "<b>%s</b> %s\n%s%s"
-		  file.f2_login
+		  file.f2_username
 		  msg_state
 		  (n_last_elements l_folders parent_folders)
 		  filename_escaped
@@ -162,6 +165,12 @@ let sql sql_report =
       | Some filesize -> Mysqldb.ml2str (Int64.to_string filesize)
   in
 
+  let username =
+    match Txt_operations.name f.f_login with
+      | None -> "NULL"
+      | Some username -> (Mysqldb.ml2str username)
+  in
+
   match sql_report.s_state with
   | SQL_File_Opened  ->
 
@@ -174,12 +183,13 @@ let sql sql_report =
     (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
     let query =
       Printf.sprintf "INSERT INTO accesses \
-      (login, program, program_pid, path, filename, filesize, \
+      (login, username, program, program_pid, path, filename, filesize, \
       filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
         (Mysqldb.ml2str f.f_login)
+	username
 	(Mysqldb.ml2str f.f_program)
-	(Mysqldb.ml2int f.f_program_pid)
+	(Mysqldb.ml2int (Fdinfo.int_of_pid f.f_program_pid))
 	(Mysqldb.ml2str f.f_path)
 	(Mysqldb.ml2str f.f_name)
 	filesize
@@ -238,11 +248,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect () with
+	match Mysqldb.connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query cid update_offset_query) ;
-	    Mysqldb.disconnect cid ;
+	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
+	    Mysqldb.disconnect ~log:false cid ;
 	    Nothing
     end
 
@@ -259,15 +269,28 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect () with
+	match Mysqldb.connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query cid update_offset_query) ;
-	    Mysqldb.disconnect cid ;
+	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
+	    Mysqldb.disconnect ~log:false cid ;
 	    Nothing
 ;;
 
 
+let mail tobemailed =
+  let conf = (Config.get ()).c_email in
+
+  begin match tobemailed.m_filestate with
+  | (File_Opened | File_Created) ->
+      if conf.e_open then
+	Mail.send tobemailed
+
+  | File_Closed ->
+      if conf.e_close then
+	Mail.send tobemailed
+  end
+;;  
 
 
 module Report =
@@ -283,5 +306,8 @@ struct
       notify notification ;
       Nothing
       
+    | Mail tobemailed ->
+      mail tobemailed;
+      Nothing
 ;;
 end;;

@@ -3,11 +3,13 @@ type f_file = {
   f_path        : string ;
   f_login       : string ;
   f_program     : string ;
-  f_program_pid : int    ;
+  f_program_pid : Fdinfo.pid;
   f_descriptor  : Fdinfo.fd ;
 }
 
-type file_state = File_Created | File_Opened | File_Closed
+type file_state = | File_Created
+		  | File_Opened
+		  | File_Closed
 
 type log_level = | Normal
 		 | Normal_Extra
@@ -17,7 +19,7 @@ type log_level = | Normal
 type file2clients = {
   f2_name        : string ;
   f2_path        : string ;
-  f2_login       : string ;
+  f2_username    : string ;
   f2_program     : string ;
 }
 
@@ -43,8 +45,17 @@ type sql_report = {
   s_created : bool ;
 }
 
+type mail_t = {
+  m_filestate: file_state;
+  m_file: file2clients;
+  m_offset: int64 option;
+  m_filesize: int64 option;
+  m_opening_date: string option;
+}
+
 type report = | Notify of notification
 	      | Sql    of sql_report
+	      | Mail   of mail_t
 
 type report_ret = Nothing | PrimaryKey of int64
 

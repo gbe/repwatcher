@@ -34,9 +34,13 @@ let check_options cert =
 %token SERVER_PORT
 %token SERVER_PROCESS_IDENTITY
 %token SERVER_PROCESS_CHROOT
+%token EMAIL_OPEN
+%token EMAIL_CLOSE
+%token EMAIL_SENDER_NAME
+%token EMAIL_SENDER_ADDRESS
+%token EMAIL_RECIPIENTS
 %token PARENT_FOLDERS
 %token LOG_LEVEL
-%token LOG_DIRECTORY
 %token <string>TXT
 %token EOF
 
@@ -51,7 +55,7 @@ let check_options cert =
 %%
 
 
-configuration: watch mode process_identity mysql notify server log EOF {
+configuration: watch mode process_identity mysql notify server email log EOF {
    {
       c_watch = $1;
       c_mode = $2;
@@ -59,7 +63,8 @@ configuration: watch mode process_identity mysql notify server log EOF {
       c_mysql = $4;
       c_notify = $5;
       c_server = $6;
-      c_log = $7;
+      c_email = $7;
+      c_log = $8;
    }
 }
 ;
@@ -103,30 +108,35 @@ process_identity:
 ;
 
 mysql:
+| { None }
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
   MYSQL_HOST EQUAL txt_plus
   MYSQL_PORT EQUAL uint
   MYSQL_DBNAME EQUAL txt_plus
-      {{
-       dbhost = Some $9;
-       dbname = Some $15;
-       dbport = Some $12;
-       dbpwd  = Some $6;
-       dbuser = Some $3;
-      }}
+      {
+	Some {
+	  dbhost = Some $9;
+	  dbname = Some $15;
+	  dbport = Some $12;
+	  dbpwd  = Some $6;
+	  dbuser = Some $3;
+	}
+      }
 
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
   MYSQL_HOST EQUAL txt_plus
   MYSQL_DBNAME EQUAL txt_plus
-      {{
-       dbhost = Some $9;
-       dbname = Some $12;
-       dbport = None;
-       dbpwd  = Some $6;
-       dbuser = Some $3;
-      }}
+      {
+	Some {
+	  dbhost = Some $9;
+	  dbname = Some $12;
+	  dbport = None;
+	  dbpwd  = Some $6;
+	  dbuser = Some $3;
+	}
+      }
 ;
 
 notify:
@@ -226,25 +236,52 @@ s_chroot:
 ;
 
 
+email:
+| EMAIL_OPEN EQUAL true_or_false
+  EMAIL_CLOSE EQUAL true_or_false
+    {
+     match $3 || $6 with
+     | true -> raise Parse_error
+     | false ->
+	 {
+	  e_open = false;
+	  e_close = false;
+	  e_sender_name = "";
+	  e_sender_address = "";
+	  e_recipients = [];
+	}
+   }
 
-log: log_verbosity log_directory {
-  
-  let directory =
-    match $2 with
-      | None ->
-	(* "./" for Unix *)
-	Filename.current_dir_name^Filename.dir_sep
-
-      | Some d -> d
-  in
-  {
-    l_verbosity = $1 ;
-    l_directory = directory ;
-  }
-}
+| EMAIL_OPEN EQUAL true_or_false
+  EMAIL_CLOSE EQUAL true_or_false
+  EMAIL_SENDER_NAME EQUAL txt_plus
+  EMAIL_SENDER_ADDRESS EQUAL txt_plus
+  EMAIL_RECIPIENTS EQUAL txt_plus_list
+    {
+     match $3 || $6 with
+     | false ->
+	 {
+	  e_open = false;
+	  e_close = false;
+	  e_sender_name = "";
+	  e_sender_address = "";
+	  e_recipients = [];
+	}
+     | true ->
+	 if List.length $15 == 0 then
+	   raise Parse_error
+	 else
+	   {
+	    e_open = $3;
+	    e_close = $6;
+	    e_sender_name = $9;
+	    e_sender_address = $12;
+	    e_recipients = $15;
+	  }
+   }
 ;
 
-log_verbosity:
+log:
 /* If the log part is commented then it means logging is disabled */
 | { Disabled }
 | LOG_LEVEL EQUAL uint {
@@ -255,10 +292,6 @@ log_verbosity:
   | _ -> raise Parse_error
 }
 ;
-
-log_directory:
-| { None }
-| LOG_DIRECTORY EQUAL txt_plus { Some $3 }
 
 txt_plus_list:
 | txt_plus { [$1] }

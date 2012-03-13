@@ -304,7 +304,7 @@ let print_file file =
     file.f_path
     file.f_login
     file.f_program
-    file.f_program_pid
+    (Fdinfo.int_of_pid file.f_program_pid)
     (Fdinfo.int_of_fd file.f_descriptor)
 ;;
 
@@ -323,7 +323,7 @@ let file_opened ?(created=false) wd name =
       if debug_event then
 	Printf.printf "[II] Folder: %s\n" father.path;
 
-      let files = File_list.get father.path name in
+      let files = Files.get father.path name in
 
       Mutex.lock Files_progress.mutex_ht ;
       
@@ -351,15 +351,8 @@ let file_opened ?(created=false) wd name =
 
 	    let file_prepared = Report.prepare_data file in
 
-	    begin match created with
-	      | false ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))))
-	      | true ->
-		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))))
-	    end;
-
 	    let offset_opt =
-	      Offset.get_offset file.f_program_pid (file.f_path^file.f_name)
+	      Files.get_offset file.f_program_pid file.f_descriptor
 	    in
 
 	    (* if the file is being created then the
@@ -371,6 +364,38 @@ let file_opened ?(created=false) wd name =
 		| true -> None
 	    in
 
+	    begin match created with
+	      | false ->
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
+		let tobemailed =
+		  {
+		    m_filestate = File_Opened;
+		    m_file = file_prepared;
+		    m_offset = offset_opt;
+		    m_filesize = filesize;
+
+		    (* Irrevelevant since the mail will tell the date *)
+		    m_opening_date = None;
+		  }
+		in
+
+		ignore (Report.report (Mail tobemailed))
+	      | true ->
+		let tobemailed =
+		  {
+		    m_filestate = File_Created;
+		    m_file = file_prepared;
+		    m_offset = offset_opt;
+		    m_filesize = filesize;
+
+		    (* Irrevelevant since the mail will tell the date *)
+		    m_opening_date = None;
+		  }
+		in
+		ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
+		ignore (Report.report (Mail tobemailed))
+	    end;
+
 	    let sql_report = 
 	      {
 		s_file = file ;
@@ -381,7 +406,7 @@ let file_opened ?(created=false) wd name =
 		s_pkey = None ;
 		s_created = created ;
 	      }
-	    in
+	    in	  
 
 	    match Report.report (Sql sql_report) with
 	      | Nothing -> () (* could be triggered by an SQL error *)
@@ -446,7 +471,7 @@ let file_closed ?(written=false) wd name =
 	  try
 	    Some (List.find (fun (fd, fdval) ->
 	      fd = f_file.f_descriptor
-	    ) (Fdinfo.get_fds (Fdinfo.pid_of_int f_file.f_program_pid)))
+	    ) (Fdinfo.get_fds f_file.f_program_pid))
 	  with _ -> None
 	in
 
@@ -467,14 +492,14 @@ let file_closed ?(written=false) wd name =
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
-    fun ((wd2, f_file), (d, filesize, (isoffsetknown, offset, err_counter), pkey, created)) ->
+    fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), pkey, created)) ->
 
       Mutex.lock Files_progress.mutex_ht ;	  
       Hashtbl.remove Files_progress.ht (wd2, f_file);
       Mutex.unlock Files_progress.mutex_ht ;
 
-      let date = Date.date () in
-      print_endline (date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+      let current_date = Date.date () in
+      print_endline (current_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
       Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
@@ -494,7 +519,7 @@ let file_closed ?(written=false) wd name =
       in
 
       (* update last known offset according to filesize if written is true *)
-      let offset =
+      let offset_opt =
 	match written with
 	  | false -> offset
 	  | true ->
@@ -514,8 +539,8 @@ let file_closed ?(written=false) wd name =
 	s_file = f_file ;
 	s_state = SQL_File_Closed ;
 	s_size = filesize ;
-	s_date = date ;
-	s_offset = offset ;
+	s_date = current_date ;
+	s_offset = offset_opt ;
 	s_pkey = Some pkey ;
 	s_created = created ;
       }
@@ -523,8 +548,18 @@ let file_closed ?(written=false) wd name =
 
       ignore (Report.report (Sql sql_report));
       let file_prepared = Report.prepare_data f_file in
-      ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
+      let tobemailed =
+	{
+	  m_filestate = File_Closed;
+	  m_file = file_prepared;
+	  m_offset = offset_opt;
+	  m_filesize = filesize;
+	  m_opening_date = Some opening_date;
+	}
+      in
 
+      ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
+      ignore (Report.report (Mail tobemailed))
   ) l_stop
 
 (* eo file_closed, false *)

@@ -3,10 +3,11 @@ open Types_conf
 open Fdinfo
 open Unix
 
+
 let get path name =
 
   let conf = Config.get () in
-  let pids = Fdinfo.get_pids () in
+  let pids = get_pids () in
   let fullpath = path^"/"^name in
 
   List.fold_left (fun acc pid ->
@@ -55,7 +56,7 @@ let get path name =
 		      f_path = path^"/" ;
 		      f_login = login ;
 		      f_program = prog ;
-		      f_program_pid = pid_int ;
+		      f_program_pid = pid ;
 		      f_descriptor = file_fd ;
 		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
@@ -72,7 +73,7 @@ let get path name =
 		      f_path = path^"/" ;
 		      f_login = login ;
 		      f_program = prog ;
-		      f_program_pid = pid_int ;
+		      f_program_pid = pid ;
 		      f_descriptor = file_fd ;
 		    }, (Int64.of_int size)) :: acc'
 		  ) acc file_fds
@@ -82,3 +83,44 @@ let get path name =
 	
   ) [] pids
 ;;
+
+
+let get_offset pid fd =
+
+  try
+    Some (get_infos pid fd).offset
+  with _ -> None
+;;
+
+
+(*
+let get_offset_old pid filepath =
+  let pid = pid_of_int pid in
+  
+  let fds =
+    try
+      get_fds pid
+    with
+      | Unix.Unix_error (error, funct, arg) ->
+	let err =
+	  Printf.sprintf "Offset. %s, in function %s, arg %s"
+	    (Unix.error_message error) funct arg
+	in
+	Log.log (err, Error) ;
+	[]
+
+      | Fdinfo_parse_error -> 
+	Log.log ("Offset. Error while parsing data from /proc", Error) ;
+	[]
+  in
+  
+  try
+    let fd = fst (List.find (fun (_, fd_path) -> fd_path = filepath) fds) in
+    Some ((get_infos pid fd).offset)
+  with
+    | Not_found ->
+      Log.log (("Offset. "^filepath^" not_found in /proc."), Error) ;
+      List.iter (fun (_, fdname) -> Log.log (fdname, Error)) fds ;
+      None
+;;
+*)

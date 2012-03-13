@@ -1,7 +1,7 @@
 type file2clients = {
   f2_name        : string ;
   f2_path        : string ;
-  f2_login       : string ;
+  f2_username    : string ;
   f2_program     : string ;
 }
 

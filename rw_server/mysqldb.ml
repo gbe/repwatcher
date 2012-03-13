@@ -7,40 +7,49 @@ let ml2str = Mysql.ml2str ;;
 let ml2int = Mysql.ml2int ;;
 let insert_id = Mysql.insert_id ;;
 
-let connect () =
-  try
+let connect ?(log=true) () =
 
-    let cid = Mysql.connect (Config.get()).c_mysql in
-    Log.log ("Connected to MySQL", Normal_Extra) ;
-    Some cid
+  match (Config.get()).c_mysql with
+    | None -> None
+    | Some m ->
 
-  with
-    | Mysql.Error error ->
-      Log.log (error, Error);
-      None
-    | Config.Config_error -> None
+      try
+	let cid = Mysql.connect m in
+
+	if log then
+	  Log.log ("Connected to MySQL", Normal_Extra) ;
+
+	Some cid
+      with
+	| Mysql.Error error ->
+	  Log.log (error, Error);
+	  None
+	| Config.Config_error -> None
 ;;
 
 let connect_without_db () =
 
-  try
-    let m = (Config.get()).c_mysql in
+  match (Config.get()).c_mysql with
+    | None -> None
+    | Some m ->
+      try
+	let cid = Mysql.connect { m with dbname = None } in
+	Log.log ("Connected to MySQL", Normal_Extra) ;
+	Some cid
 
-    let cid = Mysql.connect { m with dbname = None } in
-    Log.log ("Connected to MySQL", Normal_Extra) ;
-    Some cid
-
-  with
-    | Mysql.Error error ->
-      Log.log (error, Error);
-      None
-    | Config.Config_error -> None
+      with
+	| Mysql.Error error ->
+	  Log.log (error, Error);
+	  None
+	| Config.Config_error -> None
 ;;
 
-let disconnect cid =
+let disconnect ?(log=true) cid =
   try
     Mysql.disconnect cid;
-    Log.log ("Disconnected from MySQL", Normal_Extra)
+
+    if log then
+      Log.log ("Disconnected from MySQL", Normal_Extra)
 
   with Mysql.Error error ->
     Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
@@ -62,17 +71,21 @@ let map res =
 ;;
 
 
-let query cid q =
+let query ?(log=true) cid q =
   
-  Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
+  if log then
+    Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
   
   try
     let res = exec cid q in
     
     match status cid with
     | (StatusOK | StatusEmpty) ->
+      if log then
 	Log.log ("Query successfully executed", Normal_Extra);
-	Some res
+
+      Some res
+
     | StatusError _ ->
 	begin match errmsg cid with
 	| None ->
@@ -122,10 +135,9 @@ let create_db dbname =
 
 	disconnect cid
 
-      with
-	  Mysql.Error error ->
-	    Log.log (error, Error) ;
-	    exit 2
+      with Mysql.Error error ->
+	Log.log (error, Error) ;
+	exit 2
 ;;
 
 let create_table_accesses () =
@@ -134,6 +146,7 @@ let create_table_accesses () =
     Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(10) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
+  `USERNAME` varchar(256) DEFAULT NULL,\
   `PROGRAM` varchar(26) NOT NULL,\
   `PROGRAM_PID` int(8) NOT NULL,\
   `PATH` varchar(512) NOT NULL,\

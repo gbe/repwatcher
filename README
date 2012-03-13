@@ -4,19 +4,20 @@ To contact the author :
 gregory.bellier -- gmail -- com
 
 Dependencies for Debian/Ubuntu:
-ocaml ocaml-findlib ocaml-nox ocaml-native-compilers mysql-server libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev camlp4-extra
+ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev camlp4-extra libocamlnet-ocaml-dev libsyslog-ocaml-dev
 
-and also the ocaml-fdinfo library version 0.3 or above, downloadable here: gatekeeper.fr
+and also the ocaml-fdinfo library version 0.3.1 libsyslog-ocaml-dev or above, downloadable here: gatekeeper.fr
 
 * Please note that you need ocaml-ssl version 0.4.5 or +
 * The dependencies (libdus-ocaml-dev and libdbus-1-dev) can be avoided by disabling once and for all the local notifications at server side. Build the project like this: $ NO_DBUS=1 make
 
 
-The MySQL database and its "accesses" table are automatically created if they don't already exist. The database name is the one set in the configuration file. However, for your information, this is the accesses table :
+The MySQL database and its "accesses" table are automatically created if they don't already exist when MySQL is activated in the configuration file. The database name is the one set in the configuration file. However, for your information, this is the accesses table :
 
 CREATE TABLE IF NOT EXISTS `accesses` (
   `ID` int(10) NOT NULL AUTO_INCREMENT,
   `LOGIN` varchar(20) NOT NULL,
+  `USERNAME` varchar(256) DEFAULT NULL,
   `PROGRAM` varchar(26) NOT NULL,
   `PROGRAM_PID` int(8) NOT NULL,
   `PATH` varchar(512) NOT NULL,
@@ -40,6 +41,6 @@ If you want remote notifications, you need a CA, private keys and certificates f
 
 You can either run Repwatcher in a "screen" or with "nohup ./rw_server &".
 
-Use the -f argument to tell the server where the configuration file is. It searches iby default in the directory rw_server runs.
+Use the -f argument to tell the server where the configuration file is. It searches by default in the directory rw_server runs.
 
 Don't hesitate to give me some feedbacks.

@@ -134,35 +134,26 @@ This is free software under the MIT license.\n\n";
 	    end
       end;
 
-
-
-      (* From this point, if the program's identity was root then
-	 it's not anymore (if another id was given in replacement).
-	 This is what I call a transition between root_time and user_time.
-      *)
-
-
-
-
-      (* Until this point every logs were put into a FIFO.
-	 From this point on, the futur logs are really written
-	 into a file. Also, the logs saved into the FIFO are
-	 really written. This is to prevent root writing the files.
-      *)
-      Log.start_really_logging ();
-
-      Check_conf.sql_connection ();
-
       begin
-	match conf.c_mysql.dbname with
-	  | None -> assert false
-	  | Some dbname ->
-	    
-	    (* if Mysqldb.create_db goes wrong, the program exits *)
-	    Mysqldb.create_db dbname ;
+	match conf.c_mysql with
+	  | None -> ()
+	  | Some mysql ->
 
-	    (* if Mysqldb.create_table_accesses goes wrong, the program exits *)
-	    Mysqldb.create_table_accesses () ;
+	    match mysql.dbname with
+	      | None -> assert false
+	      | Some dbname ->
+
+		(* if Check_conf.sql_connection goes wrong, the program exits *)
+		Check_conf.sql_connection ();
+	    
+		(* if Mysqldb.create_db goes wrong, the program exits *)
+		Mysqldb.create_db dbname ;
+
+		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
+		Mysqldb.create_table_accesses () ;
+
+		(* Set to zero every files marked as 'in progress' in the SGBD *)
+		Mysqldb.sgbd_reset_in_progress ();
       end ;
 
       Check_conf.rights !config_file ;
@@ -170,17 +161,12 @@ This is free software under the MIT license.\n\n";
       (* If the server is enabled *)
       if conf.c_notify.n_remotely then
 	Check_conf.server_certs conf ;
-  
-      Check_conf.log_directory conf.c_log.l_directory;
-
-      (* Set to zero every files marked as 'in progress' in the SGBD *)
-      Mysqldb.sgbd_reset_in_progress ();
-    
+     
       (* Watch the config *)
       Core.add_watch !config_file None true;
       
       if conf.c_notify.n_remotely then begin
-	ignore (Thread.create Pipe_listening.wait_pipe_from_child_process ())
+	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
       end;
 
 
@@ -195,7 +181,7 @@ This is free software under the MIT license.\n\n";
       List.iter (fun dir -> Core.add_watch dir None false) dirs;
       Core.add_watch_children children;
 
-      ignore (Thread.create Offset.loop_check ()) ;
+      ignore (Thread.create Offset_thread.loop_check ()) ;
 
       ignore (Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) );
       Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
