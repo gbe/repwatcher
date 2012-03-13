@@ -32,7 +32,7 @@ open Unix ;;
  *)  
 let sql_connection () =
   match Mysqldb.connect_without_db () with
-    | None -> failwith "Could not connect, read the log"
+    | None -> failwith "Could not connect to MySQL server, read the log"
     | Some cid ->
       Mysqldb.disconnect cid
 ;;
