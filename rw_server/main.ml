@@ -137,15 +137,19 @@ This is free software under the MIT license.\n\n";
       Check_conf.sql_connection ();
 
       begin
-	match conf.c_mysql.dbname with
-	  | None -> assert false
-	  | Some dbname ->
-	    
-	    (* if Mysqldb.create_db goes wrong, the program exits *)
-	    Mysqldb.create_db dbname ;
+	match conf.c_mysql with
+	  | None -> ()
+	  | Some mysql ->
 
-	    (* if Mysqldb.create_table_accesses goes wrong, the program exits *)
-	    Mysqldb.create_table_accesses () ;
+	    match mysql.dbname with
+	      | None -> assert false
+	      | Some dbname ->
+	    
+		(* if Mysqldb.create_db goes wrong, the program exits *)
+		Mysqldb.create_db dbname ;
+
+		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
+		Mysqldb.create_table_accesses () ;
       end ;
 
       Check_conf.rights !config_file ;

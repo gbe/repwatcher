@@ -8,36 +8,40 @@ let ml2int = Mysql.ml2int ;;
 let insert_id = Mysql.insert_id ;;
 
 let connect ?(log=true) () =
-  try
 
-    let cid = Mysql.connect (Config.get()).c_mysql in
+  match (Config.get()).c_mysql with
+    | None -> None
+    | Some m ->
 
-    if log then
-      Log.log ("Connected to MySQL", Normal_Extra) ;
+      try
+	let cid = Mysql.connect m in
 
-    Some cid
+	if log then
+	  Log.log ("Connected to MySQL", Normal_Extra) ;
 
-  with
-    | Mysql.Error error ->
-      Log.log (error, Error);
-      None
-    | Config.Config_error -> None
+	Some cid
+      with
+	| Mysql.Error error ->
+	  Log.log (error, Error);
+	  None
+	| Config.Config_error -> None
 ;;
 
 let connect_without_db () =
 
-  try
-    let m = (Config.get()).c_mysql in
+  match (Config.get()).c_mysql with
+    | None -> None
+    | Some m ->
+      try
+	let cid = Mysql.connect { m with dbname = None } in
+	Log.log ("Connected to MySQL", Normal_Extra) ;
+	Some cid
 
-    let cid = Mysql.connect { m with dbname = None } in
-    Log.log ("Connected to MySQL", Normal_Extra) ;
-    Some cid
-
-  with
-    | Mysql.Error error ->
-      Log.log (error, Error);
-      None
-    | Config.Config_error -> None
+      with
+	| Mysql.Error error ->
+	  Log.log (error, Error);
+	  None
+	| Config.Config_error -> None
 ;;
 
 let disconnect ?(log=true) cid =
@@ -131,10 +135,9 @@ let create_db dbname =
 
 	disconnect cid
 
-      with
-	  Mysql.Error error ->
-	    Log.log (error, Error) ;
-	    exit 2
+      with Mysql.Error error ->
+	Log.log (error, Error) ;
+	exit 2
 ;;
 
 let create_table_accesses () =

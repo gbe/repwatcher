@@ -113,25 +113,29 @@ mysql:
   MYSQL_HOST EQUAL txt_plus
   MYSQL_PORT EQUAL uint
   MYSQL_DBNAME EQUAL txt_plus
-      {{
-       dbhost = Some $9;
-       dbname = Some $15;
-       dbport = Some $12;
-       dbpwd  = Some $6;
-       dbuser = Some $3;
-      }}
+      {
+	Some {
+	  dbhost = Some $9;
+	  dbname = Some $15;
+	  dbport = Some $12;
+	  dbpwd  = Some $6;
+	  dbuser = Some $3;
+	}
+      }
 
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
   MYSQL_HOST EQUAL txt_plus
   MYSQL_DBNAME EQUAL txt_plus
-      {{
-       dbhost = Some $9;
-       dbname = Some $12;
-       dbport = None;
-       dbpwd  = Some $6;
-       dbuser = Some $3;
-      }}
+      {
+	Some {
+	  dbhost = Some $9;
+	  dbname = Some $12;
+	  dbport = None;
+	  dbpwd  = Some $6;
+	  dbuser = Some $3;
+	}
+      }
 ;
 
 notify:
