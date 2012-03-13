@@ -134,8 +134,6 @@ This is free software under the MIT license.\n\n";
 	    end
       end;
 
-      Check_conf.sql_connection ();
-
       begin
 	match conf.c_mysql with
 	  | None -> ()
@@ -144,12 +142,18 @@ This is free software under the MIT license.\n\n";
 	    match mysql.dbname with
 	      | None -> assert false
 	      | Some dbname ->
+
+		(* if Check_conf.sql_connection goes wrong, the program exits *)
+		Check_conf.sql_connection ();
 	    
 		(* if Mysqldb.create_db goes wrong, the program exits *)
 		Mysqldb.create_db dbname ;
 
 		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
 		Mysqldb.create_table_accesses () ;
+
+		(* Set to zero every files marked as 'in progress' in the SGBD *)
+		Mysqldb.sgbd_reset_in_progress ();
       end ;
 
       Check_conf.rights !config_file ;
@@ -157,10 +161,7 @@ This is free software under the MIT license.\n\n";
       (* If the server is enabled *)
       if conf.c_notify.n_remotely then
 	Check_conf.server_certs conf ;
-  
-      (* Set to zero every files marked as 'in progress' in the SGBD *)
-      Mysqldb.sgbd_reset_in_progress ();
-    
+     
       (* Watch the config *)
       Core.add_watch !config_file None true;
       

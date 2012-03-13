@@ -108,6 +108,7 @@ process_identity:
 ;
 
 mysql:
+| { None }
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
   MYSQL_HOST EQUAL txt_plus
