@@ -396,34 +396,40 @@ let file_opened ?(created=false) wd name =
 		ignore (Report.report (Mail tobemailed))
 	    end;
 
-	    let sql_report = 
-	      {
-		s_file = file ;
-		s_state = SQL_File_Opened ;
-		s_size = filesize ;
-		s_date = date ;
-		s_offset = offset_opt ;
-		s_pkey = None ;
-		s_created = created ;
-	      }
-	    in	  
+	    let pkey_opt =
+	      match (Config.get()).c_mysql with
+		| None -> None
+		| Some m ->
 
-	    match Report.report (Sql sql_report) with
-	      | Nothing -> () (* could be triggered by an SQL error *)
-	      | PrimaryKey pkey ->
-		let isfirstoffsetknown =
-		  match offset_opt with
-		    | None -> false
-		    | Some _ -> true
-		in
+		  let sql_report =
+		    {
+		      s_file = file ;
+		      s_state = SQL_File_Opened ;
+		      s_size = filesize ;
+		      s_date = date ;
+		      s_offset = offset_opt ;
+		      s_pkey = None ;
+		      s_created = created ;
+		    }
+		  in
+		  match Report.report (Sql sql_report) with
+		    | Nothing -> None (* could be triggered by an SQL error *)
+		    | PrimaryKey pkey -> Some pkey
+	    in
 
-		Hashtbl.add Files_progress.ht
-		  (wd, file)
-		  (date,
-		   filesize,
-		   (isfirstoffsetknown, offset_opt, 0),
-		   pkey,
-		   created)
+	    let isfirstoffsetknown =
+	      match offset_opt with
+		| None -> false
+		| Some _ -> true
+	    in
+
+	    Hashtbl.add Files_progress.ht
+	      (wd, file)
+	      (date,
+	       filesize,
+	       (isfirstoffsetknown, offset_opt, 0),
+	       pkey_opt,
+	       created)
 
       ) files ;
       
@@ -492,7 +498,7 @@ let file_closed ?(written=false) wd name =
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
-    fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), pkey, created)) ->
+    fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), pkey_opt, created)) ->
 
       Mutex.lock Files_progress.mutex_ht ;	  
       Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -535,18 +541,22 @@ let file_closed ?(written=false) wd name =
 		      offset
       in
 
-      let sql_report = {
-	s_file = f_file ;
-	s_state = SQL_File_Closed ;
-	s_size = filesize ;
-	s_date = current_date ;
-	s_offset = offset_opt ;
-	s_pkey = Some pkey ;
-	s_created = created ;
-      }
-      in	  
+      begin match (Config.get()).c_mysql with
+	| None -> ()
+	| Some _ ->
+	  let sql_report = {
+	    s_file = f_file ;
+	    s_state = SQL_File_Closed ;
+	    s_size = filesize ;
+	    s_date = current_date ;
+	    s_offset = offset_opt ;
+	    s_pkey = pkey_opt ;
+	    s_created = created ;
+	  }
+	  in
+	  ignore (Report.report (Sql sql_report))
+      end;
 
-      ignore (Report.report (Sql sql_report));
       let file_prepared = Report.prepare_data f_file in
       let tobemailed =
 	{
