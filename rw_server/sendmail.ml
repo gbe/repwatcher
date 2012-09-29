@@ -1,3 +1,4 @@
+open Types
 open Types_conf
 
 let (|>) x f = f x
@@ -48,15 +49,11 @@ let socket_connect host port =
 class smtp_client ?(hostname = "localhost") ?(port = 25) () =
   object(self)
     val mutable channel = Unix_socket (socket_connect hostname port)
-    val mutable debug_level = 0
     val crlf_regexp = Str.regexp "\r\n"
     val new_line_regexp = Str.regexp "\\(\r\n\\|\r\\|\n\\)"
 
     initializer
       self#handle_reply
-
-    method set_debug_level n =
-      debug_level <- n
 
     method private input_line =
       let input = match channel with
@@ -89,7 +86,8 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
     method private handle_reply =
       let rec read acc =
         let l = self#input_line in
-          if debug_level > 0 then Printf.printf "S: %s\n%!" l;
+	let msg = Printf.sprintf "S: %s%!" l in
+	Log.log (msg, Normal_Extra);
           if l.[3] = '-' then read (l::acc)
           else int_of_string (String.sub l 0 3) , List.rev (l::acc) in
       let code, msg = read [] in
@@ -98,7 +96,8 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
           | _ -> raise (SMTP_error (code, msg))
 
     method private smtp_cmd cmd =
-      if debug_level > 0 then Printf.printf "C: %s\n%!" cmd;
+      let msg = Printf.sprintf "C: %s%!" cmd in
+      Log.log (msg, Normal_Extra);
       self#output_string cmd;
       self#output_string "\r\n";
       self#handle_reply
@@ -159,7 +158,6 @@ let sendmail conf_e subject body ?(attachment) () =
 
   let client = new smtp_client ~hostname:e_smtp.sm_host ~port:e_smtp.sm_port () in
     try
-      client#set_debug_level 1;(* Uncomment to see protocol in action *)
       client#ehlo ~host:"local.host.name" ();
       if e_smtp.sm_ssl then
 	begin
@@ -178,5 +176,6 @@ let sendmail conf_e subject body ?(attachment) () =
       client#quit
     with
       | SMTP_error (code, _) ->
-          Printf.printf "exit with error code %d\n" code;
-          Config.conf := Some { Config.get() with c_email = None }
+        Config.conf := Some { Config.get() with c_email = None };
+	let err = Printf.sprintf "SMTP error code %d. Mail sending disabled" code in
+	Log.log (err, Error)

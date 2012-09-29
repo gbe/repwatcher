@@ -70,7 +70,7 @@ let send mail =
   List.iter (fun recipient ->
     let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^filestate_str^" "^file.f2_name in
 
-    Log.log (txt2log, Normal_Extra)
+    Log.log (txt2log, Normal)
   ) e.e_recipients;
   (************************)
 
