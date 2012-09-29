@@ -16,6 +16,8 @@ open Unix ;;
    - exist, can be read and rights: key
    - chroot folder
    - server identity
+
+   - if the smtp server can be reached
  *)
 
 
@@ -150,3 +152,17 @@ let remote_process_identity conf =
 	      Log.log (error, Error);
 	      failwith error
 ;;
+
+let check_smtp_server host port =
+  try
+    let resolve name =
+      try Unix.inet_addr_of_string name
+      with Failure _ ->
+        let h = Unix.gethostbyname name in
+        h.Unix.h_addr_list.(0)
+    in
+    
+    let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+    Unix.connect s (Unix.ADDR_INET((resolve host), port));
+    Unix.close s
+  with _ -> Log.log ("Err: while checking if I could connect to "^host^", an error occured. Seng of emails is disabled", Error);

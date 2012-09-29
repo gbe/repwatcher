@@ -46,17 +46,20 @@ let socket_connect host port =
     Unix.connect s (Unix.ADDR_INET((resolve host), port));
     s
 
-class smtp_client ?(hostname = "localhost") ?(port = 25) () =
+class smtp_client hostname port =
   object(self)
-    val mutable channel = Unix_socket (socket_connect hostname port)
+    val mutable channel = None
     val crlf_regexp = Str.regexp "\r\n"
     val new_line_regexp = Str.regexp "\\(\r\n\\|\r\\|\n\\)"
+    val mutable vatefaireenculer = 0
 
-    initializer
-      self#handle_reply
+    method private get_channel =
+      match channel with
+	| None -> assert false
+	| Some c' -> c'
 
     method private input_line =
-      let input = match channel with
+      let input = match self#get_channel with
         | Unix_socket s -> Unix.read s
         | SSL_socket s -> Ssl.read s in
       let s = String.create 1 and b = Buffer.create 80 in
@@ -69,7 +72,7 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
         Buffer.contents b
 
     method private output_string s =
-      let output = match channel with
+      let output = match self#get_channel with
         | Unix_socket s -> Unix.write s
         | SSL_socket s -> Ssl.write s in
       let really_output s pos len =
@@ -102,6 +105,10 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
       self#output_string "\r\n";
       self#handle_reply
 
+    method connect =
+      channel <- Some (Unix_socket (socket_connect hostname port));
+      self#handle_reply
+
     method ehlo ?host () =
       self#smtp_cmd ("EHLO " ^ (
         match host with
@@ -112,12 +119,12 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
     method starttsl =
       self#smtp_cmd "STARTTLS";
         let ssl_context = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
-        let s = match channel with
+        let s = match self#get_channel with
                   | Unix_socket s -> s
                   | SSL_socket _ -> assert false in (* TODO *)
         let ssl_s = Ssl.embed_socket s ssl_context in
           Ssl.connect ssl_s;
-          channel <- SSL_socket ssl_s;
+          channel <- Some (SSL_socket ssl_s);
 
     method login user password =
       let encoded_login =
@@ -140,7 +147,14 @@ class smtp_client ?(hostname = "localhost") ?(port = 25) () =
                                   else s^"\r\n"));
       self#smtp_cmd "."
 
-    method quit = self#smtp_cmd "QUIT"
+    method quit =
+      self#smtp_cmd "QUIT"
+
+    method disconnect =
+      match self#get_channel with
+        | Unix_socket s -> Unix.close s
+        | SSL_socket s -> Ssl.shutdown s
+
   end
 
 let sendmail conf_e subject body ?(attachment) () =
@@ -156,8 +170,9 @@ let sendmail conf_e subject body ?(attachment) () =
 
   let email_as_string = create_message conf_e subject body attachment in
 
-  let client = new smtp_client ~hostname:e_smtp.sm_host ~port:e_smtp.sm_port () in
+  let client = new smtp_client e_smtp.sm_host e_smtp.sm_port in
     try
+      client#connect;
       client#ehlo ~host:"local.host.name" ();
       if e_smtp.sm_ssl then
 	begin
@@ -173,9 +188,13 @@ let sendmail conf_e subject body ?(attachment) () =
       client#mail conf_e.e_sender_address;
       List.iter client#rcpt conf_e.e_recipients;
       client#data email_as_string;
-      client#quit
+      client#quit;
+      client#disconnect
     with
       | SMTP_error (code, _) ->
         Config.conf := Some { Config.get() with c_email = None };
-	let err = Printf.sprintf "SMTP error code %d. Mail sending disabled" code in
+	let err = Printf.sprintf "SMTP error code %d. Sending of emails is disabled" code in
 	Log.log (err, Error)
+      | _ ->
+        Config.conf := Some { Config.get() with c_email = None };
+	Log.log ("An error occured while connecting to the smtp server. Sending of emails is disabled", Error)

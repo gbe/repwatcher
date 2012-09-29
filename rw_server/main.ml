@@ -69,6 +69,11 @@ This is free software under the MIT license.\n\n";
 
   let conf = load_config () in
 
+  (* Check if a connection can be done with the SMTP server *)
+  begin match conf.c_email with
+    | None -> ()
+    | Some e -> Check_conf.check_smtp_server e.e_smtp.sm_host e.e_smtp.sm_port
+  end;
 
   (* Fork if remote notifications are activated *)
   let fd =
