@@ -46,6 +46,11 @@ rule nexttoken = parse
   | "email_sender_name"                { EMAIL_SENDER_NAME }
   | "email_sender_address"             { EMAIL_SENDER_ADDRESS }
   | "email_recipients"                 { EMAIL_RECIPIENTS }
+  | "smtp_host"                        { SMTP_HOST }
+  | "smtp_port"                        { SMTP_PORT }
+  | "smtp_username"                    { SMTP_USERNAME }
+  | "smtp_passwd"                      { SMTP_PASSWD }
+  | "smtp_ssl"                         { SMTP_SSL }
   | "log_level"                        { LOG_LEVEL }
   | eof                                { EOF }
   | '\n'                               { newline lexbuf; nexttoken lexbuf }

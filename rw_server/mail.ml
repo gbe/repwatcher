@@ -6,7 +6,14 @@ open Types_conf ;;
 let send mail =
 
   let file = mail.m_file in
-  let conf = (Config.get ()).c_email in
+  let conf_e_opt = (Config.get ()).c_email in
+
+  let e =
+    match conf_e_opt with
+    (* Cannot happen as it is filtered in report.ml *)
+      | None -> assert false
+      | Some e -> e
+  in
 
   let filestate_str =
     match mail.m_filestate with
@@ -57,15 +64,6 @@ let send mail =
   in
 
 
-
-
-  (* This avoids to ask for the recipients's real name in the config file *)
-  let recipients =
-    List.map (fun address ->
-      ("", address))
-      conf.e_recipients
-  in
-
   let subject = file.f2_username^" "^filestate_str^" "^file.f2_name in
   
   (***** Let's log it *****)
@@ -73,11 +71,8 @@ let send mail =
     let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^filestate_str^" "^file.f2_name in
 
     Log.log (txt2log, Normal_Extra)
-  ) conf.e_recipients;
+  ) e.e_recipients;
   (************************)
 
-  let m =
-    compose ~from_addr:(conf.e_sender_name, conf.e_sender_address) ~to_addrs:recipients ~subject:subject ~in_charset:`Enc_utf8 ~out_charset:`Enc_utf8 (gentxt ())
-  in
-  sendmail ~mailer:"sendmail" m
+  Sendmail.sendmail e subject (gentxt ()) ()
 ;;

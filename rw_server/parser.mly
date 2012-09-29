@@ -39,6 +39,11 @@ let check_options cert =
 %token EMAIL_SENDER_NAME
 %token EMAIL_SENDER_ADDRESS
 %token EMAIL_RECIPIENTS
+%token SMTP_HOST
+%token SMTP_PORT 
+%token SMTP_USERNAME
+%token SMTP_PASSWD
+%token SMTP_SSL
 %token PARENT_FOLDERS
 %token LOG_LEVEL
 %token <string>TXT
@@ -223,7 +228,7 @@ serv_key_pwd:
 
 s_port:
 | { None }
-| SERVER_PORT EQUAL uint_pos { Some $3 }
+| SERVER_PORT EQUAL uint_not_null { Some $3 }
 
 s_process_identity:
 | { None }
@@ -237,49 +242,63 @@ s_chroot:
 
 
 email:
-| EMAIL_OPEN EQUAL true_or_false
-  EMAIL_CLOSE EQUAL true_or_false
-    {
-     match $3 || $6 with
-     | true -> raise Parse_error
-     | false ->
-	 {
-	  e_open = false;
-	  e_close = false;
-	  e_sender_name = "";
-	  e_sender_address = "";
-	  e_recipients = [];
-	}
-   }
-
+| { None }
 | EMAIL_OPEN EQUAL true_or_false
   EMAIL_CLOSE EQUAL true_or_false
   EMAIL_SENDER_NAME EQUAL txt_plus
   EMAIL_SENDER_ADDRESS EQUAL txt_plus
   EMAIL_RECIPIENTS EQUAL txt_plus_list
+  smtp
     {
-     match $3 || $6 with
-     | false ->
-	 {
-	  e_open = false;
-	  e_close = false;
-	  e_sender_name = "";
-	  e_sender_address = "";
-	  e_recipients = [];
-	}
-     | true ->
-	 if List.length $15 == 0 then
-	   raise Parse_error
-	 else
-	   {
-	    e_open = $3;
-	    e_close = $6;
-	    e_sender_name = $9;
-	    e_sender_address = $12;
-	    e_recipients = $15;
-	  }
+	(* check_recipients *)
+      if List.length $15 == 0 then
+	raise Parse_error
+      else
+      
+	match $3 || $6 with
+	  | false -> None
+	  | true ->
+	    Some {
+	      e_open = $3;
+	      e_close = $6;
+	      e_sender_name = $9;
+	      e_sender_address = $12;
+	      e_recipients = $15;
+	      e_smtp = $16
+	    }
+    }
+;
+
+smtp:
+| SMTP_HOST EQUAL txt_plus
+  smtp_port
+  smtp_credentials
+  SMTP_SSL EQUAL true_or_false
+  {
+    {
+      sm_host = $3;
+      sm_port = $4;
+      sm_credentials = $5;
+      sm_ssl = $8
+    }
+  }
+;
+
+smtp_port:
+| { 25 }
+|  SMTP_PORT EQUAL uint_not_null { $3 }
+;
+
+smtp_credentials:
+| { None }
+|  SMTP_USERNAME EQUAL txt_plus
+   SMTP_PASSWD EQUAL txt_plus
+   {
+    Some {cred_username = $3; cred_passwd = $6}
    }
 ;
+
+
 
 log:
 /* If the log part is commented then it means logging is disabled */
@@ -321,7 +340,7 @@ true_or_false:
 }
 ;
 
-uint_pos:
+uint_not_null:
 | uint {
   if $1 = 0 then
     raise Parse_error

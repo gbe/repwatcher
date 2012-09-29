@@ -41,12 +41,25 @@ type log_verbosity =
   | Regular
   | Debug
 
+type smtp_credentials = {
+  cred_username : string;
+  cred_passwd : string  
+}
+
+type smtp = {
+  sm_host : string;
+  sm_port : int;
+  sm_credentials : smtp_credentials option;
+  sm_ssl : bool
+}
+
 type email = {
     e_open : bool;
     e_close : bool;
     e_sender_name : string;
     e_sender_address : string;
     e_recipients : string list;
+    e_smtp : smtp;
 }
 
 type configuration = {
@@ -56,6 +69,6 @@ type configuration = {
     c_mysql : sql_db option;
     c_notify : notify;
     c_server : server_t option;
-    c_email : email;
+    c_email : email option;
     c_log : log_verbosity;
 }

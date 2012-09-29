@@ -281,15 +281,19 @@ let sql sql_report =
 let mail tobemailed =
   let conf = (Config.get ()).c_email in
 
-  begin match tobemailed.m_filestate with
-  | (File_Opened | File_Created) ->
-      if conf.e_open then
-	Mail.send tobemailed
+  match conf with
+    | None -> ()
+    | Some c ->
 
-  | File_Closed ->
-      if conf.e_close then
-	Mail.send tobemailed
-  end
+      begin match tobemailed.m_filestate with
+	| (File_Opened | File_Created) ->
+	  if c.e_open then
+	    Mail.send tobemailed
+
+	| File_Closed ->
+	  if c.e_close then
+	    Mail.send tobemailed
+      end
 ;;  
 
 
