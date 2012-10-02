@@ -51,7 +51,6 @@ class smtp_client hostname port =
     val mutable channel = None
     val crlf_regexp = Str.regexp "\r\n"
     val new_line_regexp = Str.regexp "\\(\r\n\\|\r\\|\n\\)"
-    val mutable vatefaireenculer = 0
 
     method private get_channel =
       match channel with
