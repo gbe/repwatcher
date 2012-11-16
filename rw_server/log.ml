@@ -24,7 +24,7 @@ let log (txt, log_level) =
 	| Regular  ->
 	  begin
 	    match log_level with
-	      | Normal       -> syslog cid `LOG_NOTICE txt
+	      | Normal       -> syslog cid `LOG_INFO txt
 	      | Normal_Extra -> () (* don't log *)
 	      | Error        ->
 		prerr_endline txt;
