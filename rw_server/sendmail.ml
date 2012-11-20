@@ -108,12 +108,8 @@ class smtp_client hostname port =
       channel <- Some (Unix_socket (socket_connect hostname port));
       self#handle_reply
 
-    method ehlo ?host () =
-      self#smtp_cmd ("EHLO " ^ (
-        match host with
-          | None -> (Unix.gethostbyname (Unix.gethostname ())).Unix.h_name
-          | Some s -> s
-        ))
+    method ehlo () =
+      self#smtp_cmd ("EHLO " ^ (Unix.gethostname ()))
 
     method starttsl =
       self#smtp_cmd "STARTTLS";
@@ -172,11 +168,11 @@ let sendmail conf_e subject body ?(attachment) () =
   let client = new smtp_client e_smtp.sm_host e_smtp.sm_port in
     try
       client#connect;
-      client#ehlo ~host:"local.host.name" ();
+      client#ehlo ();
       if e_smtp.sm_ssl then
 	begin
 	  client#starttsl;
-	  client#ehlo ~host:"local.host.name" ();
+	  client#ehlo ();
 	  match e_smtp.sm_credentials with
 	    | None -> ()
 	    | Some cred ->
