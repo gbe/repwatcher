@@ -11,13 +11,6 @@ let log (txt, log_level) =
       openlog ~facility:`LOG_USER ~flags:[] "rw_server"
     in
 
-(*    let log_it () =
-      match log_level with
-	| Normal -> syslog cid `LOG_NOTICE txt
-	| Normal_Extra -> syslog cid `LOG_NOTICE txt
-	| Error -> syslog cid `LOG_ERR txt
-    in
-*)
     begin
       match conf.c_log with
 	| Disabled -> () (* don't log *)
@@ -30,9 +23,15 @@ let log (txt, log_level) =
 		prerr_endline txt;
 		syslog cid `LOG_ERR txt
 	  end
-	| Debug -> syslog cid `LOG_DEBUG txt
+	| Debug ->
+	  begin
+	    match log_level with
+	      | (Normal | Normal_Extra) -> syslog cid `LOG_DEBUG txt
+	      | Error ->
+		prerr_endline txt;
+		syslog cid `LOG_ERR txt
+	  end;
     end;
-
     closelog cid;
 
   with _ -> prerr_endline "Syslog error"
