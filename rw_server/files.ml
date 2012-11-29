@@ -3,6 +3,14 @@ open Types_conf
 open Fdinfo
 open Unix
 
+let extract line =
+  let r = Str.regexp "[^(]+(\\([^)]+\\))" in
+  match (Str.string_match r line 0) with
+    | true -> Str.matched_group 1 line
+    | false ->
+      Log.log ("Program name could not be extracted", Error) ;      
+      "?"
+;;
 
 let get path name =
 
@@ -43,9 +51,11 @@ let get path name =
 
 	    let size = (Unix.stat fullpath).st_size in
 	    
-	    let prog_c = open_in ("/proc/"^pid_str^"/comm") in
-	    let prog = input_line prog_c in
+	    let prog_c = open_in ("/proc/"^pid_str^"/stat") in
+	    let line = input_line prog_c in
 	    close_in_noerr prog_c;
+
+	    let prog = extract line in
       
 	    match conf.c_mode with
 	      | (Specified_programs, specified_programs) ->
