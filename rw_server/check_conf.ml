@@ -165,4 +165,4 @@ let check_smtp_server host port =
     let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     Unix.connect s (Unix.ADDR_INET((resolve host), port));
     Unix.close s
-  with _ -> Log.log ("Err: while checking if I could connect to "^host^", an error occured. Seng of emails is disabled", Error);
+  with _ -> Log.log ("Err: while checking if I could connect to "^host^", an error occured. Sending of emails is disabled", Error);
