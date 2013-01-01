@@ -7,7 +7,7 @@ let wait_pipe_from_child_process () =
   let buf = String.create bufsize in
   
   while true do
-    let recv = Unix.read Pipe.tor2 buf 0 bufsize in
+    let recv = Unix.read Pipe.child2father#get_toread buf 0 bufsize in
     
     if recv > 0 then begin
       let data = String.sub buf 0 recv in
