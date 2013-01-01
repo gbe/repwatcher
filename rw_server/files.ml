@@ -15,8 +15,15 @@ let extract line =
 let get path name =
 
   let conf = Config.get () in
-  let pids = get_pids () in
   let fullpath = path^"/"^name in
+
+  let pids =
+    try
+      Fdinfo.get_pids ()
+    with Fdinfo_unix_error (err, funct) ->
+      Log.log ((funct^" failed: "^(error_message err)), Normal_Extra);
+      []
+  in
 
   List.fold_left (fun acc pid ->
     try
@@ -33,7 +40,13 @@ let get path name =
 	| false ->
 	  begin
 
-	    let fds = get_fds pid in
+	    let fds = 
+	      try
+		Fdinfo.get_fds pid
+	      with Fdinfo_unix_error (err, funct) ->
+		Log.log ((funct^" failed: "^(error_message err)), Normal_Extra);
+		[]
+	    in
 	    
 	    (* Test if this processus opened this file.
 	     * The processus may have opened several times the same file,
@@ -53,7 +66,7 @@ let get path name =
 	    
 	    let prog_c = open_in ("/proc/"^pid_str^"/stat") in
 	    let line = input_line prog_c in
-	    close_in_noerr prog_c;
+	    close_in prog_c;
 
 	    let prog = extract line in
       
@@ -89,8 +102,16 @@ let get path name =
 		  ) acc file_fds
 	  end
     with
-      | _ -> acc
-	
+      | Unix_error (err, "stat", _) ->
+	Log.log ("Error could not stat the file "^name, Error) ;
+	acc
+      | Unix_error (err, "getpwuid", _) ->
+	Log.log ("Error could not getpwuid the user for the file "^name, Error) ;
+	acc
+      | Not_found ->
+	Log.log ("Could not getpwuid the user who opened the file "^name^" while his/her ID is known", Error) ;
+	acc
+
   ) [] pids
 ;;
 
@@ -99,7 +120,9 @@ let get_offset pid fd =
 
   try
     Some (get_infos pid fd).offset
-  with _ -> None
+  with Fdinfo_parse_error ->
+    Log.log ("Fdinfo_parse_error raised", Error) ;
+    None
 ;;
 
 
