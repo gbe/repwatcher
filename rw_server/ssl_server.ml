@@ -16,7 +16,7 @@ let connected_clients = ref []
  *) 
 let tellserver (com : com_net2main) =
   let str_com = Marshal.to_string com [Marshal.No_sharing] in
-  ignore (Unix.write Pipe.tow2 str_com 0 (String.length str_com))
+  ignore (Unix.write (Pipe.child2father#get_towrite) str_com 0 (String.length str_com))
 ;;
 
 

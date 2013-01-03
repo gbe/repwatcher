@@ -90,7 +90,12 @@ This is free software under the MIT license.\n\n";
 	| None -> assert false
 	| Some server ->
 	  Log.log ("Start server for remote notifications", Normal_Extra) ;
-	  Unix.fork();
+
+	  (* Pipes initialization must be done before the fork *)
+	  Pipe.father2child#create;
+	  Pipe.child2father#create;
+
+	  Unix.fork ();
       end
     | false -> -1
   in
@@ -100,10 +105,11 @@ This is free software under the MIT license.\n\n";
   match fd with
     | 0 ->
       if conf.c_notify.n_remotely then begin
+
 	match conf.c_server with
 	  | None -> assert false
 	  | Some server ->
-	    Ssl_server.run Pipe.tor server
+	    Ssl_server.run Pipe.father2child#get_toread server
       end
 
     | _ ->
@@ -208,6 +214,6 @@ This is free software under the MIT license.\n\n";
 	  let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
 	  let event_l = Inotify.read Core.fd in
 	  List.iter Events.what_to_do event_l
-	with Unix_error (_,_,_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
+	with Unix_error (_,"select",_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
       done;
 ;;

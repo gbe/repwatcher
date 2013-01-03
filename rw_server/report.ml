@@ -119,7 +119,7 @@ let notify notification =
 	    in
 	    
 	    (* Send in the pipe for the server to send to the clients *)
-	    ignore ( Unix.write Pipe.tow str_notif 0 (String.length str_notif) )
+	    ignore ( Unix.write (Pipe.father2child#get_towrite) str_notif 0 (String.length str_notif) )
 	  with _ ->
 	    Log.log ("An error occured trying to send in the pipe the notification", Error)
 	      
@@ -143,7 +143,7 @@ let notify notification =
       in
 
       (* send through the pipe to be processed by the server *)
-      ignore (Unix.write Pipe.tow str_current 0 (String.length str_current))
+      ignore (Unix.write (Pipe.father2child#get_towrite) str_current 0 (String.length str_current))
 ;;
 
 
