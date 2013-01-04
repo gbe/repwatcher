@@ -23,7 +23,7 @@ let loop_check () =
 	   * be removed from the files in progress hashtable
 	   * Removable is done at the second time so that time is given to a close event
 	   * to be processed by core (concurrency between offset and core)
-	   * The removable is actually done through the file_closed event which is forced here
+	   * The removal is actually done through the file_closed event which is forced here
 	   *)
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
@@ -39,7 +39,7 @@ let loop_check () =
 		  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
 	    in
 	    Log.log (
-	      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Error) ;
+	      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
 	    Events.what_to_do event
 	  end
 
