@@ -30,7 +30,7 @@ let _ =
   
   let usage = "usage: rw_client host [-p port] [-f Configuration file path] [-n Folders_nb_for_notifications]" in
   
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2012  Grégory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2009-2013  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
