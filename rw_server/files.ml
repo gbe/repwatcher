@@ -3,6 +3,8 @@ open Types_conf
 open Fdinfo
 open Unix
 
+exception Process_closed of string ;;
+
 let extract line =
   let r = Str.regexp "[^(]+(\\([^)]+\\))" in
   match (Str.string_match r line 0) with
@@ -48,7 +50,13 @@ let get path name =
 	with _ -> false
       in
 
-      let uid = (Unix.stat pid_path).st_uid in
+      let uid =
+	try
+	  (Unix.stat pid_path).st_uid 
+	with Unix_error (err, "stat", _) ->
+	  raise (Process_closed (error_message err))
+      in
+
       let login = (Unix.getpwuid uid).pw_name in
 
       (* must have access rights on /proc/pid/fd and user not ignored *)
@@ -125,11 +133,15 @@ let get path name =
 		      ) acc file_fds
 	  end
     with
+      | Process_closed err ->
+	let errmsg = "The processus is probably already closed. Here is the error: "^err in
+	Log.log (errmsg, Normal_Extra) ;
+	acc
       | Unix_error (err, "stat", _) ->
 	Log.log ("Error could not stat the file "^name, Error) ;
 	acc
       | Unix_error (err, "getpwuid", _) ->
-	Log.log ("Error could not getpwuid the user for the file "^name, Error) ;
+	Log.log ("Error could not getpwuid the user for the file "^name, Normal_Extra) ;
 	acc
       | Not_found ->
 	Log.log ("Could not getpwuid the user who opened the file "^name^" while his/her ID is known", Error) ;
