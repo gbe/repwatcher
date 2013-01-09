@@ -49,7 +49,7 @@ let clean_exit () =
 (* Main function *)
 let _ =  
 
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2013  Grégory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2007-2013  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
