@@ -95,7 +95,11 @@ let get path name =
 	      | _ ->
 		let size = (Unix.stat fullpath).st_size in
 		  
-		let prog_c = open_in (pid_path^"/stat") in
+		let prog_c =
+		  try
+		    open_in (pid_path^"/stat")
+		  with Sys_error msg -> raise (Process_closed msg)
+		in
 		let line = input_line prog_c in
 		close_in prog_c;
 
@@ -133,9 +137,9 @@ let get path name =
 		      ) acc file_fds
 	  end
     with
-      | Process_closed err ->
-	let errmsg = "The processus is probably already closed. Here is the error: "^err in
-	Log.log (errmsg, Normal_Extra) ;
+      | Process_closed msg ->
+	let txt = "The processus is probably already closed. Here is the msg: "^msg in
+	Log.log (txt, Normal_Extra) ;
 	acc
       | Unix_error (err, "stat", _) ->
 	Log.log ("Error could not stat the file "^name, Error) ;
