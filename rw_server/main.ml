@@ -49,7 +49,7 @@ let clean_exit () =
 (* Main function *)
 let _ =  
 
-  Printf.printf "\nRepwatcher  Copyright (C) 2009-2012  Grégory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2007-2013  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
@@ -197,7 +197,6 @@ This is free software under the MIT license.\n\n";
       ignore (Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) );
       Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
 
-
       (* **************************** *)
       (* For interruptions *)
       let loop = ref true in
@@ -210,10 +209,15 @@ This is free software under the MIT license.\n\n";
       (* **************************** *)
 
       while !loop do
-	try
-	  let _,_,_ = Unix.select [ Core.fd ] [] [] (-1.) in
-	  let event_l = Inotify.read Core.fd in
-	  List.iter Events.what_to_do event_l
-	with Unix_error (_,"select",_) -> () (* Unix.select triggers this error when ctrl+c is pressed *)
+	let event_l = 
+	  try
+	    ignore (Unix.select [ Core.fd ] [] [] (-1.));
+	    Inotify.read Core.fd
+	  with
+	    (* triggered when ctrl+c is pressed *)
+	    | Unix_error (_,"select",_) -> [] 
+	    | Unix_error (e, "read", _) -> []
+	in
+	List.iter Events.what_to_do event_l
       done;
 ;;
