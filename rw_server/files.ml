@@ -54,7 +54,8 @@ let get path name =
 	try
 	  (Unix.stat pid_path).st_uid 
 	with Unix_error (err, "stat", _) ->
-	  raise (Process_closed (error_message err))
+	  let msg = (error_message err)^": "^pid_path^" (stat)" in
+	  raise (Process_closed msg)
       in
 
       let login = (Unix.getpwuid uid).pw_name in
