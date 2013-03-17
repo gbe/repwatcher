@@ -5,7 +5,7 @@ open Types
 open Types_conf
 open Core
 
-
+let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 (* Configuration file fullpath *)
 let config_file = ref "repwatcher.conf" ;;
