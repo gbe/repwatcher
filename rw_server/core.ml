@@ -397,7 +397,7 @@ let file_opened ?(created=false) wd name =
 	    end;
 
 	    let pkey_opt =
-	      match (Config.get()).c_mysql with
+	      match ((Config.cfg)#get).c_mysql with
 		| None -> None
 		| Some m ->
 
@@ -541,7 +541,7 @@ let file_closed ?(written=false) wd name =
 		      offset
       in
 
-      begin match (Config.get()).c_mysql with
+      begin match ((Config.cfg)#get).c_mysql with
 	| None -> ()
 	| Some _ ->
 	  let sql_report = {

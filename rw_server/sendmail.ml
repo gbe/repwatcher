@@ -108,7 +108,7 @@ class smtp_client hostname port =
       channel <- Some (Unix_socket (socket_connect hostname port));
       self#handle_reply
 
-    method ehlo () =
+    method ehlo =
       self#smtp_cmd ("EHLO " ^ (Unix.gethostname ()))
 
     method starttsl =
@@ -168,11 +168,11 @@ let sendmail conf_e subject body ?(attachment) () =
   let client = new smtp_client e_smtp.sm_host e_smtp.sm_port in
     try
       client#connect;
-      client#ehlo ();
+      client#ehlo;
       if e_smtp.sm_ssl then
 	begin
 	  client#starttsl;
-	  client#ehlo ();
+	  client#ehlo;
 	  match e_smtp.sm_credentials with
 	    | None -> ()
 	    | Some cred ->
@@ -187,9 +187,9 @@ let sendmail conf_e subject body ?(attachment) () =
       client#disconnect
     with
       | SMTP_error (code, _) ->
-        Config.conf := Some { Config.get() with c_email = None };
+	(Config.cfg)#set_email_none;
 	let err = Printf.sprintf "SMTP error code %d. Sending of emails is disabled" code in
 	Log.log (err, Error)
       | _ ->
-        Config.conf := Some { Config.get() with c_email = None };
+	(Config.cfg)#set_email_none;
 	Log.log ("An error occured while connecting to the smtp server. Sending of emails is disabled", Error)

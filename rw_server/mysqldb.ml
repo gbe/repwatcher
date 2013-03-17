@@ -9,7 +9,8 @@ let insert_id = Mysql.insert_id ;;
 
 let connect ?(log=true) () =
 
-  match (Config.get()).c_mysql with
+  let conf = (Config.cfg)#get in
+  match conf.c_mysql with
     | None -> None
     | Some m ->
 
@@ -29,7 +30,8 @@ let connect ?(log=true) () =
 
 let connect_without_db () =
 
-  match (Config.get()).c_mysql with
+  let conf = (Config.cfg)#get in
+  match conf.c_mysql with
     | None -> None
     | Some m ->
       try

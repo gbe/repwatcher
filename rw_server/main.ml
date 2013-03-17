@@ -5,35 +5,10 @@ open Types
 open Types_conf
 open Core
 
-let usage = "usage: rw_server [-f Configuration file path]" ;;
+
 
 (* Configuration file fullpath *)
 let config_file = ref "repwatcher.conf" ;;
-
-
-
-(* Check if the config exists and then parse it *)
-let load_config () =
-  try
-    (* Check if the file exists and if the process can read it *)
-    Unix.access !config_file [F_OK ; R_OK];
-
-    (* Parse the configuration file *)
-    Config.parse !config_file
-
-  with
-    | Unix_error (error,_,file) ->
-      let err =
-	Printf.sprintf "%s: %s.\n\n%s\n" file (error_message error) usage
-      in
-      (* Do not log because we can't know what
-	 the user decided to do about his log policy
-	 and where he chose to log
-      *)
-      failwith err
-;;
-
-
 
 let clean_exit () =
   Unix.close Core.fd ;
@@ -67,7 +42,8 @@ This is free software under the MIT license.\n\n";
    * display usage and the -help and --help options *)
   at_exit clean_exit;
 
-  let conf = load_config () in
+  Config.cfg#parse !config_file;
+  let conf = Config.cfg#get in
 
   (* Check if a connection can be done with the SMTP server *)
   begin match conf.c_email with

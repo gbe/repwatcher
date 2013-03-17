@@ -11,8 +11,7 @@ object(self)
 
   (* Creation must be performed after the configuration file parsing has been done *)
   method create =
-    print_endline "plop";
-    let conf = Config.get () in
+    let conf = (Config.cfg)#get in
 
     match conf.c_notify.n_remotely with
       | false -> ()

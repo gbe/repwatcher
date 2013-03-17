@@ -6,7 +6,7 @@ open Types_conf ;;
 let send mail =
 
   let file = mail.m_file in
-  let conf_e_opt = (Config.get ()).c_email in
+  let conf_e_opt = ((Config.cfg)#get).c_email in
 
   let e =
     match conf_e_opt with

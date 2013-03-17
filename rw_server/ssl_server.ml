@@ -137,7 +137,7 @@ let handle_connection (ssl_s, sockaddr_cli) =
   Mutex.unlock m ;
 
   (* To be moved from there *)
-  let conf = Config.get() in
+  let conf = (Config.cfg)#get in
   
   (* Tell the new client that he is authorized
    * and send him at the same time the number

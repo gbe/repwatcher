@@ -28,7 +28,7 @@ object(self)
 
 
   method sendlog =
-    let conf = Config.get () in
+    let conf = (Config.cfg)#get in
 
     match conf.c_log with
       | Disabled -> () (* don't log *)

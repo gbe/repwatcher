@@ -53,7 +53,7 @@ let loop_check () =
 	    (wd, file)
 	    (date, filesize, (true, offset_opt, 0), pkey_opt, created) ;
 
-	  match (Config.get()).c_mysql with
+	  match ((Config.cfg)#get).c_mysql with
 	    | None -> ()
 	    | Some _ ->
 	      let sql_report =

@@ -16,7 +16,7 @@ let extract line =
 
 let get path name =
 
-  let conf = Config.get () in
+  let conf = (Config.cfg)#get in
   let fullpath = path^"/"^name in
 
   let pids =
