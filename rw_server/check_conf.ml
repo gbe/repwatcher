@@ -23,6 +23,18 @@ open Unix ;;
 class config_checker conf =
 object(self)
 
+  (* Does the file exist and can it be read ? *)
+  method private can_be_accessed file_dir rights =
+    try
+      (* Checks if the file exists and if the process can read it *)
+      Unix.access file_dir rights ;
+      
+    with Unix_error (error,_,file_dir') ->
+      let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
+      Log.log (err, Error) ;
+      failwith err
+
+
 (* Test if we can successfully connect to the SGBD without a dbname,
  * because at this point, the DB could not exist.
  *
@@ -68,18 +80,6 @@ object(self)
       Log.log ("Warning: "^file^" is accessible by the group 'other'", Error)
 
 
-(* Does the file exist and can it be read ? *)
-  method private can_be_accessed file_dir rights =
-    try
-      (* Checks if the file exists and if the process can read it *)
-      Unix.access file_dir rights ;
-      
-    with Unix_error (error,_,file_dir') ->
-      let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
-      Log.log (err, Error) ;
-      failwith err
-
-
   method server_certs =
     match conf.c_server with
       | None -> assert false
@@ -98,7 +98,7 @@ object(self)
 	    self#rights certs.c_serv_key_path
 
 
-(* Check if the directory to chroot exists *)
+  (* Check if the directory to chroot exists *)
   method chroot =
     match conf.c_server with
       | None -> assert false
@@ -169,6 +169,14 @@ object(self)
 	  let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
 	  Unix.connect s (Unix.ADDR_INET((resolve host), port));
 	  Unix.close s
-	with _ -> Log.log ("Err: while checking if I could connect to "^host^", an error occured. Sending of emails is disabled", Error);
+	with _ ->
+	  (* sending of emails disabled *)
+	  Config.cfg#set_email_disabled;
+
+	  let err = 
+	    "Err: while checking if repwatcher could \
+connect to "^host^", an error occured. Sending of emails is disabled"
+	  in 
+	  Log.log (err, Error)
 
 end;;

@@ -187,9 +187,9 @@ let sendmail conf_e subject body ?(attachment) () =
       client#disconnect
     with
       | SMTP_error (code, _) ->
-	(Config.cfg)#set_email_none;
+	(Config.cfg)#set_email_disabled;
 	let err = Printf.sprintf "SMTP error code %d. Sending of emails is disabled" code in
 	Log.log (err, Error)
       | _ ->
-	(Config.cfg)#set_email_none;
+	(Config.cfg)#set_email_disabled;
 	Log.log ("An error occured while connecting to the smtp server. Sending of emails is disabled", Error)

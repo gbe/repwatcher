@@ -46,6 +46,7 @@ This is free software under the MIT license.\n\n";
   let conf = Config.cfg#get in
   let checker = new Check_conf.config_checker conf in
 
+  (* Check if a connection can be done with the SMTP server *)
   checker#check_smtp_server;
 
 

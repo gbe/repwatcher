@@ -67,7 +67,7 @@ object(self)
     close_in c;
 
 
-  method set_email_none =
+  method set_email_disabled =
     conf <- Some { self#get with c_email = None }
 
 end ;;
