@@ -51,9 +51,8 @@ object(self)
     let c = open_in cfg_file in
     let lb = Lexing.from_channel c in
 
-    try
-      conf <- Some (Parser.configuration Lexer.nexttoken lb) ;
-      close_in c
+    begin try
+      conf <- Some (Parser.configuration Lexer.nexttoken lb)
     with
       | Lexer.Lexing_error s -> 
 	self#localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
@@ -63,10 +62,14 @@ object(self)
 	self#localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
 	eprintf "syntax error in the configuration file %s\n@." cfg_file;
 	exit 1
+    end;
+
+    close_in c;
+
 
   method set_email_none =
     conf <- Some { self#get with c_email = None }
-;;
+
 end ;;
 		  
 let cfg = new config ();;

@@ -44,12 +44,10 @@ This is free software under the MIT license.\n\n";
 
   Config.cfg#parse !config_file;
   let conf = Config.cfg#get in
+  let checker = new Check_conf.config_checker conf in
 
-  (* Check if a connection can be done with the SMTP server *)
-  begin match conf.c_email with
-    | None -> ()
-    | Some e -> Check_conf.check_smtp_server e.e_smtp.sm_host e.e_smtp.sm_port
-  end;
+  checker#check_smtp_server;
+
 
   (* Fork if remote notifications are activated *)
   let fd =
@@ -57,9 +55,9 @@ This is free software under the MIT license.\n\n";
     | true  ->
 
       (* Should be performed before dropping root rights (if any) *)
-      Check_conf.remote_process_identity conf;
+      checker#remote_process_identity;
       (* Should be performed before dropping root rights (if any) *)
-      Check_conf.chroot conf ;
+      checker#chroot;
 
       (* Match left here willingly *)
       begin match conf.c_server with
@@ -99,7 +97,7 @@ This is free software under the MIT license.\n\n";
 	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
 
 	      (* Should be performed before dropping root rights (if any) *)
-	      Check_conf.process_identity conf ;
+	      checker#process_identity ;
 
 	      try
 		(* Check in the file /etc/passwd
@@ -131,7 +129,7 @@ This is free software under the MIT license.\n\n";
 	      | Some dbname ->
 
 		(* if Check_conf.sql_connection goes wrong, the program exits *)
-		Check_conf.sql_connection ();
+		checker#sql_connection ;
 	    
 		(* if Mysqldb.create_db goes wrong, the program exits *)
 		Mysqldb.create_db dbname ;
@@ -143,11 +141,11 @@ This is free software under the MIT license.\n\n";
 		Mysqldb.sgbd_reset_in_progress ();
       end ;
 
-      Check_conf.rights !config_file ;
+      checker#rights !config_file ;
       
       (* If the server is enabled *)
       if conf.c_notify.n_remotely then
-	Check_conf.server_certs conf ;
+	checker#server_certs ;
      
       (* Watch the config *)
       Core.add_watch !config_file None true;
