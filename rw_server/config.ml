@@ -12,7 +12,7 @@ object(self)
   val mutable conf = None
 
 (* localize the error and give the line and column *)
-  method private localization (pos,e) config_file =
+  method private _localization (pos,e) config_file =
     let l = pos.pos_lnum in
     let c = pos.pos_cnum - pos.pos_bol + 1 in
     let lc = e.pos_cnum - pos.pos_bol + 1 in
@@ -55,11 +55,11 @@ object(self)
       conf <- Some (Parser.configuration Lexer.nexttoken lb)
     with
       | Lexer.Lexing_error s -> 
-	self#localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
+	self#_localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
 	eprintf "lexical error in the configuration file %s: %s\n@." cfg_file s;
 	exit 1
       | Parsing.Parse_error ->
-	self#localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
+	self#_localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
 	eprintf "syntax error in the configuration file %s\n@." cfg_file;
 	exit 1
     end;

@@ -16,7 +16,7 @@ let what_to_do event =
     | [] -> ()
     | event_type :: q -> 
 	  
-      if Core.debug_event &&
+      if core#get_debug_event &&
 	not (string_of_event event_type = "ACCESS") then
 	  Printf.printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
 	    (string_of_event event_type)
@@ -27,15 +27,15 @@ let what_to_do event =
       match event_type, is_folder with	
 	| Isdir, _ -> action q true
 
-	| Create, false -> Core.file_created wd name
-	| Open, false -> Core.file_opened wd name      					      
-	| Close_write, false -> Core.file_closed ~written:true wd name
-	| Close_nowrite, false -> Core.file_closed ~written:false wd name
+	| Create, false -> core#file_created wd name
+	| Open, false -> core#file_opened wd name      					      
+	| Close_write, false -> core#file_closed ~written:true wd name
+	| Close_nowrite, false -> core#file_closed ~written:false wd name
 
-	| Create, true -> Core.directory_created wd name
-	| Moved_from, true -> Core.directory_moved_from wd name
-	| Moved_to, true -> Core.directory_moved_to wd name
-	| Delete, true -> Core.directory_deleted wd name
+	| Create, true -> core#directory_created wd name
+	| Moved_from, true -> core#directory_moved_from wd name
+	| Moved_to, true -> core#directory_moved_to wd name
+	| Delete, true -> core#directory_deleted wd name
 
 	    
         (* When IGNORED is triggered it means the wd

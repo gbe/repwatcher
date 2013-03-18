@@ -24,7 +24,7 @@ class config_checker conf =
 object(self)
 
   (* Does the file exist and can it be read ? *)
-  method private can_be_accessed file_dir rights =
+  method private _can_be_accessed file_dir rights =
     try
       (* Checks if the file exists and if the process can read it *)
       Unix.access file_dir rights ;
@@ -88,13 +88,13 @@ object(self)
 	  | None -> assert false
 	  | Some certs -> 
 	    (* checks the CA *)
-	    self#can_be_accessed certs.c_ca_path [F_OK ; R_OK];
+	    self#_can_be_accessed certs.c_ca_path [F_OK ; R_OK];
 
 	    (* checks the cert *)
-	    self#can_be_accessed certs.c_serv_cert_path [F_OK ; R_OK];
+	    self#_can_be_accessed certs.c_serv_cert_path [F_OK ; R_OK];
 
 	    (* checks the key *)
-	    self#can_be_accessed certs.c_serv_key_path [F_OK ; R_OK];
+	    self#_can_be_accessed certs.c_serv_key_path [F_OK ; R_OK];
 	    self#rights certs.c_serv_key_path
 
 

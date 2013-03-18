@@ -3,7 +3,6 @@ open Printf
 
 open Types
 open Types_conf
-open Core
 
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
@@ -11,7 +10,7 @@ let usage = "usage: rw_server [-f Configuration file path]" ;;
 let config_file = ref "repwatcher.conf" ;;
 
 let clean_exit () =
-  Unix.close Core.fd ;
+  Unix.close Core.core#get_fd ;
 
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
@@ -19,7 +18,34 @@ let clean_exit () =
   Mysqldb.sgbd_reset_in_progress ()
 ;;
 
+let drop_identity checker new_identity =
+  
+  (* Drop privileges by changing the processus' identity
+   * if its current id is root *)
+  if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
 
+    (* Should be performed before dropping root rights (if any) *)
+    checker#process_identity ;
+
+    try
+      (* Check in the file /etc/passwd
+       * if the user "new_identity" exists *)
+      let passwd_entry = Unix.getpwnam new_identity in
+      setgid passwd_entry.pw_gid;
+      setuid passwd_entry.pw_uid;
+
+    with Not_found ->
+      (* This shouldn't be triggered here
+       * because the test has been already done
+       * in the function check() *)
+      let error =
+	"Fatal error. User "^new_identity^" doesn't exist. \
+                  The process can't take this identity"
+      in
+      Log.log (error, Error);
+      failwith error
+  end
+;;
 
 (* Main function *)
 let _ =  
@@ -81,6 +107,7 @@ This is free software under the MIT license.\n\n";
     | 0 ->
       if conf.c_notify.n_remotely then begin
 
+	(* Start the server *)
 	match conf.c_server with
 	  | None -> assert false
 	  | Some server ->
@@ -91,33 +118,7 @@ This is free software under the MIT license.\n\n";
 
       begin match conf.c_process_identity with
 	| None -> ()
-	| Some new_identity ->
-
-	    (* Drop privileges by changing the processus' identity
-	     * if its current id is root *)
-	    if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
-
-	      (* Should be performed before dropping root rights (if any) *)
-	      checker#process_identity ;
-
-	      try
-		(* Check in the file /etc/passwd
-		 * if the user "new_identity" exists *)
-		let passwd_entry = Unix.getpwnam new_identity in
-		setgid passwd_entry.pw_gid;
-		setuid passwd_entry.pw_uid;
-
-	      with Not_found ->
-		(* This shouldn't be triggered here
-		 * because the test has been already done
-		 * in the function check() *)
-		let error =
-		  "Fatal error. User "^new_identity^" doesn't exist. \
-                  The process can't take this identity"
-		in
-		Log.log (error, Error);
-		failwith error
-	    end
+	| Some new_identity -> drop_identity checker new_identity
       end;
 
       begin
@@ -149,7 +150,7 @@ This is free software under the MIT license.\n\n";
 	checker#server_certs ;
      
       (* Watch the config *)
-      Core.add_watch !config_file None true;
+      Core.core#add_watch !config_file None true;
       
       if conf.c_notify.n_remotely then begin
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
@@ -164,8 +165,8 @@ This is free software under the MIT license.\n\n";
       in
 
       (* Watch the directories and their children *)
-      List.iter (fun dir -> Core.add_watch dir None false) dirs;
-      Core.add_watch_children children;
+      List.iter (fun dir -> Core.core#add_watch dir None false) dirs;
+      Core.core#add_watch_children children;
 
       ignore (Thread.create Offset_thread.loop_check ()) ;
 
@@ -186,8 +187,8 @@ This is free software under the MIT license.\n\n";
       while !loop do
 	let event_l = 
 	  try
-	    ignore (Unix.select [ Core.fd ] [] [] (-1.));
-	    Inotify.read Core.fd
+	    ignore (Unix.select [ Core.core#get_fd ] [] [] (-1.));
+	    Inotify.read Core.core#get_fd
 	  with
 	    (* triggered when ctrl+c is pressed *)
 	    | Unix_error (_,"select",_) -> [] 
