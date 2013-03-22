@@ -7,145 +7,142 @@ let ml2str = Mysql.ml2str ;;
 let ml2int = Mysql.ml2int ;;
 let insert_id = Mysql.insert_id ;;
 
-let connect ?(log=true) () =
+class mysqldb () =
+object(self)
 
-  let conf = (Config.cfg)#get in
-  match conf.c_mysql with
-    | None -> None
-    | Some m ->
+  method private _map res =
+    try
+      (* row = string option array, the option is if a field is NULL *)
+      let rows = Mysql.map res (fun row -> row) in
+      Log.log ("Query successfully mapped", Normal_Extra);
 
-      try
-	let cid = Mysql.connect m in
+      rows
 
-	if log then
+    with Mysql.Error error ->
+      Log.log (error, Error);
+      []
+
+  method connect ?(log=true) () =
+
+    let conf = (Config.cfg)#get in
+    match conf.c_mysql with
+      | None -> None
+      | Some m ->
+
+	try
+	  let cid = Mysql.connect m in
+
+	  if log then
+	    Log.log ("Connected to MySQL", Normal_Extra) ;
+
+	  Some cid
+	with
+	  | Mysql.Error error ->
+	    Log.log (error, Error);
+	    None
+	  | Config.Config_error -> None
+
+
+  method connect_without_db =
+
+    let conf = (Config.cfg)#get in
+    match conf.c_mysql with
+      | None -> None
+      | Some m ->
+	try
+	  let cid = Mysql.connect { m with dbname = None } in
 	  Log.log ("Connected to MySQL", Normal_Extra) ;
+	  Some cid
 
-	Some cid
-      with
-	| Mysql.Error error ->
-	  Log.log (error, Error);
-	  None
-	| Config.Config_error -> None
-;;
-
-let connect_without_db () =
-
-  let conf = (Config.cfg)#get in
-  match conf.c_mysql with
-    | None -> None
-    | Some m ->
-      try
-	let cid = Mysql.connect { m with dbname = None } in
-	Log.log ("Connected to MySQL", Normal_Extra) ;
-	Some cid
-
-      with
-	| Mysql.Error error ->
-	  Log.log (error, Error);
-	  None
-	| Config.Config_error -> None
-;;
-
-let disconnect ?(log=true) cid =
-  try
-    Mysql.disconnect cid;
-
-    if log then
-      Log.log ("Disconnected from MySQL", Normal_Extra)
-
-  with Mysql.Error error ->
-    Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
-;;
+	with
+	  | Mysql.Error error ->
+	    Log.log (error, Error);
+	    None
+	  | Config.Config_error -> None
 
 
+  method disconnect ?(log=true) cid =
+    try
+      Mysql.disconnect cid;
 
-let map res =
-  try
-    (* row = string option array, the option is if a field is NULL *)
-    let rows = Mysql.map res (fun row -> row) in
-    Log.log ("Query successfully mapped", Normal_Extra);
-
-    rows
-
-  with Mysql.Error error ->
-    Log.log (error, Error);
-    []
-;;
-
-
-let query ?(log=true) cid q =
-  
-  if log then
-    Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
-  
-  try
-    let res = exec cid q in
-    
-    match status cid with
-    | (StatusOK | StatusEmpty) ->
       if log then
-	Log.log ("Query successfully executed", Normal_Extra);
+	Log.log ("Disconnected from MySQL", Normal_Extra)
 
-      Some res
+    with Mysql.Error error ->
+      Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
 
-    | StatusError _ ->
-	begin match errmsg cid with
-	| None ->
-	    Log.log ("Oops. Mysqldb.query had an error and the SGBD \
+
+  method query ?(log=true) cid q =
+  
+    if log then
+      Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
+  
+    try
+      let res = exec cid q in
+    
+      match status cid with
+	| (StatusOK | StatusEmpty) ->
+	  if log then
+	    Log.log ("Query successfully executed", Normal_Extra);
+	  Some res
+
+	| StatusError _ ->
+	  begin match errmsg cid with
+	    | None ->
+	      Log.log ("Oops. Mysqldb.query had an error and the SGBD \
 		       can't tell which one", Error)
-	| Some errmsg' -> Log.log (errmsg', Error)
-	end;
-	None
-  with Mysql.Error error ->
-    Log.log (error, Error) ;
-    None
-;;
+	    | Some errmsg' -> Log.log (errmsg', Error)
+	  end;
+	  None
+    with Mysql.Error error ->
+      Log.log (error, Error) ;
+      None
 
 
-let create_db dbname =
+  method create_db dbname =
 
-  let q =
-    Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" dbname
-  in
+    let q =
+      Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" dbname
+    in
 
-  match connect_without_db () with
-    | None -> assert false
-    | Some cid ->
+    match self#connect_without_db with
+      | None -> assert false
+      | Some cid ->
 
-      try
-	let _ = exec cid q in
+	try
+	  let _ = exec cid q in
 
-	begin
-	  match status cid with
-	    | StatusOK ->
-	      Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
+	  begin
+	    match status cid with
+	      | StatusOK ->
+		Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
 
-	    | StatusEmpty -> ()
+	      | StatusEmpty -> ()
 
-	    | StatusError _ ->
-	      begin
-		match errmsg cid with
-		  | None ->
-		    Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+	      | StatusError _ ->
+		begin
+		  match errmsg cid with
+		    | None ->
+		      Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
 			     doesn't know why", Error)
 
-		  | Some errmsg' ->
-		    Log.log (errmsg', Error)
-	      end ;
-	      exit 2
-	end ;
+		    | Some errmsg' ->
+		      Log.log (errmsg', Error)
+		end ;
+		exit 2
+	  end ;
 
-	disconnect cid
+	self#disconnect cid
 
-      with Mysql.Error error ->
-	Log.log (error, Error) ;
-	exit 2
-;;
+	with Mysql.Error error ->
+	  Log.log (error, Error) ;
+	  exit 2
 
-let create_table_accesses () =
 
-  let q =
-    Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
+  method create_table_accesses =
+
+    let q =
+      Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(10) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
   `USERNAME` varchar(256) DEFAULT NULL,\
@@ -163,51 +160,52 @@ let create_table_accesses () =
   `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
   PRIMARY KEY (`ID`)\
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
-  in
+    in
 
-  match connect () with
-    | None -> assert false
-    | Some cid ->
+    match self#connect () with
+      | None -> assert false
+      | Some cid ->
 
-      try
-	let _ = exec cid q in
+	try
+	  let _ = exec cid q in
 
-	begin
-	  match status cid with
-	    | (StatusOK | StatusEmpty) ->
-	      Log.log (("Table accesses successfully created"), Normal_Extra)	 
+	  begin
+	    match status cid with
+	      | (StatusOK | StatusEmpty) ->
+		Log.log (("Table accesses successfully created"), Normal_Extra)	 
 
-	    | StatusError _ ->
-	      begin
-		match errmsg cid with
-		  | None ->
-		    Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
+	      | StatusError _ ->
+		begin
+		  match errmsg cid with
+		    | None ->
+		      Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
 			     doesn't know why", Error)
 
-		  | Some errmsg' ->
-		    Log.log (errmsg', Error)
-	      end ;
-	      exit 2
-	end ;
+		    | Some errmsg' ->
+		      Log.log (errmsg', Error)
+		end ;
+		exit 2
+	  end ;
 
-	disconnect cid
+	self#disconnect cid
 
-      with
-	  Mysql.Error error ->
-	    Log.log (error, Error) ;
-	    exit 2
-;;
+	with Mysql.Error error ->
+	  Log.log (error, Error) ;
+	  exit 2
 
 
-(* Reset all IN_PROGRESS accesses in the SGBD *)
-let sgbd_reset_in_progress () =
-  let reset_accesses =
-    "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
-  in
+  (* Reset all IN_PROGRESS accesses in the SGBD *)
+  method sgbd_reset_in_progress =
+    let reset_accesses =
+      "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
+    in
   
-  match connect () with
-    | None -> ()
-    | Some cid -> 
-      ignore (query cid reset_accesses) ;
-      disconnect cid
-;;
+    match self#connect () with
+      | None -> ()
+      | Some cid -> 
+	ignore (self#query cid reset_accesses) ;
+	self#disconnect cid
+
+end;;
+
+let mysql = new mysqldb ();;

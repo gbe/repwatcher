@@ -15,7 +15,7 @@ let clean_exit () =
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proved to be usefull for outside apps *)
-  Mysqldb.sgbd_reset_in_progress ()
+  Mysqldb.mysql#sgbd_reset_in_progress
 ;;
 
 let drop_identity checker new_identity =
@@ -134,13 +134,13 @@ This is free software under the MIT license.\n\n";
 		checker#sql_connection ;
 	    
 		(* if Mysqldb.create_db goes wrong, the program exits *)
-		Mysqldb.create_db dbname ;
+		Mysqldb.mysql#create_db dbname ;
 
 		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
-		Mysqldb.create_table_accesses () ;
+		Mysqldb.mysql#create_table_accesses ;
 
 		(* Set to zero every files marked as 'in progress' in the SGBD *)
-		Mysqldb.sgbd_reset_in_progress ();
+		Mysqldb.mysql#sgbd_reset_in_progress ;
       end ;
 
       checker#rights !config_file ;

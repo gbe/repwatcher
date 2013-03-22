@@ -45,10 +45,10 @@ object(self)
  * There is no need to add a try/with here because it's handled in Mysqldb.ml
  *)  
   method sql_connection =
-    match Mysqldb.connect_without_db () with
+    match Mysqldb.mysql#connect_without_db with
       | None -> failwith "Could not connect to MySQL server, read the log"
       | Some cid ->
-	Mysqldb.disconnect cid
+	Mysqldb.mysql#disconnect cid
 
 
 

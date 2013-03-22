@@ -198,12 +198,12 @@ let sql sql_report =
 	(Mysqldb.ml2str created)
     in
 
-    begin match Mysqldb.connect () with
+    begin match Mysqldb.mysql#connect () with
       | None -> Nothing
       | Some cid ->
-	ignore (Mysqldb.query cid query) ;
+	ignore (Mysqldb.mysql#query cid query) ;
 	let primary_key = Mysqldb.insert_id cid in
-	Mysqldb.disconnect cid ;
+	Mysqldb.mysql#disconnect cid ;
 	PrimaryKey primary_key
     end
 	
@@ -225,11 +225,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect () with
+	match Mysqldb.mysql#connect () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query cid update_query) ;
-	    Mysqldb.disconnect cid ;
+	    ignore (Mysqldb.mysql#query cid update_query) ;
+	    Mysqldb.mysql#disconnect cid ;
 	    Nothing
     end
 
@@ -247,11 +247,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect ~log:false () with
+	match Mysqldb.mysql#connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
-	    Mysqldb.disconnect ~log:false cid ;
+	    ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
+	    Mysqldb.mysql#disconnect ~log:false cid ;
 	    Nothing
     end
 
@@ -268,11 +268,11 @@ let sql sql_report =
 	    (Mysqldb.ml2str (Int64.to_string pkey))
 	in
 	
-	match Mysqldb.connect ~log:false () with
+	match Mysqldb.mysql#connect ~log:false () with
 	  | None -> Nothing
 	  | Some cid ->
-	    ignore (Mysqldb.query ~log:false cid update_offset_query) ;
-	    Mysqldb.disconnect ~log:false cid ;
+	    ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
+	    Mysqldb.mysql#disconnect ~log:false cid ;
 	    Nothing
 ;;
 
