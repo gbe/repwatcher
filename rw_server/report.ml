@@ -278,21 +278,17 @@ let sql sql_report =
 
 
 let mail tobemailed =
-  let conf = ((Config.cfg)#get).c_email in
 
-  match conf with
-    | None -> ()
-    | Some c ->
+  if Config.cfg#is_email_activated then
+    let email_conf = Config.cfg#get_email in
+    match tobemailed.m_filestate with
+      | (File_Opened | File_Created) ->
+	if email_conf.e_open then
+	  Mail.send tobemailed
 
-      begin match tobemailed.m_filestate with
-	| (File_Opened | File_Created) ->
-	  if c.e_open then
-	    Mail.send tobemailed
-
-	| File_Closed ->
-	  if c.e_close then
-	    Mail.send tobemailed
-      end
+      | File_Closed ->
+	if email_conf.e_close then
+	  Mail.send tobemailed
 ;;  
 
 

@@ -66,6 +66,19 @@ object(self)
 
     close_in c;
 
+  method is_email_activated =
+    let c = (self#get).c_email in
+    match c with
+      | None -> false
+      | Some _ -> true
+
+
+  method get_email =
+    let c = (self#get).c_email in
+    match c with
+      | None -> assert false
+      | Some email_conf -> email_conf
+
 
   method set_email_disabled =
     conf <- Some { self#get with c_email = None }
