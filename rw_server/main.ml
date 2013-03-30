@@ -170,8 +170,9 @@ This is free software under the MIT license.\n\n";
 
       ignore (Thread.create Offset_thread.loop_check ()) ;
 
-      ignore (Report.Report.report ( Notify ( Local_notif "Repwatcher is watching youuu ! :)" ) ) );
-      Log.log ("Repwatcher is watching youuu ! :)", Normal) ;
+      let notif_txt = "Repwatcher is watching youuu ! :)" in
+      Report.report#notify (Local_notif notif_txt);
+      Log.log (notif_txt, Normal) ;
 
       (* **************************** *)
       (* For interruptions *)

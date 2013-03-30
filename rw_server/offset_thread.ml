@@ -76,7 +76,7 @@ let loop_check () =
 		}
 	      in
 
-	      ignore (Report.Report.report (Sql sql_report))
+	      ignore (Report.report#sql sql_report)
 
     ) Files_progress.ht ;
 

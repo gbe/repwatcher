@@ -19,7 +19,7 @@ let wait_pipe_from_child_process () =
 
 	  let l_current =
 	    Hashtbl.fold (fun (_,file) (date,_,_,_,_) ret ->
-	      let file_prepared = Report.prepare_data file in
+	      let file_prepared = Report.report#prepare_data file in
 
 	      ret@[ (
 		{ file_prepared with
@@ -34,7 +34,7 @@ let wait_pipe_from_child_process () =
 	    
 	  (* Sent to Report.notify only if necessary *)
 	  if List.length l_current > 0 then
-	    ignore (Report.report (Notify (Old_notif l_current)))
+	    Report.report#notify (Old_notif l_current)
 
 	| Types.Log log -> Log.log log
 

@@ -337,8 +337,6 @@ object(self)
 
 	      Log.log (file.f_login^has_what^file.f_name, Normal);
 
-	      let file_prepared = Report.prepare_data file in
-
 	      let offset_opt =
 		Files.get_offset file.f_program_pid file.f_descriptor
 	      in
@@ -352,9 +350,11 @@ object(self)
 		  | true -> None
 	      in
 
+	      let file_prepared = Report.report#prepare_data file in
+
 	      begin match created with
 		| false ->
-		  ignore (Report.report (Notify (New_notif (file_prepared, File_Opened))));
+		  Report.report#notify (New_notif (file_prepared, File_Opened));
 		  let tobemailed =
 		    {
 		      m_filestate = File_Opened;
@@ -366,8 +366,8 @@ object(self)
 		      m_opening_date = None;
 		    }
 		  in
+		  Report.report#mail tobemailed
 
-		  ignore (Report.report (Mail tobemailed))
 		| true ->
 		  let tobemailed =
 		    {
@@ -380,8 +380,8 @@ object(self)
 		      m_opening_date = None;
 		    }
 		  in
-		  ignore (Report.report (Notify (New_notif (file_prepared, File_Created))));
-		  ignore (Report.report (Mail tobemailed))
+		  Report.report#notify (New_notif (file_prepared, File_Created));
+		  Report.report#mail tobemailed
 	      end;
 
 	      let pkey_opt =
@@ -400,7 +400,7 @@ object(self)
 			s_created = created ;
 		      }
 		    in
-		    match Report.report (Sql sql_report) with
+		    match (Report.report#sql sql_report) with
 		      (* could be triggered by an SQL error *)
 		      | Nothing -> None
 
@@ -545,10 +545,10 @@ object(self)
 	      s_created = created ;
 	    }
 	    in
-	    ignore (Report.report (Sql sql_report))
+	    ignore (Report.report#sql sql_report)
 	end;
 
-	let file_prepared = Report.prepare_data f_file in
+	let file_prepared = Report.report#prepare_data f_file in
 	let tobemailed =
 	  {
 	    m_filestate = File_Closed;
@@ -559,8 +559,8 @@ object(self)
 	  }
 	in
 
-	ignore (Report.report (Notify (New_notif (file_prepared, File_Closed))));
-	ignore (Report.report (Mail tobemailed))
+	Report.report#notify (New_notif (file_prepared, File_Closed));
+	Report.report#mail tobemailed
     ) l_stop
 
 (* eo file_closed, false *)
