@@ -139,6 +139,60 @@ object(self)
       (* send through the pipe to be processed by the server *)
 	ignore (Unix.write (Pipe.father2child#get_towrite) str_current 0 (String.length str_current))
 
+
+  method private _sql_file_closed pkey closing_date filesize offset = 
+    let update_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET CLOSING_DATE = %s, FILESIZE = %s, \
+                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
+        	  WHERE ID = %s"
+	(Mysqldb.ml2str closing_date)
+	filesize
+	offset
+	(Mysqldb.ml2str (Int64.to_string pkey))
+    in
+	
+    match Mysqldb.mysql#connect () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (Mysqldb.mysql#query cid update_query) ;
+	Mysqldb.mysql#disconnect cid ;
+	Nothing
+
+  method private _sql_first_known_offset pkey offset =
+    let update_offset_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET FIRST_KNOWN_OFFSET = %s \
+	          WHERE ID = %s"
+	offset
+	(Mysqldb.ml2str (Int64.to_string pkey))
+    in
+	    
+    match Mysqldb.mysql#connect ~log:false () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
+	Mysqldb.mysql#disconnect ~log:false cid ;
+	Nothing
+
+
+  method private _sql_last_known_offset pkey offset =
+    let update_offset_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET LAST_KNOWN_OFFSET = %s \
+	          WHERE ID = %s"
+	offset
+	(Mysqldb.ml2str (Int64.to_string pkey))
+    in
+	
+    match Mysqldb.mysql#connect ~log:false () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
+	Mysqldb.mysql#disconnect ~log:false cid ;
+	Nothing
+
+
   
   method sql sql_report =
     let f = sql_report.s_file in  
@@ -200,28 +254,10 @@ object(self)
 	
 	
       | SQL_File_Closed ->
-    
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	
-	    let update_query =
-	      Printf.sprintf "UPDATE accesses \
-        	  SET CLOSING_DATE = %s, FILESIZE = %s, \
-                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
-        	  WHERE ID = %s"
-		(Mysqldb.ml2str sql_report.s_date)
-		filesize
-		offset
-		(Mysqldb.ml2str (Int64.to_string pkey))
-	    in
-	
-	    match Mysqldb.mysql#connect () with
-	      | None -> Nothing
-	      | Some cid ->
-		ignore (Mysqldb.mysql#query cid update_query) ;
-		Mysqldb.mysql#disconnect cid ;
-		Nothing
+	    self#_sql_file_closed pkey sql_report.s_date filesize offset
 	end
 
 
@@ -229,42 +265,15 @@ object(self)
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    
-	    let update_offset_query =
-	      Printf.sprintf "UPDATE accesses \
-        	  SET FIRST_KNOWN_OFFSET = %s \
-	          WHERE ID = %s"
-		offset
-		(Mysqldb.ml2str (Int64.to_string pkey))
-	    in
-	    
-	    match Mysqldb.mysql#connect ~log:false () with
-	      | None -> Nothing
-	      | Some cid ->
-		ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
-		Mysqldb.mysql#disconnect ~log:false cid ;
-		Nothing
+	    self#_sql_first_known_offset pkey offset
 	end
 
       | SQL_LK_Offset ->
 	match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	
-	    let update_offset_query =
-	      Printf.sprintf "UPDATE accesses \
-        	  SET LAST_KNOWN_OFFSET = %s \
-	          WHERE ID = %s"
-		offset
-		(Mysqldb.ml2str (Int64.to_string pkey))
-	    in
-	
-	    match Mysqldb.mysql#connect ~log:false () with
-	      | None -> Nothing
-	      | Some cid ->
-		ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
-		Mysqldb.mysql#disconnect ~log:false cid ;
-		Nothing
+	    self#_sql_last_known_offset pkey offset
+
 
 
   method mail tobemailed =

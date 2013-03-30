@@ -53,10 +53,6 @@ type mail_t = {
   m_opening_date: string option;
 }
 
-type report = | Notify of notification
-	      | Sql    of sql_report
-	      | Mail   of mail_t
-
 type report_ret = Nothing | PrimaryKey of int64
 
 type com_net2main =
