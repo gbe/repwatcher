@@ -150,7 +150,7 @@ This is free software under the MIT license.\n\n";
 	checker#server_certs ;
      
       (* Watch the config *)
-      Core.core#add_watch !config_file None true;
+      Core.core#add_watch !config_file ~wd_father_opt:None ~is_config_file:true;
       
       if conf.c_notify.n_remotely then begin
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
@@ -165,7 +165,7 @@ This is free software under the MIT license.\n\n";
       in
 
       (* Watch the directories and their children *)
-      List.iter (fun dir -> Core.core#add_watch dir None false) dirs;
+      List.iter (fun dir -> Core.core#add_watch dir ~wd_father_opt:None ~is_config_file:false) dirs;
       Core.core#add_watch_children children;
 
       ignore (Thread.create Offset_thread.loop_check ()) ;

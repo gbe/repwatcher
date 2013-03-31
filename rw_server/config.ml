@@ -6,7 +6,7 @@ open Unix
 exception Config_error ;;
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
-class config () =
+class config =
 object(self)
 
   val mutable conf = None
@@ -85,4 +85,4 @@ object(self)
 
 end ;;
 		  
-let cfg = new config ();;
+let cfg = new config ;;

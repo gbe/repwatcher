@@ -131,14 +131,7 @@ object(self)
 	    in
 	    Log.log (error, Error)
 
-
    
-
-
-
-
-
-
 
   method private _print_ht =
     Hashtbl.iter (fun key value -> 
@@ -166,7 +159,7 @@ object(self)
       (Fdinfo.int_of_fd file.f_descriptor)
 
 
-  method add_watch path2watch wd_father_opt is_config_file =
+  method add_watch path2watch ~wd_father_opt ~is_config_file =
   
     (* Check if the folder is not already watched *)  
     if self#_is_value path2watch then
@@ -292,7 +285,7 @@ object(self)
 	      r_add_watch_children remaining
 
 	    | Some wd_father ->
-	      self#add_watch folder (Some wd_father) false ;
+	      self#add_watch folder ~wd_father_opt:(Some wd_father) ~is_config_file:false ;
 	      r_add_watch_children q
     in
     r_add_watch_children l_children
@@ -578,7 +571,7 @@ object(self)
 	Log.log (err, Error)
 	
       | Some father ->
-	self#add_watch (father.path^"/"^name) (Some wd) false
+	self#add_watch (father.path^"/"^name) ~wd_father_opt:(Some wd) ~is_config_file:false
 
 
   method directory_moved_from wd name =
@@ -667,7 +660,7 @@ object(self)
 	in
       
 	(* Watch the new folder *)
-	self#add_watch path (Some wd) false ;
+	self#add_watch path ~wd_father_opt:(Some wd) ~is_config_file:false ;
       
 	(* Then the folder's children *)
 	self#add_watch_children children
