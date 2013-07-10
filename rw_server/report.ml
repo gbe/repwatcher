@@ -2,7 +2,7 @@ open Types
 open Types_conf
 open Printf
 
-class report () =
+class report =
 object(self)
 
   method private _dbus img title txt =
@@ -148,7 +148,6 @@ object(self)
 
 
   method sql sql_report =
-    let f = sql_report.s_file in  
 
     let offset =
       match sql_report.s_offset with
@@ -164,13 +163,12 @@ object(self)
 
     match sql_report.s_state with
       | SQL_File_Opened ->
-	let created =
-	  match sql_report.s_created with
-	    | true -> "1"
-	    | false -> "0"
-	in
-	Mysqldb.mysql#file_opened f created sql_report.s_date filesize offset
-
+	Mysqldb.mysql#file_opened
+	  sql_report.s_file
+	  sql_report.s_created
+	  sql_report.s_date
+	  filesize
+	  offset
 	
       | SQL_File_Closed ->
 	begin match sql_report.s_pkey with
@@ -209,4 +207,4 @@ object(self)
 	    Mail.send tobemailed
 end ;;
 
-let report = new report ();;
+let report = new report;;

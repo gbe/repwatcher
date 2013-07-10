@@ -208,7 +208,7 @@ object(self)
 
 
 
-  method file_opened f created creation_date filesize offset =
+  method file_opened f s_created creation_date filesize offset =
     let username =
       match Txt_operations.name f.f_login with
 	| None -> "NULL"
@@ -231,7 +231,12 @@ object(self)
 	(ml2int (Fdinfo.int_of_fd f.f_descriptor))
 	offset
 	(ml2str creation_date)
-	(ml2str created)
+	(ml2str (
+	  match s_created with
+	    | true -> "1"
+	    | false -> "0"
+	 )
+	)
     in
 
     begin match self#connect () with
