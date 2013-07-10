@@ -3,14 +3,16 @@ open Types
 open Types_conf
 open Unix
 
-let ml2str = Mysql.ml2str ;;
-let ml2int = Mysql.ml2int ;;
-let insert_id = Mysql.insert_id ;;
-
 class mysqldb =
 object(self)
 
-  method private _map res =
+  method private _to_strsql int64opt =
+    match int64opt with
+      | None -> "NULL"
+      | Some var_int64 -> ml2str (Int64.to_string var_int64)
+
+
+(*  method private _map res =
     try
       (* row = string option array, the option is if a field is NULL *)
       let rows = Mysql.map res (fun row -> row) in
@@ -21,7 +23,7 @@ object(self)
     with Mysql.Error error ->
       Log.log (error, Error);
       []
-
+*)
 
   method private _query ?(log=true) cid q =
   
@@ -225,9 +227,9 @@ object(self)
 	(ml2int (Fdinfo.int_of_pid f.f_program_pid))
 	(ml2str f.f_path)
 	(ml2str f.f_name)
-	filesize
+	(self#_to_strsql filesize)
 	(ml2int (Fdinfo.int_of_fd f.f_descriptor))
-	offset
+	(self#_to_strsql offset)
 	(ml2str creation_date)
 	(ml2str (
 	  match s_created with
@@ -254,8 +256,8 @@ object(self)
                   LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
         	  WHERE ID = %s"
 	(ml2str closing_date)
-	filesize
-	offset
+	(self#_to_strsql filesize)
+	(self#_to_strsql offset)
 	(ml2str (Int64.to_string pkey))
     in
 	
@@ -266,13 +268,21 @@ object(self)
 	self#disconnect cid ;
 	Nothing
 
+  method private _update_known_offset ?(first=false) ?(last=false) pkey offset =
+    let field =
+      match first, last with
+	| false, false -> assert false
+	| false, true -> "LAST_KNOWN_OFFSET"
+	| true, false -> "FIRST_KNOWN_OFFSET"
+	| true, true -> assert false
+    in
 
-  method first_known_offset pkey offset =
     let update_offset_query =
       Printf.sprintf "UPDATE accesses \
-        	  SET FIRST_KNOWN_OFFSET = %s \
+        	  SET %s = %s \
 	          WHERE ID = %s"
-	offset
+	field
+	(self#_to_strsql offset)
 	(ml2str (Int64.to_string pkey))
     in
 	    
@@ -284,21 +294,11 @@ object(self)
 	Nothing
 
 
+  method first_known_offset pkey offset =
+    self#_update_known_offset ~first:true pkey offset
+
   method last_known_offset pkey offset =
-    let update_offset_query =
-      Printf.sprintf "UPDATE accesses \
-        	  SET LAST_KNOWN_OFFSET = %s \
-	          WHERE ID = %s"
-	offset
-	(ml2str (Int64.to_string pkey))
-    in
-	
-    match self#connect ~log:false () with
-      | None -> Nothing
-      | Some cid ->
-	self#_query ~log:false cid update_offset_query ;
-	self#disconnect ~log:false cid ;
-	Nothing
+    self#_update_known_offset ~last:true pkey offset
 
 end;;
 

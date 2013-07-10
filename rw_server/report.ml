@@ -148,48 +148,38 @@ object(self)
 
 
   method sql sql_report =
-
-    let offset =
-      match sql_report.s_offset with
-	| None -> "NULL"
-	| Some offset -> Mysqldb.ml2str (Int64.to_string offset)
-    in
-
-    let filesize =
-      match sql_report.s_size with
-	| None -> "NULL"
-	| Some filesize -> Mysqldb.ml2str (Int64.to_string filesize)
-    in
-
     match sql_report.s_state with
       | SQL_File_Opened ->
 	Mysqldb.mysql#file_opened
 	  sql_report.s_file
 	  sql_report.s_created
 	  sql_report.s_date
-	  filesize
-	  offset
+	  sql_report.s_size
+	  sql_report.s_offset
 	
       | SQL_File_Closed ->
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#file_closed pkey sql_report.s_date filesize offset
+	    Mysqldb.mysql#file_closed
+	      pkey
+	      sql_report.s_date
+	      sql_report.s_size
+	      sql_report.s_offset
 	end
-
 
       | SQL_FK_Offset ->
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#first_known_offset pkey offset
+	    Mysqldb.mysql#first_known_offset pkey sql_report.s_offset
 	end
 
       | SQL_LK_Offset ->
 	match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#last_known_offset pkey offset
+	    Mysqldb.mysql#last_known_offset pkey sql_report.s_offset
 
 
 
