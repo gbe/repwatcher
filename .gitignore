@@ -5,6 +5,7 @@
 *.cmxa
 *.a
 *.o
+*.annot
 .depend
 parser.output
 parser.ml
