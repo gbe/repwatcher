@@ -84,7 +84,7 @@ This is free software under the MIT license.\n\n";
       (* Should be performed before dropping root rights (if any) *)
       checker#remote_process_identity;
       (* Should be performed before dropping root rights (if any) *)
-      (*      checker#chroot;*)
+      checker#chroot;
 
       (* Match left here willingly *)
       begin match conf.c_server with
