@@ -15,7 +15,7 @@ let clean_exit () =
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proved to be usefull for outside apps *)
-  Mysqldb.mysql#sgbd_reset_in_progress
+  Mysqldb.mysql#reset_in_progress
 ;;
 
 let drop_identity checker new_identity =
@@ -84,7 +84,7 @@ This is free software under the MIT license.\n\n";
       (* Should be performed before dropping root rights (if any) *)
       checker#remote_process_identity;
       (* Should be performed before dropping root rights (if any) *)
-      checker#chroot;
+      (*      checker#chroot;*)
 
       (* Match left here willingly *)
       begin match conf.c_server with
@@ -140,7 +140,7 @@ This is free software under the MIT license.\n\n";
 		Mysqldb.mysql#create_table_accesses ;
 
 		(* Set to zero every files marked as 'in progress' in the SGBD *)
-		Mysqldb.mysql#sgbd_reset_in_progress ;
+		Mysqldb.mysql#reset_in_progress ;
       end ;
 
       checker#rights !config_file ;

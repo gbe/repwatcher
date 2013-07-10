@@ -7,7 +7,7 @@ let ml2str = Mysql.ml2str ;;
 let ml2int = Mysql.ml2int ;;
 let insert_id = Mysql.insert_id ;;
 
-class mysqldb () =
+class mysqldb =
 object(self)
 
   method private _map res =
@@ -195,7 +195,7 @@ object(self)
 
 
   (* Reset all IN_PROGRESS accesses in the SGBD *)
-  method sgbd_reset_in_progress =
+  method reset_in_progress =
     let reset_accesses =
       "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
     in
@@ -206,6 +206,97 @@ object(self)
 	ignore (self#query cid reset_accesses) ;
 	self#disconnect cid
 
+
+
+  method file_opened f created creation_date filesize offset =
+    let username =
+      match Txt_operations.name f.f_login with
+	| None -> "NULL"
+	| Some username -> (ml2str username)
+    in
+
+    (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
+    let query =
+      Printf.sprintf "INSERT INTO accesses \
+         (login, username, program, program_pid, path, filename, filesize, \
+         filedescriptor, first_known_offset, opening_date, created, in_progress) \
+	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
+        (ml2str f.f_login)
+	username
+	(ml2str f.f_program)
+	(ml2int (Fdinfo.int_of_pid f.f_program_pid))
+	(ml2str f.f_path)
+	(ml2str f.f_name)
+	filesize
+	(ml2int (Fdinfo.int_of_fd f.f_descriptor))
+	offset
+	(ml2str creation_date)
+	(ml2str created)
+    in
+
+    begin match self#connect () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (self#query cid query) ;
+	let primary_key = insert_id cid in
+	self#disconnect cid ;
+	PrimaryKey primary_key
+    end
+
+
+  method file_closed pkey closing_date filesize offset = 
+    let update_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET CLOSING_DATE = %s, FILESIZE = %s, \
+                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
+        	  WHERE ID = %s"
+	(ml2str closing_date)
+	filesize
+	offset
+	(ml2str (Int64.to_string pkey))
+    in
+	
+    match self#connect () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (self#query cid update_query) ;
+	self#disconnect cid ;
+	Nothing
+
+
+  method first_known_offset pkey offset =
+    let update_offset_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET FIRST_KNOWN_OFFSET = %s \
+	          WHERE ID = %s"
+	offset
+	(ml2str (Int64.to_string pkey))
+    in
+	    
+    match self#connect ~log:false () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (self#query ~log:false cid update_offset_query) ;
+	self#disconnect ~log:false cid ;
+	Nothing
+
+
+  method last_known_offset pkey offset =
+    let update_offset_query =
+      Printf.sprintf "UPDATE accesses \
+        	  SET LAST_KNOWN_OFFSET = %s \
+	          WHERE ID = %s"
+	offset
+	(ml2str (Int64.to_string pkey))
+    in
+	
+    match self#connect ~log:false () with
+      | None -> Nothing
+      | Some cid ->
+	ignore (self#query ~log:false cid update_offset_query) ;
+	self#disconnect ~log:false cid ;
+	Nothing
+
 end;;
 
-let mysql = new mysqldb ();;
+let mysql = new mysqldb;;

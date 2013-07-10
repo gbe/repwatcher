@@ -42,94 +42,6 @@ object(self)
     END
 
 
-  method private _sql_file_opened f created creation_date filesize offset =
-    let username =
-      match Txt_operations.name f.f_login with
-	| None -> "NULL"
-	| Some username -> (Mysqldb.ml2str username)
-    in
-
-    (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
-    let query =
-      Printf.sprintf "INSERT INTO accesses \
-         (login, username, program, program_pid, path, filename, filesize, \
-         filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '1')"
-        (Mysqldb.ml2str f.f_login)
-	username
-	(Mysqldb.ml2str f.f_program)
-	(Mysqldb.ml2int (Fdinfo.int_of_pid f.f_program_pid))
-	(Mysqldb.ml2str f.f_path)
-	(Mysqldb.ml2str f.f_name)
-	filesize
-	(Mysqldb.ml2int (Fdinfo.int_of_fd f.f_descriptor))
-	offset
-	(Mysqldb.ml2str creation_date)
-	(Mysqldb.ml2str created)
-    in
-
-    begin match Mysqldb.mysql#connect () with
-      | None -> Nothing
-      | Some cid ->
-	ignore (Mysqldb.mysql#query cid query) ;
-	let primary_key = Mysqldb.insert_id cid in
-	Mysqldb.mysql#disconnect cid ;
-	PrimaryKey primary_key
-    end
-
-  method private _sql_file_closed pkey closing_date filesize offset = 
-    let update_query =
-      Printf.sprintf "UPDATE accesses \
-        	  SET CLOSING_DATE = %s, FILESIZE = %s, \
-                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
-        	  WHERE ID = %s"
-	(Mysqldb.ml2str closing_date)
-	filesize
-	offset
-	(Mysqldb.ml2str (Int64.to_string pkey))
-    in
-	
-    match Mysqldb.mysql#connect () with
-      | None -> Nothing
-      | Some cid ->
-	ignore (Mysqldb.mysql#query cid update_query) ;
-	Mysqldb.mysql#disconnect cid ;
-	Nothing
-
-  method private _sql_first_known_offset pkey offset =
-    let update_offset_query =
-      Printf.sprintf "UPDATE accesses \
-        	  SET FIRST_KNOWN_OFFSET = %s \
-	          WHERE ID = %s"
-	offset
-	(Mysqldb.ml2str (Int64.to_string pkey))
-    in
-	    
-    match Mysqldb.mysql#connect ~log:false () with
-      | None -> Nothing
-      | Some cid ->
-	ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
-	Mysqldb.mysql#disconnect ~log:false cid ;
-	Nothing
-
-
-  method private _sql_last_known_offset pkey offset =
-    let update_offset_query =
-      Printf.sprintf "UPDATE accesses \
-        	  SET LAST_KNOWN_OFFSET = %s \
-	          WHERE ID = %s"
-	offset
-	(Mysqldb.ml2str (Int64.to_string pkey))
-    in
-	
-    match Mysqldb.mysql#connect ~log:false () with
-      | None -> Nothing
-      | Some cid ->
-	ignore (Mysqldb.mysql#query ~log:false cid update_offset_query) ;
-	Mysqldb.mysql#disconnect ~log:false cid ;
-	Nothing
-
-
   method private _new_notification file filestate =
     let filename_escaped = Txt_operations.escape_for_notify file.f2_name in
     let conf = (Config.cfg)#get in
@@ -257,14 +169,14 @@ object(self)
 	    | true -> "1"
 	    | false -> "0"
 	in
-	self#_sql_file_opened f created sql_report.s_date filesize offset
+	Mysqldb.mysql#file_opened f created sql_report.s_date filesize offset
 
 	
       | SQL_File_Closed ->
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    self#_sql_file_closed pkey sql_report.s_date filesize offset
+	    Mysqldb.mysql#file_closed pkey sql_report.s_date filesize offset
 	end
 
 
@@ -272,14 +184,14 @@ object(self)
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    self#_sql_first_known_offset pkey offset
+	    Mysqldb.mysql#first_known_offset pkey offset
 	end
 
       | SQL_LK_Offset ->
 	match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    self#_sql_last_known_offset pkey offset
+	    Mysqldb.mysql#last_known_offset pkey offset
 
 
 
