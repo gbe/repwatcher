@@ -22,7 +22,33 @@ object(self)
       Log.log (error, Error);
       []
 
-  method connect ?(log=true) () =
+
+  method private _query ?(log=true) cid q =
+  
+    if log then
+      Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
+  
+    try
+      ignore (exec cid q);
+    
+      match status cid with
+	| (StatusOK | StatusEmpty) ->
+	  if log then
+	    Log.log ("Query successfully executed", Normal_Extra)
+
+	| StatusError _ ->
+	  begin match errmsg cid with
+	    | None ->
+	      Log.log ("Oops. Mysqldb.query had an error and the RDBMS \
+		       cannot tell which one", Error)
+	    | Some errmsg' -> Log.log (errmsg', Error)
+	  end
+
+    with Mysql.Error error ->
+      Log.log (error, Error)
+
+
+  method private connect ?(log=true) () =
 
     let conf = (Config.cfg)#get in
     match conf.c_mysql with
@@ -69,34 +95,7 @@ object(self)
 	Log.log ("Disconnected from MySQL", Normal_Extra)
 
     with Mysql.Error error ->
-      Log.log ("RW couldn't disconnect from Mysql: "^error, Error)
-
-
-  method query ?(log=true) cid q =
-  
-    if log then
-      Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
-  
-    try
-      let res = exec cid q in
-    
-      match status cid with
-	| (StatusOK | StatusEmpty) ->
-	  if log then
-	    Log.log ("Query successfully executed", Normal_Extra);
-	  Some res
-
-	| StatusError _ ->
-	  begin match errmsg cid with
-	    | None ->
-	      Log.log ("Oops. Mysqldb.query had an error and the SGBD \
-		       can't tell which one", Error)
-	    | Some errmsg' -> Log.log (errmsg', Error)
-	  end;
-	  None
-    with Mysql.Error error ->
-      Log.log (error, Error) ;
-      None
+      Log.log ("RW could not disconnect from Mysql: "^error, Error)
 
 
   method create_db dbname =
@@ -110,7 +109,7 @@ object(self)
       | Some cid ->
 
 	try
-	  let _ = exec cid q in
+	  ignore (exec cid q);
 
 	  begin
 	    match status cid with
@@ -167,7 +166,7 @@ object(self)
       | Some cid ->
 
 	try
-	  let _ = exec cid q in
+	  ignore (exec cid q);
 
 	  begin
 	    match status cid with
@@ -194,7 +193,6 @@ object(self)
 	  exit 2
 
 
-  (* Reset all IN_PROGRESS accesses in the SGBD *)
   method reset_in_progress =
     let reset_accesses =
       "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
@@ -203,7 +201,7 @@ object(self)
     match self#connect () with
       | None -> ()
       | Some cid -> 
-	ignore (self#query cid reset_accesses) ;
+	self#_query cid reset_accesses;
 	self#disconnect cid
 
 
@@ -242,7 +240,7 @@ object(self)
     begin match self#connect () with
       | None -> Nothing
       | Some cid ->
-	ignore (self#query cid query) ;
+	self#_query cid query ;
 	let primary_key = insert_id cid in
 	self#disconnect cid ;
 	PrimaryKey primary_key
@@ -264,7 +262,7 @@ object(self)
     match self#connect () with
       | None -> Nothing
       | Some cid ->
-	ignore (self#query cid update_query) ;
+	self#_query cid update_query ;
 	self#disconnect cid ;
 	Nothing
 
@@ -281,7 +279,7 @@ object(self)
     match self#connect ~log:false () with
       | None -> Nothing
       | Some cid ->
-	ignore (self#query ~log:false cid update_offset_query) ;
+	self#_query ~log:false cid update_offset_query ;
 	self#disconnect ~log:false cid ;
 	Nothing
 
@@ -298,7 +296,7 @@ object(self)
     match self#connect ~log:false () with
       | None -> Nothing
       | Some cid ->
-	ignore (self#query ~log:false cid update_offset_query) ;
+	self#_query ~log:false cid update_offset_query ;
 	self#disconnect ~log:false cid ;
 	Nothing
 
