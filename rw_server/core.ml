@@ -16,7 +16,7 @@ type w_info = {
 
 exception Found of Inotify.wd ;;
 
-class core () =
+class core =
 object(self)
 
   val debug_event = false
@@ -36,13 +36,9 @@ object(self)
 
 (* Look in the hashtable if the value exists -> bool *)
   method private _is_value path_target =
-    try
-      Hashtbl.iter (
-	fun wd fi ->
-	  if fi.path = path_target then raise (Found wd)
-      ) ht_iwatched;
-      false
-    with Found _ -> true
+    match (self#_get_key path_target) with
+      | None -> false
+      | Some _ -> true
 
 
   method private _get_value wd =
@@ -61,7 +57,7 @@ object(self)
       | Some info -> info.conf
 
 
-  method private del_watch wd =
+  method private _del_watch wd =
 
     if debug_event then begin
       printf "To be deleted: %d\n" (int_of_wd wd);
@@ -620,14 +616,14 @@ object(self)
 			
 		      | Some child -> 
 			Log.log ("move_from of child : "^(child.path), Normal_Extra) ;
-			self#del_watch wd_child
+			self#_del_watch wd_child
 		) children_and_descendants ;
 	      
 		Log.log (("move_from of "^name), Normal_Extra) ;
 	      
 		(* The children's watch has been deleted,
 		 * let's delete the real target *)
-		self#del_watch wd_key  
+		self#_del_watch wd_key  
 (* eo move_from, true *)
 
 
@@ -684,7 +680,7 @@ object(self)
 		     be stopped being watched (not found in Hashtbl)" path
 	    in
 	    Log.log (err, Error)
-	  | Some wd_key -> self#del_watch wd_key
+	  | Some wd_key -> self#_del_watch wd_key
 
   method get_fd =
     fd
@@ -694,5 +690,5 @@ object(self)
 
 end;;
 
-let core = new core ();;
+let core = new core ;;
 
