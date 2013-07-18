@@ -159,7 +159,8 @@ object(self)
   `CLOSING_DATE` datetime DEFAULT NULL,\
   `CREATED` tinyint(1) unsigned NOT NULL,\
   `IN_PROGRESS` tinyint(1) unsigned NOT NULL,\
-  PRIMARY KEY (`ID`)\
+  PRIMARY KEY (`ID`),\
+  INDEX in_progress_idx (`IN_PROGRESS`)\
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
     in
 
