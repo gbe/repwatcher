@@ -50,15 +50,20 @@ object(self)
       Log.log (error, Error)
 
 
-  method private connect ?(log=true) () =
+  method private connect ?(log=true) ?(nodb=false) () =
 
     let conf = (Config.cfg)#get in
     match conf.c_mysql with
       | None -> None
       | Some m ->
 
+	let m' = match nodb with
+	  | false -> m
+	  | true -> { m with dbname = None }
+	in
+
 	try
-	  let cid = Mysql.connect m in
+	  let cid = Mysql.connect m' in
 
 	  if log then
 	    Log.log ("Connected to MySQL", Normal_Extra) ;
@@ -72,21 +77,7 @@ object(self)
 
 
   method connect_without_db =
-
-    let conf = (Config.cfg)#get in
-    match conf.c_mysql with
-      | None -> None
-      | Some m ->
-	try
-	  let cid = Mysql.connect { m with dbname = None } in
-	  Log.log ("Connected to MySQL", Normal_Extra) ;
-	  Some cid
-
-	with
-	  | Mysql.Error error ->
-	    Log.log (error, Error);
-	    None
-	  | Config.Config_error -> None
+    self#connect ~nodb:true ()
 
 
   method disconnect ?(log=true) cid =
