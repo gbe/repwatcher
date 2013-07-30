@@ -148,9 +148,11 @@ object(self)
 
 
   method sql sql_report =
+    let mysql = new Mysqldb.mysqldb in
+
     match sql_report.s_state with
       | SQL_File_Opened ->
-	Mysqldb.mysql#file_opened
+	mysql#file_opened
 	  sql_report.s_file
 	  sql_report.s_created
 	  sql_report.s_date
@@ -161,7 +163,7 @@ object(self)
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#file_closed
+	    mysql#file_closed
 	      pkey
 	      sql_report.s_date
 	      sql_report.s_size
@@ -172,14 +174,14 @@ object(self)
 	begin match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#first_known_offset pkey sql_report.s_offset
+	    mysql#first_known_offset pkey sql_report.s_offset
 	end
 
       | SQL_LK_Offset ->
 	match sql_report.s_pkey with
 	  | None -> assert false
 	  | Some pkey ->
-	    Mysqldb.mysql#last_known_offset pkey sql_report.s_offset
+	    mysql#last_known_offset pkey sql_report.s_offset
 
 
 

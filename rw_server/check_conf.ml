@@ -3,7 +3,6 @@ open Types ;;
 open Unix ;;
 
 
-
 (* The following tests failwith in case of error :
    - SGBD connection
    - Add Database if it doesn't exist
@@ -45,10 +44,13 @@ object(self)
  * There is no need to add a try/with here because it's handled in Mysqldb.ml
  *)  
   method sql_connection =
-    match Mysqldb.mysql#connect_without_db with
+    
+    let mysql = new Mysqldb.mysqldb in
+
+    match mysql#connect_without_db with
       | None -> failwith "Could not connect to MySQL server, read the log"
       | Some cid ->
-	Mysqldb.mysql#disconnect cid
+	mysql#disconnect cid
 
 
 

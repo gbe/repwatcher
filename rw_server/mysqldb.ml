@@ -293,5 +293,3 @@ object(self)
     self#_update_known_offset ~last:true pkey offset
 
 end;;
-
-let mysql = new mysqldb;;
