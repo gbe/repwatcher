@@ -46,11 +46,11 @@ object(self)
   method sql_connection =
     
     let mysql = new Mysqldb.mysqldb in
+    mysql#connect_without_db ;
 
-    match mysql#connect_without_db with
-      | None -> failwith "Could not connect to MySQL server, read the log"
-      | Some cid ->
-	mysql#disconnect cid
+    match mysql#is_connected with
+      | false -> failwith "Could not connect to MySQL server, read the log"
+      | true ->	mysql#disconnect ()
 
 
 

@@ -3,8 +3,17 @@ open Types
 open Types_conf
 open Unix
 
+exception Mysql_not_connected
+
 class mysqldb =
 object(self)
+
+  val mutable cid = None
+
+  method private _get_cid =
+    match cid with
+      | None -> raise Mysql_not_connected
+      | Some cid' -> cid'
 
   method private _to_strsql int64opt =
     match int64opt with
@@ -25,12 +34,16 @@ object(self)
       []
 *)
 
-  method private _query ?(log=true) cid q =
+  method private _query ?(log=true) q =
   
     if log then
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
-  
+
+    if self#is_connected = false then
+      self#_connect ();
+
     try
+      let cid = self#_get_cid in
       ignore (exec cid q);
     
       match status cid with
@@ -46,15 +59,18 @@ object(self)
 	    | Some errmsg' -> Log.log (errmsg', Error)
 	  end
 
-    with Mysql.Error error ->
-      Log.log (error, Error)
+    with
+      | Mysql_not_connected ->
+	Log.log ("Programming error: SQL not connected", Error)
+      | Mysql.Error error ->
+	Log.log (error, Error)
 
 
-  method private connect ?(log=true) ?(nodb=false) () =
+  method private _connect ?(log=true) ?(nodb=false) () =
 
     let conf = (Config.cfg)#get in
     match conf.c_mysql with
-      | None -> None
+      | None -> ()
       | Some m ->
 
 	let m' = match nodb with
@@ -63,75 +79,87 @@ object(self)
 	in
 
 	try
-	  let cid = Mysql.connect m' in
+	  let cid' = Mysql.connect m' in
 
 	  if log then
 	    Log.log ("Connected to MySQL", Normal_Extra) ;
 
-	  Some cid
+	  cid <- Some cid'
 	with
 	  | Mysql.Error error ->
-	    Log.log (error, Error);
-	    None
-	  | Config.Config_error -> None
+	    Log.log (error, Error)
+	  | Config.Config_error -> ()
 
 
   method connect_without_db =
-    self#connect ~nodb:true ()
+    self#_connect ~nodb:true ()
 
+  method is_connected =
+    match cid with
+      | None -> false
+      | Some _ -> true
 
-  method disconnect ?(log=true) cid =
+  method disconnect ?(log=true) () =
     try
-      Mysql.disconnect cid;
-
+      let cid' = self#_get_cid in
+      Mysql.disconnect cid';
+      cid <- None ;
+      
       if log then
 	Log.log ("Disconnected from MySQL", Normal_Extra)
 
-    with Mysql.Error error ->
-      Log.log ("RW could not disconnect from Mysql: "^error, Error)
+    with
+      | Mysql_not_connected ->
+	Log.log ("Programming error: SQL not connected", Error)
+      | Mysql.Error error ->
+	Log.log ("RW could not disconnect from Mysql: "^error, Error)
 
 
   method create_db dbname =
 
-    let q =
-      Printf.sprintf "CREATE DATABASE IF NOT EXISTS %s" dbname
-    in
+    if self#is_connected = false then
+      self#connect_without_db;
 
-    match self#connect_without_db with
-      | None -> assert false
-      | Some cid ->
+    let q = "CREATE DATABASE IF NOT EXISTS "^dbname in
 
-	try
-	  ignore (exec cid q);
+    try
 
-	  begin
-	    match status cid with
-	      | StatusOK ->
-		Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
+      let cid = self#_get_cid in
+      ignore (exec cid q);
 
-	      | StatusEmpty -> ()
+      begin
+	match status cid with
+	  | StatusOK ->
+	    Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
 
-	      | StatusError _ ->
-		begin
-		  match errmsg cid with
-		    | None ->
-		      Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+	  | StatusEmpty -> ()
+
+	  | StatusError _ ->
+	    begin
+	      match errmsg cid with
+		| None ->
+		  Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
 			     doesn't know why", Error)
+		    
+		| Some errmsg' ->
+		  Log.log (errmsg', Error)
+	    end ;
+	    exit 2
+      end ;
 
-		    | Some errmsg' ->
-		      Log.log (errmsg', Error)
-		end ;
-		exit 2
-	  end ;
+      self#disconnect ()
 
-	self#disconnect cid
-
-	with Mysql.Error error ->
-	  Log.log (error, Error) ;
-	  exit 2
-
+    with
+      | Mysql_not_connected ->
+	Log.log ("Programming error: SQL not connected", Error);
+	exit 2
+      | Mysql.Error error ->
+	Log.log (error, Error) ;
+	exit 2
 
   method create_table_accesses =
+    if self#is_connected = false then
+      self#_connect ();
 
     let q =
       Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
@@ -154,49 +182,50 @@ object(self)
   INDEX in_progress_idx (`IN_PROGRESS`)\
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8;"
     in
+    
+    try
+      let cid = self#_get_cid in
+      ignore (exec cid q);
 
-    match self#connect () with
-      | None -> assert false
-      | Some cid ->
+      begin
+	match status cid with
+	  | (StatusOK | StatusEmpty) ->
+	    Log.log (("Table accesses successfully created"), Normal_Extra)	 
 
-	try
-	  ignore (exec cid q);
-
-	  begin
-	    match status cid with
-	      | (StatusOK | StatusEmpty) ->
-		Log.log (("Table accesses successfully created"), Normal_Extra)	 
-
-	      | StatusError _ ->
-		begin
-		  match errmsg cid with
-		    | None ->
-		      Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
+	  | StatusError _ ->
+	    begin
+	      match errmsg cid with
+		| None ->
+		  Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
 			     doesn't know why", Error)
 
-		    | Some errmsg' ->
-		      Log.log (errmsg', Error)
-		end ;
-		exit 2
-	  end ;
+		| Some errmsg' ->
+		  Log.log (errmsg', Error)
+	    end ;
+	    exit 2
+      end ;
 
-	self#disconnect cid
+      self#disconnect ()
 
-	with Mysql.Error error ->
-	  Log.log (error, Error) ;
-	  exit 2
+    with
+      | Mysql_not_connected ->
+	Log.log ("Programming error: SQL not connected", Error);
+	exit 2
+      | Mysql.Error error ->
+	Log.log (error, Error) ;
+	exit 2
 
 
   method reset_in_progress =
     let reset_accesses =
       "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
     in
+
+    if self#is_connected = false then
+      self#_connect ();
   
-    match self#connect () with
-      | None -> ()
-      | Some cid -> 
-	self#_query cid reset_accesses;
-	self#disconnect cid
+    self#_query reset_accesses;
+    self#disconnect ()
 
 
 
@@ -231,14 +260,19 @@ object(self)
 	)
     in
 
-    begin match self#connect () with
-      | None -> Nothing
-      | Some cid ->
-	self#_query cid query ;
-	let primary_key = insert_id cid in
-	self#disconnect cid ;
-	PrimaryKey primary_key
-    end
+    if self#is_connected = false then
+      self#_connect ();
+
+    self#_query query ;
+
+    try
+      let cid' = self#_get_cid in
+      let primary_key = insert_id cid' in
+      self#disconnect () ;
+      PrimaryKey primary_key
+    with Mysql_not_connected ->
+      Log.log ("Mysql file opened could not be executed - Not connected", Error);
+      Nothing
 
 
   method file_closed pkey closing_date filesize offset = 
@@ -252,13 +286,13 @@ object(self)
 	(self#_to_strsql offset)
 	(ml2str (Int64.to_string pkey))
     in
-	
-    match self#connect () with
-      | None -> Nothing
-      | Some cid ->
-	self#_query cid update_query ;
-	self#disconnect cid ;
-	Nothing
+
+    if self#is_connected = false then
+      self#_connect ();
+
+    self#_query update_query ;	
+    self#disconnect () ;
+    Nothing
 
   method private _update_known_offset ?(first=false) ?(last=false) pkey offset =
     let field =
@@ -277,13 +311,13 @@ object(self)
 	(self#_to_strsql offset)
 	(ml2str (Int64.to_string pkey))
     in
-	    
-    match self#connect ~log:false () with
-      | None -> Nothing
-      | Some cid ->
-	self#_query ~log:false cid update_offset_query ;
-	self#disconnect ~log:false cid ;
-	Nothing
+
+    if self#is_connected = false then
+      self#_connect ~log:false ();
+
+    self#_query ~log:false update_offset_query ;
+    self#disconnect ~log:false () ;
+    Nothing
 
 
   method first_known_offset pkey offset =

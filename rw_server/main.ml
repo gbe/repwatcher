@@ -125,19 +125,21 @@ This is free software under the MIT license.\n\n";
       begin
 	match conf.c_mysql with
 	  | None -> ()
-	  | Some mysql ->
+	  | Some mysql' ->
 
-	    match mysql.dbname with
+	    match mysql'.dbname with
 	      | None -> assert false
 	      | Some dbname ->
 
 		(* if Check_conf.sql_connection goes wrong, the program exits *)
 		checker#sql_connection ;
 
-		let mysql = new Mysqldb.mysqldb in	    
+		let mysql_no_db = new Mysqldb.mysqldb in
+		
 		(* if Mysqldb.create_db goes wrong, the program exits *)
-		mysql#create_db dbname ;
+		mysql_no_db#create_db dbname ;
 
+		let mysql = new Mysqldb.mysqldb in
 		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
 		mysql#create_table_accesses ;
 
