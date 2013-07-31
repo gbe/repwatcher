@@ -8,15 +8,17 @@ let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 (* Configuration file fullpath *)
 let config_file = ref "repwatcher.conf" ;;
+let is_mysql = ref false ;;
 
 let clean_exit () =
   Unix.close Core.core#get_fd ;
 
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
-   * This has been proved to be usefull for outside apps *)
-  let mysql = new Mysqldb.mysqldb in
-  mysql#reset_in_progress
+   * This has been proven to be useful for outside apps *)
+  if !is_mysql then
+    let mysql = new Mysqldb.mysqldb in
+    mysql#reset_in_progress
 ;;
 
 let drop_identity checker new_identity =
@@ -64,13 +66,13 @@ This is free software under the MIT license.\n\n";
     ]
     (fun _ -> print_endline usage ; exit 1 ) usage;  
 
-
-  (* Need to be after Arg.parse, otherwise there are problems to
+  (* at_exit needs to be after Arg.parse, otherwise there are problems to
    * display usage and the -help and --help options *)
   at_exit clean_exit;
 
   Config.cfg#parse !config_file;
   let conf = Config.cfg#get in
+
   let checker = new Check_conf.config_checker conf in
 
   (* Check if a connection can be done with the SMTP server *)
@@ -133,13 +135,16 @@ This is free software under the MIT license.\n\n";
 
 		(* if Check_conf.sql_connection goes wrong, the program exits *)
 		checker#sql_connection ;
-
-		let mysql_no_db = new Mysqldb.mysqldb in
 		
-		(* if Mysqldb.create_db goes wrong, the program exits *)
-		mysql_no_db#create_db dbname ;
+		(* since the sql_connection tested above works
+		 * then mysql is activated for the at_exit call *)
+		is_mysql := true;
 
 		let mysql = new Mysqldb.mysqldb in
+		
+		(* if Mysqldb.create_db goes wrong, the program exits *)
+		mysql#create_db dbname ;
+
 		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
 		mysql#create_table_accesses ;
 
