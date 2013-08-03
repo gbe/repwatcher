@@ -61,7 +61,7 @@ let loop_check () =
 		  s_file = file ;
 		  s_state =
 
-		    (* Because the First_Known value in the SGBD is NULL,
+		    (* Because the First_Known value in the RDBMS is NULL,
 		       instead of updating the Last Known value, this update
 		       the First Known field *)
 		    begin match isfirstoffsetknown with

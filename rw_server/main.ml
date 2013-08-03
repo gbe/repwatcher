@@ -148,7 +148,7 @@ This is free software under the MIT license.\n\n";
 		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
 		mysql#create_table_accesses ;
 
-		(* Set to zero every files marked as 'in progress' in the SGBD *)
+		(* Set to zero every files marked as 'in progress' in the RDBMS *)
 		mysql#reset_in_progress ;
       end ;
 

@@ -27,7 +27,7 @@ object(self)
        * when it can be raised. When there is a problem parsing the
        * configuration file, it raises a Parse_error. The program
        * must exit right away but clean_exit() is then executed from
-       * main.ml. The function tries to clean up the sgbd and tries to
+       * main.ml. The function tries to clean up the RDBMS and tries to
        * connect using the info from the configuration which doesn't
        * exist due to the Parse_error. *)
 	raise Config_error

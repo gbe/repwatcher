@@ -134,7 +134,7 @@ object(self)
 	    begin
 	      match errmsg cid with
 		| None ->
-		  Log.log ("Oops. Mysqldb.create_db had an error and the SGBD \
+		  Log.log ("Oops. Mysqldb.create_db had an error and the RDBMS \
 			     doesn't know why", Error)
 		    
 		| Some errmsg' ->
@@ -192,7 +192,7 @@ object(self)
 	    begin
 	      match errmsg cid with
 		| None ->
-		  Log.log ("Oops. Mysqldb.create_table_accesses had an error and the SGBD \
+		  Log.log ("Oops. Mysqldb.create_table_accesses had an error and the RDBMS \
 			     doesn't know why", Error)
 
 		| Some errmsg' ->

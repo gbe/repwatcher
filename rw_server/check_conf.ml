@@ -4,7 +4,7 @@ open Unix ;;
 
 
 (* The following tests failwith in case of error :
-   - SGBD connection
+   - RDBMS connection
    - Add Database if it doesn't exist
    - Add Table
    - main process identity
