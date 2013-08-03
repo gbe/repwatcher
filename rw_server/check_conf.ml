@@ -19,8 +19,9 @@ open Unix ;;
    - if the smtp server can be reached
  *)
 
-class config_checker conf =
+class config_checker =
 object(self)
+  inherit Config.config 
 
   (* Does the file exist and can it be read ? *)
   method private _can_be_accessed file_dir rights =
@@ -34,10 +35,10 @@ object(self)
       failwith err
 
 
-(* Test if we can successfully connect to the SGBD without a dbname,
+(* Test if we can successfully connect to the RDBMS without a dbname,
  * because at this point, the DB could not exist.
  *
- * if we can't, then we exit right away
+ * if we cannot, then we exit right away
  * This prevents the program to crash long after starting running it
  * at the very moment a SQL query is needed.
  * With this, we know from the start if (at least this part) it goes right or wrong.
@@ -58,8 +59,8 @@ object(self)
  * by the main process exists
  * (only if the current identity is root)
  *)
-  method process_identity =  
-    match conf.c_process_identity with
+  method process_identity =
+    match (self#get).c_process_identity with
       | None -> ()
       | Some new_main_identity ->
 	if Unix.geteuid () = 0 && Unix.getegid () = 0 then
@@ -83,7 +84,7 @@ object(self)
 
 
   method server_certs =
-    match conf.c_server with
+    match (self#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_certs with
@@ -102,7 +103,7 @@ object(self)
 
   (* Check if the directory to chroot exists *)
   method chroot =
-    match conf.c_server with
+    match (self#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_chroot with
@@ -129,7 +130,7 @@ object(self)
  * the remote process exists (only if the current identity is root)
  *)
   method remote_process_identity =
-    match conf.c_server with
+    match (self#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_process_identity with
@@ -153,32 +154,33 @@ object(self)
 
   (* Check if a connection can be done with the SMTP server *)
   method check_smtp_server =
-
-    match conf.c_email with
-      | None -> ()
-      | Some e ->
-	let host = e.e_smtp.sm_host in
-	let port = e.e_smtp.sm_port in
-
-	try
-	  let resolve name =
-	    try Unix.inet_addr_of_string name
+    try
+      let e = self#get_email in
+      let host = e.e_smtp.sm_host in
+      let port = e.e_smtp.sm_port in
+      try
+	let resolve name =
+	  begin try Unix.inet_addr_of_string name
 	    with Failure _ ->
               let h = Unix.gethostbyname name in
               h.Unix.h_addr_list.(0)
-	  in
+	  end
+	in
     
-	  let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-	  Unix.connect s (Unix.ADDR_INET((resolve host), port));
-	  Unix.close s
-	with _ ->
-	  (* sending of emails disabled *)
-	  Config.cfg#set_email_disabled;
+	let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+	Unix.connect s (Unix.ADDR_INET((resolve host), port));
+	Unix.close s
+      with | _ ->
+	(* sending of emails disabled *)
+	Config.cfg#set_email_disabled;
 
-	  let err = 
-	    "Err: while checking if repwatcher could \
+	let err = 
+	  "Err: while checking if repwatcher could \
 connect to "^host^", an error occured. Sending of emails is disabled"
-	  in 
-	  Log.log (err, Error)
-
+	in 
+	Log.log (err, Error)
+    with
+      | Config.Email_not_configured ->
+	Log.log ("Do not check the SMTP server since emailing is disabled", Normal_Extra)
+    
 end;;

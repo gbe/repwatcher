@@ -9,6 +9,7 @@ class mysqldb =
 object(self)
 
   val mutable cid = None
+  val dbparam = (Config.cfg)#get_sql
 
   method private _get_cid =
     match cid with
@@ -68,27 +69,22 @@ object(self)
 
   method private _connect ?(log=true) ?(nodb=false) () =
 
-    let conf = (Config.cfg)#get in
-    match conf.c_mysql with
-      | None -> ()
-      | Some m ->
+    let dbparam' = match nodb with
+      | false -> dbparam
+      | true -> { dbparam with dbname = None }
+    in
 
-	let m' = match nodb with
-	  | false -> m
-	  | true -> { m with dbname = None }
-	in
+    try
+      let cid' = Mysql.connect dbparam' in
 
-	try
-	  let cid' = Mysql.connect m' in
-
-	  if log then
-	    Log.log ("Connected to MySQL", Normal_Extra) ;
-
-	  cid <- Some cid'
-	with
-	  | Mysql.Error error ->
-	    Log.log (error, Error)
-	  | Config.Config_error -> ()
+      if log then
+	Log.log ("Connected to MySQL", Normal_Extra) ;
+      
+      cid <- Some cid'
+    with
+      | Mysql.Error error ->
+	Log.log (error, Error)
+      | Config.Config_error -> ()
 
 
   method connect_without_db =

@@ -4,11 +4,13 @@ open Types_conf
 open Unix
 
 exception Config_error ;;
+exception Email_not_configured ;;
+exception SQL_not_configured ;;
+
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 class config =
 object(self)
-
   val mutable conf = None
 
 (* localize the error and give the line and column *)
@@ -76,12 +78,17 @@ object(self)
   method get_email =
     let c = (self#get).c_email in
     match c with
-      | None -> assert false
+      | None -> raise Email_not_configured
       | Some email_conf -> email_conf
-
 
   method set_email_disabled =
     conf <- Some { self#get with c_email = None }
+
+  method get_sql =
+    let c = (self#get).c_mysql in
+    match c with
+      | None -> raise SQL_not_configured
+      | Some sql_conf -> sql_conf
 
 end ;;
 		  
