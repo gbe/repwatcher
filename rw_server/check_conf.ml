@@ -1,7 +1,7 @@
 open Types_conf ;;
 open Types ;;
 open Unix ;;
-
+open Config ;;
 
 (* The following tests failwith in case of error :
    - RDBMS connection
@@ -60,21 +60,22 @@ object(self)
  * (only if the current identity is root)
  *)
   method process_identity =
-    match (self#get).c_process_identity with
-      | None -> ()
-      | Some new_main_identity ->
-	if Unix.geteuid () = 0 && Unix.getegid () = 0 then
-	  try
-	  (* Check in /etc/passwd if the user "new_main_identity" exists *)
-	    ignore (Unix.getpwnam new_main_identity);
-	  with Not_found ->
-	    let error =
-	      "Fatal error. User "^new_main_identity^" doesn't exist. \
-            The process can't take this identity"
-	    in
-	    Log.log (error, Error);
-	    failwith error
+    try
+    let proc_id = self#get_process_identity in
 
+    if Unix.geteuid () = 0 && Unix.getegid () = 0 then
+      try
+	(* Check in /etc/passwd if the user "proc_id" exists *)
+	ignore (Unix.getpwnam proc_id);
+      with Not_found ->
+	let error =
+	  "Fatal error. User "^proc_id^" doesn't exist. \
+            The process can't take this identity"
+	in
+	Log.log (error, Error);
+	failwith error
+    with Process_identity_not_configured ->
+      Log.log ("Cannot check the process identity since it is disabled", Normal_Extra)
 
 (* print and log if others have read permission on file *)
   method rights file =
@@ -180,7 +181,7 @@ connect to "^host^", an error occured. Sending of emails is disabled"
 	in 
 	Log.log (err, Error)
     with
-      | Config.Email_not_configured ->
+      | Email_not_configured ->
 	Log.log ("Do not check the SMTP server since emailing is disabled", Normal_Extra)
     
 end;;

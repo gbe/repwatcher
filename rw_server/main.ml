@@ -71,7 +71,10 @@ This is free software under the MIT license.\n\n";
   at_exit clean_exit;
 
   Config.cfg#parse !config_file;
+  (* Prior to the config file parsing, the "log" assumed it was default.
+   * Now that the config file has been parsed, it must be informed of the real value *)
   let conf = Config.cfg#get in
+  Log.sysl#set_config Config.cfg#get_log_verbosity ;
 
   let checker = new Check_conf.config_checker in
 

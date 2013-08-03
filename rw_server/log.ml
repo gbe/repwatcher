@@ -4,8 +4,13 @@ open Types_conf
 
 exception Cid_error
 
-class syslog txt log_level =
+class syslog =
 object(self)
+  
+(* use Regular as a default value to not have a circulary dependency log.ml <-> config.ml
+ * Once the config file has been read, the value must be updated
+ *)
+  val mutable c_log = Regular
   val mutable syslog_cid = None
 
   method private _get_cid=
@@ -27,10 +32,8 @@ object(self)
       | _ -> prerr_endline "Syslog error: sendlog"
 
 
-  method sendlog =
-    let conf = (Config.cfg)#get in
-
-    match conf.c_log with
+  method sendlog txt log_level =
+    match c_log with
       | Disabled -> () (* don't log *)
       | Regular  ->
 	begin
@@ -57,11 +60,15 @@ object(self)
       | Cid_error -> prerr_endline "Syslog error: closelog cid error"
       | _ -> prerr_endline "Syslog error: closelog"
 
+  method set_config c_log' =
+    c_log <- c_log'
+
 end;;
 
+let sysl = new syslog ;;
+
 let log (txt, log_level) =
-  let sysl = new syslog txt log_level in
   sysl#openlog_connect;
-  sysl#sendlog;
+  sysl#sendlog txt log_level;
   sysl#closelog
 ;;

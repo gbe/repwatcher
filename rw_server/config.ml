@@ -1,16 +1,19 @@
 open Lexing
 open Format
+open Types
 open Types_conf
 open Unix
 
 exception Config_error ;;
 exception Email_not_configured ;;
+exception Process_identity_not_configured ;;
 exception SQL_not_configured ;;
 
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 class config =
 object(self)
+
   val mutable conf = None
 
 (* localize the error and give the line and column *)
@@ -76,20 +79,56 @@ object(self)
 
 
   method get_email =
-    let c = (self#get).c_email in
+    let c =
+      try
+	(self#get).c_email 
+      with Config_error ->
+	let err = "Cannot retrieve email configuration since the config file has not been parsed" in
+	Log.log (err, Error);
+	exit 1
+    in
     match c with
       | None -> raise Email_not_configured
       | Some email_conf -> email_conf
+
 
   method set_email_disabled =
     conf <- Some { self#get with c_email = None }
 
   method get_sql =
-    let c = (self#get).c_mysql in
-    match c with
-      | None -> raise SQL_not_configured
-      | Some sql_conf -> sql_conf
+      let c =
+	try
+	  (self#get).c_mysql
+	with Config_error ->
+	  let err = "Cannot retrieve SQL configuration since the config file has not been parsed" in
+	 Log.log (err, Error);
+	  exit 1
+      in
+      match c with
+	| None -> raise SQL_not_configured
+	| Some sql_conf -> sql_conf
 
+
+  method get_process_identity =
+    let c =
+      try
+	(self#get).c_process_identity
+      with Config_error ->
+	let err = "Cannot retrieve process identity configuration since the config file has not been parsed" in
+	Log.log (err, Error);
+	exit 1
+    in
+    match c with
+      | None -> raise Process_identity_not_configured
+      | Some process_id_conf -> process_id_conf
+
+  method get_log_verbosity =
+    try
+      (self#get).c_log
+    with Config_error ->
+      let err = "Cannot retrieve the log verbosity since the config file has not been parsed" in
+      Log.log (err, Error);
+      exit 1
 end ;;
 		  
 let cfg = new config ;;
