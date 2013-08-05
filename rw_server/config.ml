@@ -71,12 +71,6 @@ object(self)
 
     close_in c;
 
-  method is_email_activated =
-    let c = (self#get).c_email in
-    match c with
-      | None -> false
-      | Some _ -> true
-
 
   method get_email =
     let c =
@@ -90,6 +84,12 @@ object(self)
     match c with
       | None -> raise Email_not_configured
       | Some email_conf -> email_conf
+
+  method is_email_activated =
+   try
+     ignore (self#get_email);
+     true
+   with Email_not_configured -> false
 
 
   method set_email_disabled =
@@ -107,6 +107,13 @@ object(self)
       match c with
 	| None -> raise SQL_not_configured
 	| Some sql_conf -> sql_conf
+
+
+  method is_sql_activated =
+       try
+     ignore (self#get_sql);
+     true
+   with SQL_not_configured -> false
 
 
   method get_process_identity =

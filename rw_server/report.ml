@@ -150,7 +150,7 @@ object(self)
   method sql sql_report =
     let mysql = new Mysqldb.mysqldb in
 
-    match sql_report.s_state with
+    begin match sql_report.s_state with
       | SQL_File_Opened ->
 	mysql#file_opened
 	  sql_report.s_file
@@ -182,7 +182,8 @@ object(self)
 	  | None -> assert false
 	  | Some pkey ->
 	    mysql#last_known_offset pkey sql_report.s_offset
-
+    end;
+    mysql
 
 
   method mail tobemailed =

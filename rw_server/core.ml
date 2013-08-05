@@ -374,10 +374,9 @@ object(self)
 	      end;
 
 	      let pkey_opt =
-		match ((Config.cfg)#get).c_mysql with
-		  | None -> None
-		  | Some m ->
-
+		match Config.cfg#is_sql_activated with
+		  | false ->  None
+		  | true ->
 		    let sql_report =
 		      {
 			s_file = file ;
@@ -389,11 +388,11 @@ object(self)
 			s_created = created ;
 		      }
 		    in
-		    match (Report.report#sql sql_report) with
-		      (* could be triggered by an SQL error *)
-		      | Nothing -> None
-
-		      | PrimaryKey pkey -> Some pkey
+		    let sql_object = Report.report#sql sql_report in	      
+		    try
+		      Some sql_object#get_primary_key
+		    with
+			Mysqldb.No_primary_key -> None
 	      in
 
 	      let isfirstoffsetknown =

@@ -53,9 +53,9 @@ let loop_check () =
 	    (wd, file)
 	    (date, filesize, (true, offset_opt, 0), pkey_opt, created) ;
 
-	  match ((Config.cfg)#get).c_mysql with
-	    | None -> ()
-	    | Some _ ->
+	  match ((Config.cfg)#is_sql_activated with
+	    | false -> ()
+	    | true ->
 	      let sql_report =
 		{
 		  s_file = file ;

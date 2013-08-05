@@ -4,12 +4,13 @@ open Types_conf
 open Unix
 
 exception Mysql_not_connected
+exception No_primary_key
 
 class mysqldb =
 object(self)
 
   val mutable cid = None
-  val dbparam = (Config.cfg)#get_sql
+  val mutable primary_key = None
 
   method private _get_cid =
     match cid with
@@ -69,12 +70,12 @@ object(self)
 
   method private _connect ?(log=true) ?(nodb=false) () =
 
-    let dbparam' = match nodb with
-      | false -> dbparam
-      | true -> { dbparam with dbname = None }
-    in
-
     try
+      let dbparam' = match nodb with
+	| false ->  (Config.cfg)#get_sql
+	| true -> { (Config.cfg)#get_sql with dbname = None }
+      in
+
       let cid' = Mysql.connect dbparam' in
 
       if log then
@@ -82,9 +83,11 @@ object(self)
       
       cid <- Some cid'
     with
-      | Mysql.Error error ->
-	Log.log (error, Error)
-      | Config.Config_error -> ()
+      | Mysql.Error err ->
+	Log.log (err, Error)
+      | Config.SQL_not_configured ->
+	let err = "Cannot connect to MySQL since it is not configured" in
+	Log.log (err, Error)
 
 
   method connect_without_db =
@@ -263,12 +266,10 @@ object(self)
 
     try
       let cid' = self#_get_cid in
-      let primary_key = insert_id cid' in
-      self#disconnect () ;
-      PrimaryKey primary_key
+      primary_key <- Some (insert_id cid') ;
+      self#disconnect () 
     with Mysql_not_connected ->
-      Log.log ("Mysql file opened could not be executed - Not connected", Error);
-      Nothing
+      Log.log ("Mysql file opened could not be executed - Not connected", Error)
 
 
   method file_closed pkey closing_date filesize offset = 
@@ -287,16 +288,14 @@ object(self)
       self#_connect ();
 
     self#_query update_query ;	
-    self#disconnect () ;
-    Nothing
+    self#disconnect ()
 
   method private _update_known_offset ?(first=false) ?(last=false) pkey offset =
     let field =
       match first, last with
-	| false, false -> assert false
 	| false, true -> "LAST_KNOWN_OFFSET"
 	| true, false -> "FIRST_KNOWN_OFFSET"
-	| true, true -> assert false
+	| _ -> assert false
     in
 
     let update_offset_query =
@@ -312,14 +311,18 @@ object(self)
       self#_connect ~log:false ();
 
     self#_query ~log:false update_offset_query ;
-    self#disconnect ~log:false () ;
-    Nothing
+    self#disconnect ~log:false ()
 
 
-  method first_known_offset pkey offset =
-    self#_update_known_offset ~first:true pkey offset
+  method first_known_offset offset =
+    self#_update_known_offset ~first:true offset
 
-  method last_known_offset pkey offset =
-    self#_update_known_offset ~last:true pkey offset
+  method last_known_offset offset =
+    self#_update_known_offset ~last:true offset
 
+  method get_primary_key =
+    match primary_key with
+      | None -> raise No_primary_key
+      | Some pkey -> pkey
+      
 end;;
