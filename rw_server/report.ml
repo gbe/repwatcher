@@ -1,6 +1,8 @@
 open Types
 open Types_conf
+open Sql_report
 open Printf
+
 
 class report =
 object(self)
@@ -148,43 +150,44 @@ object(self)
 
 
   method sql sql_report =
-    let mysql = new Mysqldb.mysqldb in
 
-    begin match sql_report.s_state with
+    match sql_report.s_state with
       | SQL_File_Opened ->
+	let mysql = new Mysqldb.mysqldb in
 	mysql#file_opened
 	  sql_report.s_file
 	  sql_report.s_created
 	  sql_report.s_date
 	  sql_report.s_size
-	  sql_report.s_offset
-	
+	  sql_report.s_offset;
+	Some mysql
+	  
       | SQL_File_Closed ->
-	begin match sql_report.s_pkey with
+	begin match sql_report.s_mysql_obj with
 	  | None -> assert false
-	  | Some pkey ->
+	  | Some mysql ->
 	    mysql#file_closed
-	      pkey
 	      sql_report.s_date
 	      sql_report.s_size
-	      sql_report.s_offset
+	      sql_report.s_offset;
+	    None
 	end
 
       | SQL_FK_Offset ->
-	begin match sql_report.s_pkey with
+	begin match sql_report.s_mysql_obj with
 	  | None -> assert false
-	  | Some pkey ->
-	    mysql#first_known_offset pkey sql_report.s_offset
+	  | Some mysql ->
+	    mysql#first_known_offset sql_report.s_offset;
+	    None
 	end
 
       | SQL_LK_Offset ->
-	match sql_report.s_pkey with
+	begin match sql_report.s_mysql_obj with
 	  | None -> assert false
-	  | Some pkey ->
-	    mysql#last_known_offset pkey sql_report.s_offset
-    end;
-    mysql
-
+	  | Some mysql ->
+	    mysql#last_known_offset sql_report.s_offset;
+	    None
+	end
 
   method mail tobemailed =
 

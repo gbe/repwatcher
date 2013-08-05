@@ -35,15 +35,7 @@ type sql_type =
   | SQL_FK_Offset (* First Known *)
   | SQL_LK_Offset (* Last Known *)
 
-type sql_report = {
-  s_file : f_file ;
-  s_state : sql_type ;
-  s_size : int64 option ;
-  s_date : string ;
-  s_offset : int64 option ;
-  s_pkey : int64 option ;
-  s_created : bool ;
-}
+
 
 type mail_t = {
   m_filestate: file_state;

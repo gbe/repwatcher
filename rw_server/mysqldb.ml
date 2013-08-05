@@ -22,6 +22,10 @@ object(self)
       | None -> "NULL"
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
 
+  method private _get_primary_key =
+    match primary_key with
+      | None -> raise No_primary_key
+      | Some pkey -> pkey
 
 (*  method private _map res =
     try
@@ -272,46 +276,58 @@ object(self)
       Log.log ("Mysql file opened could not be executed - Not connected", Error)
 
 
-  method file_closed pkey closing_date filesize offset = 
-    let update_query =
-      Printf.sprintf "UPDATE accesses \
+  method file_closed closing_date filesize offset =
+
+    try
+      let pkey = self#_get_primary_key in
+
+      let update_query =
+	Printf.sprintf "UPDATE accesses \
         	  SET CLOSING_DATE = %s, FILESIZE = %s, \
                   LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
         	  WHERE ID = %s"
-	(ml2str closing_date)
-	(self#_to_strsql filesize)
-	(self#_to_strsql offset)
-	(ml2str (Int64.to_string pkey))
-    in
+	  (ml2str closing_date)
+	  (self#_to_strsql filesize)
+	  (self#_to_strsql offset)
+	  (ml2str (Int64.to_string pkey))
+      in
 
-    if self#is_connected = false then
-      self#_connect ();
+      if self#is_connected = false then
+	self#_connect ();
 
-    self#_query update_query ;	
-    self#disconnect ()
+      self#_query update_query ;
+      self#disconnect ()
+    with No_primary_key ->
+      Log.log ("SQL: cannot close file: no primary key", Error)
 
-  method private _update_known_offset ?(first=false) ?(last=false) pkey offset =
-    let field =
-      match first, last with
-	| false, true -> "LAST_KNOWN_OFFSET"
-	| true, false -> "FIRST_KNOWN_OFFSET"
-	| _ -> assert false
-    in
+  method private _update_known_offset ?(first=false) ?(last=false) offset =
+    try
+      let pkey = self#_get_primary_key in
 
-    let update_offset_query =
-      Printf.sprintf "UPDATE accesses \
+      let field =
+	match first, last with
+	  | false, true -> "LAST_KNOWN_OFFSET"
+	  | true, false -> "FIRST_KNOWN_OFFSET"
+	  | _ -> assert false
+      in
+
+      let update_offset_query =
+	Printf.sprintf "UPDATE accesses \
         	  SET %s = %s \
 	          WHERE ID = %s"
-	field
-	(self#_to_strsql offset)
-	(ml2str (Int64.to_string pkey))
-    in
+	  field
+	  (self#_to_strsql offset)
+	  (ml2str (Int64.to_string pkey))
+      in
 
-    if self#is_connected = false then
-      self#_connect ~log:false ();
+      if self#is_connected = false then
+	self#_connect ~log:false ();
 
-    self#_query ~log:false update_offset_query ;
-    self#disconnect ~log:false ()
+      self#_query ~log:false update_offset_query ;
+      self#disconnect ~log:false ()
+
+    with No_primary_key ->
+      Log.log ("SQL: cannot close file: no primary key", Error)
 
 
   method first_known_offset offset =
@@ -319,10 +335,5 @@ object(self)
 
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
-
-  method get_primary_key =
-    match primary_key with
-      | None -> raise No_primary_key
-      | Some pkey -> pkey
-      
+     
 end;;

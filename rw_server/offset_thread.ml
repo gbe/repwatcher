@@ -1,6 +1,7 @@
 open Types
 open Types_conf
 open Fdinfo
+open Sql_report
 open Printf
 
 let loop_check () =
@@ -9,7 +10,7 @@ let loop_check () =
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
 
-    Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), pkey_opt, created) ->
+    Hashtbl.iter (fun (wd, file) (date, filesize, (isfirstoffsetknown, _, error_counter), mysql_obj_opt, created) ->
       let offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
@@ -28,7 +29,7 @@ let loop_check () =
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), pkey_opt, created);
+	      (date, filesize, (isfirstoffsetknown, offset_opt, error_counter'), mysql_obj_opt, created);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
 	    let event =
@@ -51,9 +52,9 @@ let loop_check () =
 	   *)
 	  Hashtbl.replace Files_progress.ht
 	    (wd, file)
-	    (date, filesize, (true, offset_opt, 0), pkey_opt, created) ;
+	    (date, filesize, (true, offset_opt, 0), mysql_obj_opt, created) ;
 
-	  match ((Config.cfg)#is_sql_activated with
+	  match (Config.cfg)#is_sql_activated with
 	    | false -> ()
 	    | true ->
 	      let sql_report =
@@ -71,7 +72,7 @@ let loop_check () =
 		  s_size = filesize ;
 		  s_date = date ;
 		  s_offset = offset_opt ;
-		  s_pkey = pkey_opt ;
+		  s_mysql_obj = mysql_obj_opt ;
 		  s_created = created ;
 		}
 	      in

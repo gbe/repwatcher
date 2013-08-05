@@ -4,8 +4,7 @@ open Unix
 open Types
 open Types_conf
 open Report
-
-
+open Sql_report
 
 type w_info = {
   conf         : bool;
@@ -373,9 +372,9 @@ object(self)
 		  Report.report#mail tobemailed
 	      end;
 
-	      let pkey_opt =
+	      let mysql_obj_opt =
 		match Config.cfg#is_sql_activated with
-		  | false ->  None
+		  | false -> None
 		  | true ->
 		    let sql_report =
 		      {
@@ -384,15 +383,11 @@ object(self)
 			s_size = filesize ;
 			s_date = date ;
 			s_offset = offset_opt ;
-			s_pkey = None ;
+			s_mysql_obj = None ;
 			s_created = created ;
 		      }
 		    in
-		    let sql_object = Report.report#sql sql_report in	      
-		    try
-		      Some sql_object#get_primary_key
-		    with
-			Mysqldb.No_primary_key -> None
+		    Report.report#sql sql_report
 	      in
 
 	      let isfirstoffsetknown =
@@ -406,7 +401,7 @@ object(self)
 		(date,
 		 filesize,
 		 (isfirstoffsetknown, offset_opt, 0),
-		 pkey_opt,
+		 mysql_obj_opt,
 		 created)
 
 	) files ;
@@ -473,7 +468,7 @@ object(self)
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), pkey_opt, created)) ->
+      fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), mysql_obj_opt, created)) ->
 
 	Mutex.lock Files_progress.mutex_ht ;	  
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -520,16 +515,16 @@ object(self)
 			offset
 	in
 
-	begin match ((Config.cfg)#get).c_mysql with
-	  | None -> ()
-	  | Some _ ->
+	begin match Config.cfg#is_sql_activated with
+	  | false -> ()
+	  | true ->
 	    let sql_report = {
 	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
 	      s_size = filesize ;
 	      s_date = current_date ;
 	      s_offset = offset_opt ;
-	      s_pkey = pkey_opt ;
+	      s_mysql_obj = mysql_obj_opt ;
 	      s_created = created ;
 	    }
 	    in
