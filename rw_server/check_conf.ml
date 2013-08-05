@@ -21,7 +21,7 @@ open Config ;;
 
 class config_checker =
 object(self)
-  inherit Config.config 
+  inherit Config.config
 
   (* Does the file exist and can it be read ? *)
   method private _can_be_accessed file_dir rights =
@@ -61,7 +61,7 @@ object(self)
  *)
   method process_identity =
     try
-    let proc_id = self#get_process_identity in
+    let proc_id = Config.cfg#get_process_identity in
 
     if Unix.geteuid () = 0 && Unix.getegid () = 0 then
       try
@@ -85,7 +85,7 @@ object(self)
 
 
   method server_certs =
-    match (self#get).c_server with
+    match (Config.cfg#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_certs with
@@ -104,7 +104,7 @@ object(self)
 
   (* Check if the directory to chroot exists *)
   method chroot =
-    match (self#get).c_server with
+    match (Config.cfg#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_chroot with
@@ -131,7 +131,7 @@ object(self)
  * the remote process exists (only if the current identity is root)
  *)
   method remote_process_identity =
-    match (self#get).c_server with
+    match (Config.cfg#get).c_server with
       | None -> assert false
       | Some server ->
 	match server.s_process_identity with
@@ -156,7 +156,7 @@ object(self)
   (* Check if a connection can be done with the SMTP server *)
   method check_smtp_server =
     try
-      let e = self#get_email in
+      let e = Config.cfg#get_email in
       let host = e.e_smtp.sm_host in
       let port = e.e_smtp.sm_port in
       try
