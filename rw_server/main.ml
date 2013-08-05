@@ -162,12 +162,10 @@ This is free software under the MIT license.\n\n";
 	checker#server_certs ;
      
       (* Watch the config *)
-      Core.core#add_watch !config_file ~wd_father_opt:None ~is_config_file:true;
+      (* Core.core#add_watch !config_file ~wd_father_opt:None ~is_config_file:true; *)
       
-      if conf.c_notify.n_remotely then begin
+      if conf.c_notify.n_remotely then
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
-      end;
-
 
       (* Filter the directories given in the config file with the ignored ones *)
       let (dirs, children) =
