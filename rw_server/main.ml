@@ -180,7 +180,8 @@ This is free software under the MIT license.\n\n";
       List.iter (fun dir -> Core.core#add_watch dir ~wd_father_opt:None ~is_config_file:false) dirs;
       Core.core#add_watch_children children;
 
-      ignore (Thread.create Offset_thread.loop_check ()) ;
+      if Config.cfg#is_sql_activated then
+	ignore (Thread.create Offset_thread.loop_check ())
 
       let notif_txt = "Repwatcher is watching youuu ! :)" in
       Report.report#notify (Local_notif notif_txt);
