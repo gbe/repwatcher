@@ -1,3 +1,5 @@
+open Sql_report ;;
+
 val mutex_ht : Mutex.t
 
 (*
@@ -8,13 +10,13 @@ val mutex_ht : Mutex.t
  * int64 option = offset
  * int = times the offset couldn't be retrieved (error_counter)
  *
- * int64 = SQL primary key
+ * sql_mid = SQL object (either Mysql or Postgresql)
  * bool = created (true) or not (false)
 *)
 val ht : (Inotify.wd * Types.f_file, 
 	  (string 
 	   * int64 option 
 	   * (bool * int64 option * int) 
-	   * Mysqldb.mysqldb option
+	   * sql_mid option
 	   * bool)
 ) Hashtbl.t

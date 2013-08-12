@@ -468,7 +468,7 @@ object(self)
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), mysql_obj_opt, created)) ->
+      fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), sql_obj_opt, created)) ->
 
 	Mutex.lock Files_progress.mutex_ht ;	  
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -524,7 +524,7 @@ object(self)
 	      s_size = filesize ;
 	      s_date = current_date ;
 	      s_offset = offset_opt ;
-	      s_sql_obj = mysql_obj_opt ;
+	      s_sql_obj = sql_obj_opt ;
 	      s_created = created ;
 	    }
 	    in

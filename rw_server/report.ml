@@ -160,34 +160,49 @@ object(self)
 	  sql_report.s_date
 	  sql_report.s_size
 	  sql_report.s_offset;
-	Some mysql
+	Some (Mysql mysql)
 	  
       | SQL_File_Closed ->
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
-	  | Some mysql ->
-	    mysql#file_closed
-	      sql_report.s_date
-	      sql_report.s_size
-	      sql_report.s_offset;
-	    None
-	end
+	  | Some sql ->
+	    match sql with
+	      | Mysql mysql ->
+		mysql#file_closed
+		  sql_report.s_date
+		  sql_report.s_size
+		  sql_report.s_offset
+	      | Postgresql pgres ->
+		pgres#file_closed
+		  sql_report.s_date
+		  sql_report.s_size
+		  sql_report.s_offset
+	end;
+	None
 
       | SQL_FK_Offset ->
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
-	  | Some mysql ->
-	    mysql#first_known_offset sql_report.s_offset;
-	    None
-	end
+	  | Some sql ->
+	    match sql with
+	      | Mysql mysql ->
+		mysql#first_known_offset sql_report.s_offset
+	      | Postgresql pgres ->
+		pgres#first_known_offset sql_report.s_offset
+	end;
+	None
 
       | SQL_LK_Offset ->
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
-	  | Some mysql ->
-	    mysql#last_known_offset sql_report.s_offset;
-	    None
-	end
+	  | Some sql ->
+	    match sql with
+	      | Mysql mysql ->
+		mysql#last_known_offset sql_report.s_offset
+	      | Postgresql pgres ->
+		pgres#last_known_offset sql_report.s_offset
+	end;
+	None
 
   method mail tobemailed =
 
