@@ -17,6 +17,6 @@ val ht : (Inotify.wd * Types.f_file,
 	  (string 
 	   * int64 option 
 	   * (bool * int64 option * int) 
-	   * sql_mid option
+	   * dbkind option
 	   * bool)
 ) Hashtbl.t
