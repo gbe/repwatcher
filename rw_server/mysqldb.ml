@@ -1,7 +1,5 @@
 open Mysql
 open Types
-open Types_conf
-open Unix
 
 exception Mysql_not_connected
 exception No_primary_key

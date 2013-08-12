@@ -1,8 +1,9 @@
 open Postgresql
-open Printf
+open Types
 
 exception Pgsql_not_connected;;
 exception No_PG_last_result;;
+exception No_primary_key;;
 
 class pgsql =
 object(self)
@@ -16,18 +17,28 @@ object(self)
   val mutable requiressl = None
 
   val mutable last_result = None
+  val mutable primary_key = None
 
   initializer
     host <- Some "192.168.69.22";
-    dbname <- Some "huhu42";
+    dbname <- Some "repwatcher";
     user <- Some "postgres" ;
     pwd <- Some "postgres" ;
+
+  method private _to_strsql int64opt =
+    match int64opt with
+      | None -> "NULL"
+      | Some var_int64 -> Int64.to_string var_int64
 
   method private _get_last_result =
     match last_result with
       | None -> raise No_PG_last_result
       | Some last_r -> last_r
 
+  method private _get_primary_key =
+    match primary_key with
+      | None -> raise No_primary_key
+      | Some pkey -> pkey
 
   method private _get_cid =
     match cid with
@@ -83,7 +94,7 @@ object(self)
       print_endline "Connected";    
       cid <- Some c
     with
-      | Error e -> prerr_endline (string_of_error e)
+      | Postgresql.Error e -> prerr_endline (string_of_error e)
       | e -> prerr_endline (Printexc.to_string e)
 
 
@@ -102,7 +113,7 @@ object(self)
     with
       | Pgsql_not_connected ->
 	prerr_endline "Object not connected to Postgresql, cannot disconnect"
-      | Error e -> prerr_endline (string_of_error e)
+      | Postgresql.Error e -> prerr_endline (string_of_error e)
       | e -> prerr_endline (Printexc.to_string e)
 
 
@@ -124,13 +135,105 @@ object(self)
     with 
       | Pgsql_not_connected ->
 	prerr_endline "Object not connected to Postgresql, cannot query";
-      | Error e -> prerr_endline (string_of_error e)
+      | Postgresql.Error e -> prerr_endline (string_of_error e)
       | e -> prerr_endline (Printexc.to_string e)
 
 
 
-  method file_opened q =
-    self#_query ~expect:Tuples_ok q
+  method file_opened f s_created creation_date filesize offset =
+    let username =
+      match Txt_operations.name f.f_login with
+	| None -> "NULL"
+	| Some username -> username
+    in
+    let insert_query =
+      Printf.sprintf "INSERT INTO accesses \
+         (login, username, program, program_pid, path, filename, filesize, \
+         filedescriptor, first_known_offset, opening_date, created, in_progress) \
+	  VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '1') \
+          RETURNING ID"
+	f.f_login
+	username
+	f.f_program
+	(string_of_int (Fdinfo.int_of_pid f.f_program_pid))
+	f.f_path
+	f.f_name
+	(self#_to_strsql filesize)
+	(string_of_int (Fdinfo.int_of_fd f.f_descriptor))
+	(self#_to_strsql offset)
+	creation_date
+	(match s_created with
+	  | true -> "1"
+	  | false -> "0"
+	)
+    in
+    self#_query ~expect:Tuples_ok insert_query;
+
+    try
+      let res = self#_get_last_result in     
+      match (List.length res#get_all_lst) with
+	| 1 ->
+	  primary_key <- Some (res#getvalue 0 0)
+	| _ -> assert false
+    with No_PG_last_result -> prerr_endline "file_opened, no result ? Impossible"  
+
+
+  method file_closed closing_date filesize offset =
+    try
+      let pkey = self#_get_primary_key in
+
+      let update_query =
+	Printf.sprintf "UPDATE accesses \
+        	  SET CLOSING_DATE = '%s', FILESIZE = '%s', \
+                  LAST_KNOWN_OFFSET = '%s', IN_PROGRESS = '0' \
+        	  WHERE ID = '%s'"
+	  closing_date
+	  (self#_to_strsql filesize)
+	  (self#_to_strsql offset)
+	  pkey
+      in
+      self#_query ~expect:Command_ok update_query
+    with No_primary_key ->
+      prerr_endline "file closed: no prim key"
+
+
+  method private _update_known_offset ?(first=false) ?(last=false) offset =
+    try
+      let pkey = self#_get_primary_key in
+
+      let field =
+	match first, last with
+	  | false, true -> "LAST_KNOWN_OFFSET"
+	  | true, false -> "FIRST_KNOWN_OFFSET"
+	  | _ -> assert false
+      in
+
+      let update_offset_query =
+	Printf.sprintf "UPDATE accesses \
+        	  SET %s = '%s' \
+	          WHERE ID = '%s'"
+	  field
+	  (self#_to_strsql offset)
+	  pkey
+      in
+      self#_query ~expect:Command_ok update_offset_query
+    with No_primary_key ->
+      prerr_endline "update offset: no prim key"
+
+
+  method reset_in_progress =
+    let reset_accesses =
+      "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
+    in
+    self#_query ~expect:Command_ok reset_accesses
+
+
+  method first_known_offset offset =
+    self#_update_known_offset ~first:true offset
+
+
+  method last_known_offset offset =
+    self#_update_known_offset ~last:true offset
 
 
   method private _db_exists =
@@ -168,8 +271,9 @@ object(self)
     with No_PG_last_result -> false
 
 
-  method create_db =
-    let dbname' = self#_get_dbname in
+  (* TO DO: get rid of dbname arg *)
+  method create_db dbname' =
+(*    let dbname' = self#_get_dbname in*)
 
     if self#_db_exists then
       print_endline "Already exists"

@@ -1,11 +1,12 @@
-(*open Sql_report*)
-
-type dbkind = Mysql of Mysqldb.mysqldb | Postgresql of Mysqldb.mysqldb
+type dbkind = Mysql of Mysqldb.mysqldb | Postgresql of Postgresqldb.pgsql
 
 class sqldb =
 object(self)
 
-  val connector = Mysql (new Mysqldb.mysqldb)
+  val connector =
+    match Config.cfg#is_sql_activated with
+      | true -> Mysql (new Mysqldb.mysqldb)
+      | false -> Postgresql (new Postgresqldb.pgsql)
 
   method connect_without_db =
     match connector with

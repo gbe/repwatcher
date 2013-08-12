@@ -8,7 +8,7 @@ let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 (* Configuration file fullpath *)
 let config_file = ref "repwatcher.conf" ;;
-let is_mysql = ref false ;;
+let is_sql_activated = ref false ;;
 
 let clean_exit () =
   Unix.close Core.core#get_fd ;
@@ -16,9 +16,9 @@ let clean_exit () =
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proven to be useful for outside apps *)
-  if !is_mysql then
-    let mysql = new Mysqldb.mysqldb in
-    mysql#reset_in_progress
+  if !is_sql_activated then
+    let sql = new Sqldb.sqldb in
+    sql#reset_in_progress
 ;;
 
 let drop_identity checker new_identity =
@@ -140,19 +140,19 @@ This is free software under the MIT license.\n\n";
 		checker#sql_connection ;
 		
 		(* since the sql_connection tested above works
-		 * then mysql is activated for the at_exit call *)
-		is_mysql := true;
+		 * then sql is activated for the at_exit call *)
+		is_sql_activated := true;
 
-		let mysql = new Mysqldb.mysqldb in
+		let sql = new Sqldb.sqldb in
 		
-		(* if Mysqldb.create_db goes wrong, the program exits *)
-		mysql#create_db dbname ;
+		(* if Sqldb.create_db goes wrong, the program exits *)
+		sql#create_db dbname ;
 
-		(* if Mysqldb.create_table_accesses goes wrong, the program exits *)
-		mysql#create_table_accesses ;
+		(* if Sqldb.create_table_accesses goes wrong, the program exits *)
+		sql#create_table_accesses ;
 
 		(* Set to zero every files marked as 'in progress' in the RDBMS *)
-		mysql#reset_in_progress ;
+		sql#reset_in_progress ;
       end ;
 
       checker#rights !config_file ;
