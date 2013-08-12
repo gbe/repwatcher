@@ -163,7 +163,7 @@ object(self)
 	Some mysql
 	  
       | SQL_File_Closed ->
-	begin match sql_report.s_mysql_obj with
+	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some mysql ->
 	    mysql#file_closed
@@ -174,7 +174,7 @@ object(self)
 	end
 
       | SQL_FK_Offset ->
-	begin match sql_report.s_mysql_obj with
+	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some mysql ->
 	    mysql#first_known_offset sql_report.s_offset;
@@ -182,7 +182,7 @@ object(self)
 	end
 
       | SQL_LK_Offset ->
-	begin match sql_report.s_mysql_obj with
+	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some mysql ->
 	    mysql#last_known_offset sql_report.s_offset;

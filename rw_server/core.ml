@@ -383,7 +383,7 @@ object(self)
 			s_size = filesize ;
 			s_date = date ;
 			s_offset = offset_opt ;
-			s_mysql_obj = None ;
+			s_sql_obj = None ;
 			s_created = created ;
 		      }
 		    in
@@ -524,7 +524,7 @@ object(self)
 	      s_size = filesize ;
 	      s_date = current_date ;
 	      s_offset = offset_opt ;
-	      s_mysql_obj = mysql_obj_opt ;
+	      s_sql_obj = mysql_obj_opt ;
 	      s_created = created ;
 	    }
 	    in
