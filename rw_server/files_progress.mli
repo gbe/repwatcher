@@ -10,13 +10,13 @@ val mutex_ht : Mutex.t
  * int64 option = offset
  * int = times the offset couldn't be retrieved (error_counter)
  *
- * sql_mid = SQL object (either Mysql or Postgresql)
+ * Sqldb.sqldb is an SQL object (could be either Mysql or Postgresql)
  * bool = created (true) or not (false)
 *)
 val ht : (Inotify.wd * Types.f_file, 
 	  (string 
 	   * int64 option 
 	   * (bool * int64 option * int) 
-	   * dbkind option
+	   * Sqldb.sqldb option
 	   * bool)
 ) Hashtbl.t

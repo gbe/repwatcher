@@ -153,30 +153,23 @@ object(self)
 
     match sql_report.s_state with
       | SQL_File_Opened ->
-	let mysql = new Mysqldb.mysqldb in
-	mysql#file_opened
+	let sql = new Sqldb.sqldb in
+	sql#file_opened
 	  sql_report.s_file
 	  sql_report.s_created
 	  sql_report.s_date
 	  sql_report.s_size
 	  sql_report.s_offset;
-	Some (Mysql mysql)
+	Some sql
 	  
       | SQL_File_Closed ->
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some sql ->
-	    match sql with
-	      | Mysql mysql ->
-		mysql#file_closed
-		  sql_report.s_date
-		  sql_report.s_size
-		  sql_report.s_offset
-	      | Postgresql pgres ->
-		pgres#file_closed
-		  sql_report.s_date
-		  sql_report.s_size
-		  sql_report.s_offset
+	    sql#file_closed
+	      sql_report.s_date
+	      sql_report.s_size
+	      sql_report.s_offset	    
 	end;
 	None
 
@@ -184,11 +177,7 @@ object(self)
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some sql ->
-	    match sql with
-	      | Mysql mysql ->
-		mysql#first_known_offset sql_report.s_offset
-	      | Postgresql pgres ->
-		pgres#first_known_offset sql_report.s_offset
+	    sql#first_known_offset sql_report.s_offset
 	end;
 	None
 
@@ -196,11 +185,7 @@ object(self)
 	begin match sql_report.s_sql_obj with
 	  | None -> assert false
 	  | Some sql ->
-	    match sql with
-	      | Mysql mysql ->
-		mysql#last_known_offset sql_report.s_offset
-	      | Postgresql pgres ->
-		pgres#last_known_offset sql_report.s_offset
+	    sql#last_known_offset sql_report.s_offset
 	end;
 	None
 
