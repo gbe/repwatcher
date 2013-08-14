@@ -1,5 +1,5 @@
 NO_DBUS ?= 0
-CMX = lexer.cmx parser.cmx log.cmx config.cmx date.cmx txt_operations.cmx postgresqldb.cmx mysqldb.cmx sqldb.cmx pipe.cmx sendmail.cmx mail.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx files.cmx core.cmx check_conf.cmx events.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
+CMX = lexer.cmx parser.cmx log.cmx config.cmx date.cmx txt_operations.cmx abstract_sql.cmx postgresqldb.cmx mysqldb.cmx sqldb.cmx pipe.cmx sendmail.cmx mail.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx files.cmx core.cmx check_conf.cmx events.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
 PACKAGES = str,mysql,postgresql,bigarray,ssl,inotify,fdinfo,threads,smtp,syslog

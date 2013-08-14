@@ -7,23 +7,21 @@ exception No_primary_key
 class mysqldb =
 object(self)
 
+  inherit Abstract_sql.abstract_sql
+
   val mutable cid = None
-  val mutable primary_key = None
 
   method private _get_cid =
     match cid with
       | None -> raise Mysql_not_connected
       | Some cid' -> cid'
 
+
   method private _to_strsql int64opt =
     match int64opt with
       | None -> "NULL"
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
 
-  method private _get_primary_key =
-    match primary_key with
-      | None -> raise No_primary_key
-      | Some pkey -> pkey
 
 (*  method private _map res =
     try

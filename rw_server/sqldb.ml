@@ -2,6 +2,7 @@ type dbkind = Mysql of Mysqldb.mysqldb | Postgresql of Postgresqldb.pgsql
 
 class sqldb =
 object(self)
+  inherit Abstract_sql.abstract_sql
 
   val connector =
     match Config.cfg#is_sql_activated with

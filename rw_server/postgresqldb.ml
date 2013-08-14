@@ -8,6 +8,8 @@ exception No_primary_key;;
 class pgsql =
 object(self)
 
+  inherit Abstract_sql.abstract_sql
+
   val mutable cid = None
   val mutable host = None
   val mutable port = None
@@ -17,13 +19,13 @@ object(self)
   val mutable requiressl = None
 
   val mutable last_result = None
-  val mutable primary_key = None
 
   initializer
     host <- Some "192.168.69.22";
     dbname <- Some "repwatcher";
     user <- Some "postgres" ;
     pwd <- Some "postgres" ;
+
 
   method private _to_strsql int64opt =
     match int64opt with
@@ -34,11 +36,6 @@ object(self)
     match last_result with
       | None -> raise No_PG_last_result
       | Some last_r -> last_r
-
-  method private _get_primary_key =
-    match primary_key with
-      | None -> raise No_primary_key
-      | Some pkey -> pkey
 
   method private _get_cid =
     match cid with
