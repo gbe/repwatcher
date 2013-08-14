@@ -1,7 +1,7 @@
 open Mysql
 open Types
 
-exception Mysql_not_connected
+exception Sql_not_connected
 exception No_primary_key
 
 class mysqldb =
@@ -9,32 +9,11 @@ object(self)
 
   inherit Abstract_sql.abstract_sql
 
-  val mutable cid = None
-
-  method private _get_cid =
-    match cid with
-      | None -> raise Mysql_not_connected
-      | Some cid' -> cid'
-
-
   method private _to_strsql int64opt =
     match int64opt with
       | None -> "NULL"
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
 
-
-(*  method private _map res =
-    try
-      (* row = string option array, the option is if a field is NULL *)
-      let rows = Mysql.map res (fun row -> row) in
-      Log.log ("Query successfully mapped", Normal_Extra);
-
-      rows
-
-    with Mysql.Error error ->
-      Log.log (error, Error);
-      []
-*)
 
   method private _query ?(log=true) q =
   
@@ -62,7 +41,7 @@ object(self)
 	  end
 
     with
-      | Mysql_not_connected ->
+      | Sql_not_connected ->
 	Log.log ("Programming error: SQL not connected", Error)
       | Mysql.Error error ->
 	Log.log (error, Error)
@@ -93,10 +72,6 @@ object(self)
   method connect_without_db =
     self#_connect ~nodb:true ()
 
-  method is_connected =
-    match cid with
-      | None -> false
-      | Some _ -> true
 
   method disconnect ?(log=true) () =
     try
@@ -108,7 +83,7 @@ object(self)
 	Log.log ("Disconnected from MySQL", Normal_Extra)
 
     with
-      | Mysql_not_connected ->
+      | Sql_not_connected ->
 	Log.log ("Programming error: SQL not connected", Error)
       | Mysql.Error error ->
 	Log.log ("RW could not disconnect from Mysql: "^error, Error)
@@ -149,7 +124,7 @@ object(self)
       self#disconnect ()
 
     with
-      | Mysql_not_connected ->
+      | Sql_not_connected ->
 	Log.log ("Programming error: SQL not connected", Error);
 	exit 2
       | Mysql.Error error ->
@@ -207,7 +182,7 @@ object(self)
       self#disconnect ()
 
     with
-      | Mysql_not_connected ->
+      | Sql_not_connected ->
 	Log.log ("Programming error: SQL not connected", Error);
 	exit 2
       | Mysql.Error error ->
@@ -268,7 +243,7 @@ object(self)
       let cid' = self#_get_cid in
       primary_key <- Some (insert_id cid') ;
       self#disconnect () 
-    with Mysql_not_connected ->
+    with Sql_not_connected ->
       Log.log ("Mysql file opened could not be executed - Not connected", Error)
 
 

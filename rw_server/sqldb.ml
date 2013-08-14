@@ -16,12 +16,6 @@ object(self)
       | Postgresql con ->
 	con#connect_without_db
 
-  method is_connected =
-    match connector with
-      | Mysql con ->
-	con#is_connected
-      | Postgresql con ->
-	con#is_connected
 
   method disconnect ?(log=true) () =
     match connector with

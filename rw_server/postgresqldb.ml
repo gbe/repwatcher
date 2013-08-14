@@ -1,7 +1,7 @@
 open Postgresql
 open Types
 
-exception Pgsql_not_connected;;
+exception Sql_not_connected;;
 exception No_PG_last_result;;
 exception No_primary_key;;
 
@@ -10,7 +10,6 @@ object(self)
 
   inherit Abstract_sql.abstract_sql
 
-  val mutable cid = None
   val mutable host = None
   val mutable port = None
   val mutable dbname = None
@@ -36,17 +35,6 @@ object(self)
     match last_result with
       | None -> raise No_PG_last_result
       | Some last_r -> last_r
-
-  method private _get_cid =
-    match cid with
-      | None -> raise Pgsql_not_connected
-      | Some cid' -> cid'
-
-
-  method is_connected =
-    match cid with
-      | None -> false
-      | Some _ -> true
 
 
   method private _get_dbname =
@@ -108,7 +96,7 @@ object(self)
 	print_endline "Disconnected"
 
     with
-      | Pgsql_not_connected ->
+      | Sql_not_connected ->
 	prerr_endline "Object not connected to Postgresql, cannot disconnect"
       | Postgresql.Error e -> prerr_endline (string_of_error e)
       | e -> prerr_endline (Printexc.to_string e)
@@ -130,7 +118,7 @@ object(self)
       self#disconnect ()
 
     with 
-      | Pgsql_not_connected ->
+      | Sql_not_connected ->
 	prerr_endline "Object not connected to Postgresql, cannot query";
       | Postgresql.Error e -> prerr_endline (string_of_error e)
       | e -> prerr_endline (Printexc.to_string e)
@@ -313,29 +301,5 @@ object(self)
       if (self#_index_exists idx) = false then
 	self#_query ~expect:Command_ok create_progress_idx
 
-    with Pgsql_not_connected -> prerr_endline "Object not connected to Postgresql, cannot create table"
+    with Sql_not_connected -> prerr_endline "Object not connected to Postgresql, cannot create table"
 end;;
-
-
-(*
-let _ =
-  let p1 = new pgsql in
-  let p2 = new pgsql in
-  p1#create_db;
-  p2#create_table_accesses;
-
-  let q_insert = Printf.sprintf "insert into accesses (login, program, program_pid, path, filename, filedescriptor, opening_date, created, in_progress) values ('greg', 'monprog', 3, '/mon path', 'mon fichier.txt', 42, '2013-07-18 19:07:00', 1, 1) RETURNING ID" in
-
-  p2#file_opened q_insert ;
-
-  let res = p2#_get_last_result in
-
-  match (List.length res#get_all_lst) with
-    | 1 ->
-      print_endline ("résultat: "^(res#getvalue 0 0))
-    | _ -> assert false
-  
-with
-    | Error e -> prerr_endline (string_of_error e)
-    | e -> prerr_endline (Printexc.to_string e)
-*)
