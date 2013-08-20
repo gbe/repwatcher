@@ -2,7 +2,7 @@ open Postgresql
 open Types
 
 exception Sql_not_connected;;
-exception No_PG_last_result;;
+exception Sql_no_last_result;;
 exception No_primary_key;;
 
 class pgsql =
@@ -17,8 +17,6 @@ object(self)
   val mutable pwd = None
   val mutable requiressl = None
 
-  val mutable last_result = None
-
   initializer
     host <- Some "192.168.69.22";
     dbname <- Some "repwatcher";
@@ -30,11 +28,6 @@ object(self)
     match int64opt with
       | None -> "NULL"
       | Some var_int64 -> Int64.to_string var_int64
-
-  method private _get_last_result =
-    match last_result with
-      | None -> raise No_PG_last_result
-      | Some last_r -> last_r
 
 
   method private _get_dbname =
@@ -160,7 +153,7 @@ object(self)
 	| 1 ->
 	  primary_key <- Some (res#getvalue 0 0)
 	| _ -> assert false
-    with No_PG_last_result -> prerr_endline "file_opened, no result ? Impossible"  
+    with Sql_no_last_result -> prerr_endline "file_opened, no result ? Impossible"  
 
 
   method file_closed closing_date filesize offset =
@@ -236,7 +229,7 @@ object(self)
 	  else
 	    false
 	| _ -> assert false
-    with No_PG_last_result -> false
+    with Sql_no_last_result -> false
 
 
   method private _index_exists idx =
@@ -253,7 +246,7 @@ object(self)
 	  else
 	    false
 	| _ -> assert false
-    with No_PG_last_result -> false
+    with Sql_no_last_result -> false
 
 
   (* TO DO: get rid of dbname arg *)

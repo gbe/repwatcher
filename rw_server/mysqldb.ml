@@ -2,7 +2,10 @@ open Mysql
 open Types
 
 exception Sql_not_connected
+exception Sql_no_last_result
 exception No_primary_key
+
+type mysql_result = ResultOK | ResultEmpty | ResultError of string option
 
 class mysqldb =
 object(self)
@@ -14,37 +17,39 @@ object(self)
       | None -> "NULL"
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
 
-
-  method private _query ?(log=true) q =
+  (* nodb = true only when creating the db *)
+  method private _query ?(log=true) ?(nodb=false) q =
   
     if log then
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
 
-    if self#is_connected = false then
-      self#_connect ();
+    if self#is_connected = false then begin
+      match nodb with
+	| false -> self#_connect () 
+	| true -> self#connect_without_db
+    end;
 
     try
       let cid = self#_get_cid in
       ignore (exec cid q);
     
-      match status cid with
-	| (StatusOK | StatusEmpty) ->
+      begin match status cid with
+	| StatusOK ->
 	  if log then
-	    Log.log ("Query successfully executed", Normal_Extra)
+	    Log.log ("Query successfully executed", Normal_Extra);
+	  last_result <- Some ResultOK
+
+	| StatusEmpty ->	  
+	  if log then
+	    Log.log ("Query successfully executed", Normal_Extra);
+	  last_result <- Some ResultEmpty
 
 	| StatusError _ ->
-	  begin match errmsg cid with
-	    | None ->
-	      Log.log ("Oops. Mysqldb.query had an error and the RDBMS \
-		       cannot tell which one", Error)
-	    | Some errmsg' -> Log.log (errmsg', Error)
-	  end
-
-    with
-      | Sql_not_connected ->
-	Log.log ("Programming error: SQL not connected", Error)
-      | Mysql.Error error ->
-	Log.log (error, Error)
+	  let errmsg' = errmsg cid in
+	  last_result <- Some (ResultError errmsg')
+      end;
+      self#disconnect ()
+    with Mysql.Error error -> Log.log (error, Error)
 
 
   method private _connect ?(log=true) ?(nodb=false) () =
@@ -91,49 +96,31 @@ object(self)
 
   method create_db dbname =
 
-    if self#is_connected = false then
-      self#connect_without_db;
-
     let q = "CREATE DATABASE IF NOT EXISTS "^dbname in
+    self#_query ~nodb:true q;
 
     try
+      match self#_get_last_result with
+	| ResultOK ->
+	  Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
 
-      let cid = self#_get_cid in
-      ignore (exec cid q);
+	| ResultEmpty -> ()
 
-      begin
-	match status cid with
-	  | StatusOK ->
-	    Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
+	| (ResultError errmsg') ->
+	  begin match errmsg' with
+	    | None ->
+	      Log.log ("Oops. Mysqldb.create_db had an error and the RDBMS \
+			doesn't know why", Error)
+	    | Some err ->
+	      Log.log (err, Error)
+	  end ;
+	  exit 2
+    with Sql_no_last_result ->
+      Log.log ("Something went wrong when resulting the last query", Error);
+      exit 2
 
-	  | StatusEmpty -> ()
-
-	  | StatusError _ ->
-	    begin
-	      match errmsg cid with
-		| None ->
-		  Log.log ("Oops. Mysqldb.create_db had an error and the RDBMS \
-			     doesn't know why", Error)
-		    
-		| Some errmsg' ->
-		  Log.log (errmsg', Error)
-	    end ;
-	    exit 2
-      end ;
-
-      self#disconnect ()
-
-    with
-      | Sql_not_connected ->
-	Log.log ("Programming error: SQL not connected", Error);
-	exit 2
-      | Mysql.Error error ->
-	Log.log (error, Error) ;
-	exit 2
 
   method create_table_accesses =
-    if self#is_connected = false then
-      self#_connect ();
 
     let q =
       Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
@@ -158,48 +145,33 @@ object(self)
     in
     
     try
-      let cid = self#_get_cid in
-      ignore (exec cid q);
+      self#_query q;
 
-      begin
-	match status cid with
-	  | (StatusOK | StatusEmpty) ->
-	    Log.log (("Table accesses successfully created"), Normal_Extra)	 
+      match self#_get_last_result with
+	| (ResultOK | ResultEmpty) ->
+	  Log.log (("Table accesses successfully created"), Normal_Extra)	 
 
-	  | StatusError _ ->
-	    begin
-	      match errmsg cid with
-		| None ->
-		  Log.log ("Oops. Mysqldb.create_table_accesses had an error and the RDBMS \
+	| ResultError err ->
+	  begin
+	    match err with
+	      | None ->
+		Log.log ("Oops. Mysqldb.create_table_accesses had an error and the RDBMS \
 			     doesn't know why", Error)
-
-		| Some errmsg' ->
-		  Log.log (errmsg', Error)
-	    end ;
-	    exit 2
-      end ;
-
-      self#disconnect ()
-
-    with
-      | Sql_not_connected ->
-	Log.log ("Programming error: SQL not connected", Error);
-	exit 2
-      | Mysql.Error error ->
-	Log.log (error, Error) ;
-	exit 2
+		  
+	      | Some errmsg' ->
+		Log.log (errmsg', Error)
+	  end ;
+	  exit 2
+    with Sql_no_last_result ->
+      Log.log ("Something went wrong when resulting the last query", Error);
+      exit 2
 
 
   method reset_in_progress =
     let reset_accesses =
       "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
     in
-
-    if self#is_connected = false then
-      self#_connect ();
-  
-    self#_query reset_accesses;
-    self#disconnect ()
+    self#_query reset_accesses
 
 
 
@@ -234,17 +206,26 @@ object(self)
 	)
     in
 
-    if self#is_connected = false then
-      self#_connect ();
-
     self#_query query ;
 
-    try
-      let cid' = self#_get_cid in
-      primary_key <- Some (insert_id cid') ;
-      self#disconnect () 
-    with Sql_not_connected ->
-      Log.log ("Mysql file opened could not be executed - Not connected", Error)
+    match self#_get_last_result with
+      | (ResultOK | ResultEmpty) ->
+	Log.log ("MySQL: File successfully opened", Normal_Extra);
+	begin
+	  try
+	    self#_connect ();
+	    let cid' = self#_get_cid in
+	    primary_key <- Some (insert_id cid') ;
+	    self#disconnect () 
+	  with Mysql.Error error ->
+	    Log.log ("RW could not get the last auto increment from Mysql: "^error, Error)
+	end
+      | ResultError err ->
+	match err with
+	  | None ->
+	    Log.log ("Oops. Mysql had an error when doing file_opened \
+                       and cannot tell which one", Error)
+	  | Some errmsg' -> Log.log (errmsg', Error)
 
 
   method file_closed closing_date filesize offset =
@@ -263,13 +244,24 @@ object(self)
 	  (ml2str (Int64.to_string pkey))
       in
 
-      if self#is_connected = false then
-	self#_connect ();
-
       self#_query update_query ;
-      self#disconnect ()
-    with No_primary_key ->
-      Log.log ("SQL: cannot close file: no primary key", Error)
+
+      match self#_get_last_result with
+	| (ResultOK | ResultEmpty) ->
+	  Log.log (("MySQL: File successfully closed"), Normal_Extra)	 
+
+	| ResultError err ->
+	  match err with
+	    | None ->
+	      Log.log ("Oops. Mysql had an error when doing file_closed
+                        and cannot tell which one", Error)
+	    | Some errmsg' -> Log.log (errmsg', Error)
+    with
+      | No_primary_key ->
+	Log.log ("SQL: cannot close file: no primary key", Error)
+      | Sql_no_last_result ->
+	Log.log ("Something went wrong when resulting the last query", Error)
+
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
     try
@@ -291,14 +283,23 @@ object(self)
 	  (ml2str (Int64.to_string pkey))
       in
 
-      if self#is_connected = false then
-	self#_connect ~log:false ();
+      self#_query ~log:false update_offset_query;
+      match self#_get_last_result with
+	| (ResultOK | ResultEmpty) ->
+	  let msg = "MySQL: File offset successfully updated ("^field^")" in
+	  Log.log (msg, Normal_Extra)	 
 
-      self#_query ~log:false update_offset_query ;
-      self#disconnect ~log:false ()
-
-    with No_primary_key ->
-      Log.log ("SQL: cannot close file: no primary key", Error)
+	| ResultError err ->
+	  match err with
+	    | None ->
+	      Log.log ("Oops. Mysql had an error when doing update_known_offset \
+			and cannot tell which one", Error)
+	    | Some errmsg' -> Log.log (errmsg', Error)
+    with
+      | No_primary_key ->
+	Log.log ("SQL: cannot update the offset: no primary key", Error)
+      | Sql_no_last_result ->
+	Log.log ("Something went wrong when resulting the last query", Error)
 
 
   method first_known_offset offset =
