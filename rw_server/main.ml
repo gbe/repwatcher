@@ -178,7 +178,7 @@ This is free software under the MIT license.\n\n";
       Core.core#add_watch_children children;
 
       if Config.cfg#is_sql_activated then
-	ignore (Thread.create Offset_thread.loop_check ())
+	ignore (Thread.create Offset_thread.loop_check ());
 
       let notif_txt = "Repwatcher is watching youuu ! :)" in
       Report.report#notify (Local_notif notif_txt);
