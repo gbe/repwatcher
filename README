@@ -4,13 +4,11 @@ To contact the author :
 gregory.bellier -- gmail -- com
 
 Dependencies for Debian/Ubuntu:
-ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev camlp4-extra libocamlnet-ocaml-dev libsyslog-ocaml-dev
+ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev
 
-and also the ocaml-fdinfo library version 0.3.1 or above, downloadable here: gatekeeper.fr or there: https://github.com/gbe/ocaml-fdinfo
+and also the ocaml-fdinfo library version 0.4.1 or above, downloadable here: gatekeeper.fr or there: https://github.com/gbe/ocaml-fdinfo
 
 * Please note that you need ocaml-ssl version 0.4.5 or +
-* The dependencies (libdus-ocaml-dev and libdbus-1-dev) can be avoided by disabling once and for all the local notifications at server side. Build the project like this: $ NO_DBUS=1 make
-
 
 The MySQL database and its "accesses" table are automatically created if they don't already exist when MySQL is activated in the configuration file. The database name is the one set in the configuration file. However, for your information, this is the accesses table :
 

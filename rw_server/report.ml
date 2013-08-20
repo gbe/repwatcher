@@ -8,8 +8,6 @@ class report =
 object(self)
 
   method private _dbus img title txt =
-    IFNDEF NO_DBUS THEN
-
     let notif_interface = "org.freedesktop.Notifications" in
     let notif_name = notif_interface in
     let notif_path = "/org/freedesktop/Notifications" in
@@ -38,10 +36,6 @@ object(self)
       DBus.Int32 15000l; (* milliseconds the notification must be seen *)
     ] in	
     ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
-   
-    ELSE
-     ()
-    END
 
 
   method private _new_notification file filestate =

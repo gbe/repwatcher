@@ -2,12 +2,8 @@ NO_DBUS ?= 0
 CMX = lexer.cmx parser.cmx log.cmx config.cmx date.cmx txt_operations.cmx abstract_sql.cmx postgresqldb.cmx mysqldb.cmx sqldb.cmx pipe.cmx sendmail.cmx mail.cmx report.cmx files_progress.cmx ssl_server.cmx dirs.cmx files.cmx core.cmx check_conf.cmx events.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
-PACKAGES = str,mysql,postgresql,bigarray,ssl,inotify,fdinfo,threads,smtp,syslog
+PACKAGES = str,mysql,postgresql,bigarray,ssl,inotify,fdinfo,threads,smtp,syslog,dbus
 FLAGS =-annot -thread -linkpkg -package $(PACKAGES)
-
-ifeq ($(NO_DBUS), 0)
-	PACKAGES +=-package dbus
-endif
 
 all: $(BIN)
 
@@ -20,11 +16,7 @@ $(BIN):$(CMX)
 	ocamlfind ocamlopt $(FLAGS) -c $<
 
 .ml.cmx:
-ifeq ($(NO_DBUS), 1)
-	ocamlfind ocamlopt $(FLAGS) -pp "camlp4of.opt -DNO_DBUS" -c $<
-else
-	ocamlfind ocamlopt $(FLAGS) -pp "camlp4of.opt" -c $<
-endif
+	ocamlfind ocamlopt $(FLAGS) -c $<
 
 .mll.ml:
 	ocamllex.opt $<
@@ -40,11 +32,7 @@ clean:
 
 .depend depend:$(GENERATED)
 	rm -f .depend
-ifeq ($(NO_DBUS), 1)
-	ocamldep.opt -pp "camlp4of.opt -DNO_DBUS" *.ml *.mli > .depend
-else
-	ocamldep.opt -pp "camlp4of.opt" *.ml *.mli > .depend
-endif
+	ocamldep.opt *.ml *.mli > .depend
 
 include .depend
 
