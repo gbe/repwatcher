@@ -42,7 +42,7 @@ object(self)
  * This prevents the program to crash long after starting running it
  * at the very moment a SQL query is needed.
  * With this, we know from the start if (at least this part) it goes right or wrong.
- * There is no need to add a try/with here because it's handled in Mysqldb.ml
+ * There is no need to add a try/with here because it's handled in Mysqldb.ml or Postgresqldb.ml
  *)  
   method sql_connection =
     

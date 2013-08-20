@@ -372,7 +372,7 @@ object(self)
 		  Report.report#mail tobemailed
 	      end;
 
-	      let mysql_obj_opt =
+	      let sql_obj_opt =
 		match Config.cfg#is_sql_activated with
 		  | false -> None
 		  | true ->
@@ -401,7 +401,7 @@ object(self)
 		(date,
 		 filesize,
 		 (isfirstoffsetknown, offset_opt, 0),
-		 mysql_obj_opt,
+		 sql_obj_opt,
 		 created)
 
 	) files ;
