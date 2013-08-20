@@ -36,7 +36,7 @@ object(self)
       | Some dbname' -> dbname'
 
 
-  method private _connect ?(nodb=false) () =
+  method private _connect ?(log=true) ?(nodb=false) () =
 
     (* code copy/pasted from the lib postgresql-ocaml *)
     let conninfo =
@@ -69,11 +69,12 @@ object(self)
       let c =
 	new connection ~conninfo:conninfo ()
       in
-      print_endline "Connected";    
+      if log then
+	Log.log ("Connected to PostgreSQL", Normal_Extra) ;
       cid <- Some c
     with
-      | Postgresql.Error e -> prerr_endline (string_of_error e)
-      | e -> prerr_endline (Printexc.to_string e)
+      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
+      | e -> Log.log ((Printexc.to_string e), Error)
 
 
   method connect_without_db =
@@ -86,35 +87,35 @@ object(self)
       cid <- None;
 
       if log then
-	print_endline "Disconnected"
+	Log.log ("Disconnected from PostgreSQL", Normal_Extra);
 
     with
       | Sql_not_connected ->
-	prerr_endline "Object not connected to Postgresql, cannot disconnect"
-      | Postgresql.Error e -> prerr_endline (string_of_error e)
-      | e -> prerr_endline (Printexc.to_string e)
+	Log.log ("Object not connected to Postgresql, cannot disconnect", Error)
+      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
+      | e -> Log.log ((Printexc.to_string e), Error)
 
 
 
   method private _query ~expect ?(log=true) ?(nodb=false) q =
     if log then
-      print_endline ("Next SQL query to compute:\n"^q^"\n");
+      Log.log (("Next SQL query to compute: "^q), Normal_Extra);
 
     if self#is_connected = false then begin
       match nodb with
-	| false -> self#_connect () 
+	| false -> self#_connect ~log:log ()
 	| true -> self#connect_without_db
     end;
 	  
     try
       last_result <- Some ((self#_get_cid)#exec ~expect:[expect] q) ;
-      self#disconnect ()
+      self#disconnect ~log:log ()
 
     with 
       | Sql_not_connected ->
-	prerr_endline "Object not connected to Postgresql, cannot query";
-      | Postgresql.Error e -> prerr_endline (string_of_error e)
-      | e -> prerr_endline (Printexc.to_string e)
+	Log.log ("Object not connected to Postgresql, cannot query", Error)
+      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
+      | e -> Log.log ((Printexc.to_string e), Error)
 
 
 
@@ -153,7 +154,8 @@ object(self)
 	| 1 ->
 	  primary_key <- Some (res#getvalue 0 0)
 	| _ -> assert false
-    with Sql_no_last_result -> prerr_endline "file_opened, no result ? Impossible"  
+    with Sql_no_last_result ->
+      Log.log ("file_opened, no result ? Should not be possible", Error)
 
 
   method file_closed closing_date filesize offset =
@@ -172,7 +174,7 @@ object(self)
       in
       self#_query ~expect:Command_ok update_query
     with No_primary_key ->
-      prerr_endline "file closed: no prim key"
+      Log.log ("file closed: no prim key", Error)
 
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
@@ -194,9 +196,9 @@ object(self)
 	  (self#_to_strsql offset)
 	  pkey
       in
-      self#_query ~expect:Command_ok update_offset_query
+      self#_query ~expect:Command_ok ~log:false update_offset_query
     with No_primary_key ->
-      prerr_endline "update offset: no prim key"
+      Log.log ("update offset: no prim key", Error)
 
 
   method reset_in_progress =
@@ -253,13 +255,12 @@ object(self)
   method create_db dbname' =
 (*    let dbname' = self#_get_dbname in*)
 
-    if self#_db_exists then
-      print_endline "Already exists"
-    else begin
-      let q = "CREATE DATABASE "^dbname' in
-      self#_query ~expect:Command_ok ~nodb:true q;
-      print_endline (dbname'^" created")
-    end
+    match self#_db_exists with
+      | true -> Log.log (("Database '"^dbname'^"' already exists"), Normal_Extra);
+      | false ->
+	let q = "CREATE DATABASE "^dbname' in
+	self#_query ~expect:Command_ok ~nodb:true q;
+	Log.log ((dbname'^" created"), Normal_Extra)
 
 
   method create_table_accesses =
@@ -294,5 +295,6 @@ object(self)
       if (self#_index_exists idx) = false then
 	self#_query ~expect:Command_ok create_progress_idx
 
-    with Sql_not_connected -> prerr_endline "Object not connected to Postgresql, cannot create table"
+    with Sql_not_connected ->
+      Log.log ("Object not connected to Postgresql, cannot create table", Error)
 end;;
