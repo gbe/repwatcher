@@ -27,7 +27,7 @@ object(self)
   method private _to_strsql int64opt =
     match int64opt with
       | None -> "NULL"
-      | Some var_int64 -> Int64.to_string var_int64
+      | Some var_int64 -> "'"^(Int64.to_string var_int64)^"'"
 
 
   method private _get_dbname =
@@ -190,7 +190,7 @@ object(self)
 
       let update_offset_query =
 	Printf.sprintf "UPDATE accesses \
-        	  SET %s = '%s' \
+        	  SET %s = %s \
 	          WHERE ID = '%s'"
 	  field
 	  (self#_to_strsql offset)
