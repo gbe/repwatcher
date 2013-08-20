@@ -129,7 +129,7 @@ object(self)
       Printf.sprintf "INSERT INTO accesses \
          (login, username, program, program_pid, path, filename, filesize, \
          filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '1') \
+	  VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %s, '%s', %s, '%s', '%s', '1') \
           RETURNING ID"
 	f.f_login
 	username
@@ -164,8 +164,8 @@ object(self)
 
       let update_query =
 	Printf.sprintf "UPDATE accesses \
-        	  SET CLOSING_DATE = '%s', FILESIZE = '%s', \
-                  LAST_KNOWN_OFFSET = '%s', IN_PROGRESS = '0' \
+        	  SET CLOSING_DATE = '%s', FILESIZE = %s, \
+                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
         	  WHERE ID = '%s'"
 	  closing_date
 	  (self#_to_strsql filesize)
