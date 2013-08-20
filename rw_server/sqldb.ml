@@ -9,6 +9,14 @@ object(self)
       | true -> Mysql (new Mysqldb.mysqldb)
       | false -> Postgresql (new Postgresqldb.pgsql)
 
+  method is_connected =
+    match connector with
+      | Mysql con ->
+	con#is_connected
+      | Postgresql con ->
+	con#is_connected
+
+
   method connect_without_db =
     match connector with
       | Mysql con ->

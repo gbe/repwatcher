@@ -18,7 +18,7 @@ object(self)
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
 
   (* nodb = true only when creating the db *)
-  method private _query ?(log=true) ?(nodb=false) q =
+  method private _query ?(log=true) ?(nodb=false) ?(get_prim_key=false) q =
   
     if log then
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
@@ -30,24 +30,34 @@ object(self)
     end;
 
     try
-      let cid = self#_get_cid in
-      ignore (exec cid q);
-    
-      begin match status cid with
+      let cid' = self#_get_cid in
+      ignore (exec cid' q);
+
+      let status' = status cid' in
+
+      begin match status' with
 	| StatusOK ->
 	  if log then
-	    Log.log ("Query successfully executed", Normal_Extra);
+	    Log.log ("Query successfully executed OK", Normal_Extra);
 	  last_result <- Some ResultOK
 
 	| StatusEmpty ->	  
 	  if log then
-	    Log.log ("Query successfully executed", Normal_Extra);
+	    Log.log ("Query successfully executed Empty", Normal_Extra);
 	  last_result <- Some ResultEmpty
 
 	| StatusError _ ->
-	  let errmsg' = errmsg cid in
+	  let errmsg' = errmsg cid' in
 	  last_result <- Some (ResultError errmsg')
       end;
+
+      if get_prim_key then
+	begin match status' with
+	  | (StatusOK | StatusEmpty) ->
+	    primary_key <- Some (insert_id cid')
+	  | _ -> ()
+	end;
+      
       self#disconnect ()
     with Mysql.Error error -> Log.log (error, Error)
 
@@ -206,20 +216,11 @@ object(self)
 	)
     in
 
-    self#_query query ;
+    self#_query ~get_prim_key:true query ;
 
     match self#_get_last_result with
       | (ResultOK | ResultEmpty) ->
 	Log.log ("MySQL: File successfully opened", Normal_Extra);
-	begin
-	  try
-	    self#_connect ();
-	    let cid' = self#_get_cid in
-	    primary_key <- Some (insert_id cid') ;
-	    self#disconnect () 
-	  with Mysql.Error error ->
-	    Log.log ("RW could not get the last auto increment from Mysql: "^error, Error)
-	end
       | ResultError err ->
 	match err with
 	  | None ->
