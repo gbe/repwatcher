@@ -115,6 +115,13 @@ object(self)
      true
    with SQL_not_configured -> false
 
+  method get_sql_rdbms =
+    try
+      (self#get_sql).sql_rdbms
+    with SQL_not_configured ->
+      Log.log ("Cannot get the RDBMS since SQL is not configured", Error);
+      exit 1
+
 
   method get_process_identity =
     let c =

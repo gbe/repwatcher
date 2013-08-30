@@ -7,6 +7,12 @@ let check_options cert =
   match (!is_server_activated, cert) with
   | true, None -> raise Parse_error
   | _ -> ()
+
+let check_rdbms_value value =
+  match (String.lowercase value) with
+    | "mysql" -> "mysql"
+    | "postgresql" -> "postgresql"
+    | _ -> raise Parse_error
 ;;
 
 %}
@@ -20,6 +26,7 @@ let check_options cert =
 %token SPECIFIED_PROGRAMS
 %token UNWANTED_PROGRAMS
 %token PROCESS_IDENTITY
+%token SQL_RDBMS
 %token SQL_LOGIN
 %token SQL_PSWD
 %token SQL_HOST
@@ -114,32 +121,36 @@ process_identity:
 
 sql:
 | { None }
-| SQL_LOGIN EQUAL txt_plus
+| SQL_RDBMS EQUAL txt_plus
+  SQL_LOGIN EQUAL txt_plus
   SQL_PSWD EQUAL txt_plus
   SQL_HOST EQUAL txt_plus
   SQL_PORT EQUAL uint
   SQL_DBNAME EQUAL txt_plus
       {
 	Some {
-	  sql_dbhost = $9;
-	  sql_dbname = $15;
-	  sql_dbport = Some $12;
-	  sql_dbpwd  = $6;
-	  sql_dbuser = $3;
+	  sql_rdbms = check_rdbms_value $3;
+	  sql_dbhost = $12;
+	  sql_dbname = $18;
+	  sql_dbport = Some $15;
+	  sql_dbpwd  = $9;
+	  sql_dbuser = $6;
 	}
       }
 
-| SQL_LOGIN EQUAL txt_plus
+| SQL_RDBMS EQUAL txt_plus
+  SQL_LOGIN EQUAL txt_plus
   SQL_PSWD EQUAL txt_plus
   SQL_HOST EQUAL txt_plus
   SQL_DBNAME EQUAL txt_plus
       {
 	Some {
-	  sql_dbhost = $9;
-	  sql_dbname = $12;
+	  sql_rdbms = check_rdbms_value $3 ;
+	  sql_dbhost = $12;
+	  sql_dbname = $15;
 	  sql_dbport = None;
-	  sql_dbpwd  = $6;
-	  sql_dbuser = $3;
+	  sql_dbpwd  = $9;
+	  sql_dbuser = $6;
 	}
       }
 ;

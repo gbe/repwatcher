@@ -26,6 +26,7 @@ rule nexttoken = parse
   | "specified_programs"               { SPECIFIED_PROGRAMS }
   | "unwanted_programs"                { UNWANTED_PROGRAMS }
   | "process_identity"                 { PROCESS_IDENTITY }
+  | "sql_rdbms"                        { SQL_RDBMS }
   | "sql_login"                        { SQL_LOGIN }
   | "sql_pswd"                         { SQL_PSWD }
   | "sql_host"                         { SQL_HOST }

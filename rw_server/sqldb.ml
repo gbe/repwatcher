@@ -5,9 +5,10 @@ object(self)
   inherit Abstract_sql.abstract_sql
 
   val connector =
-    match Config.cfg#is_sql_activated with
-      | true -> Mysql (new Mysqldb.mysqldb)
-      | false -> Postgresql (new Postgresqldb.pgsql)
+    match Config.cfg#get_sql_rdbms with
+      | "postgresql" -> Postgresql (new Postgresqldb.pgsql)
+      | "mysql" -> Mysql (new Mysqldb.mysqldb)
+      | _ -> assert false
 
   method is_connected =
     match connector with

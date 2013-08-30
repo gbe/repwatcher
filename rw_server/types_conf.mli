@@ -9,6 +9,7 @@ type mode = mode_t * string list
 
 
 type sql_param = {
+    sql_rdbms  : string ;
     sql_dbhost : string ;
     sql_dbname : string ;
     sql_dbport : int option ;
