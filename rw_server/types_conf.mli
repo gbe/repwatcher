@@ -8,12 +8,12 @@ type mode_t =  Specified_programs | Unwanted_programs
 type mode = mode_t * string list
 
 
-type sql_db = Mysql.db = {
-    dbhost : string option ;
-    dbname : string option ;
-    dbport : int option    ;
-    dbpwd  : string option ;
-    dbuser : string option ;
+type sql_param = {
+    sql_dbhost : string ;
+    sql_dbname : string ;
+    sql_dbport : int option ;
+    sql_dbpwd  : string ;
+    sql_dbuser : string ;
 }
 
 type certs_t = {
@@ -66,7 +66,7 @@ type configuration = {
     c_watch : watch;
     c_mode : mode;
     c_process_identity : string option;
-    c_mysql : sql_db option;
+    c_mysql : sql_param option;
     c_notify : notify;
     c_server : server_t option;
     c_email : email option;

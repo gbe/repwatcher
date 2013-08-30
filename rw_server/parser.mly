@@ -121,11 +121,11 @@ mysql:
   MYSQL_DBNAME EQUAL txt_plus
       {
 	Some {
-	  dbhost = Some $9;
-	  dbname = Some $15;
-	  dbport = Some $12;
-	  dbpwd  = Some $6;
-	  dbuser = Some $3;
+	  sql_dbhost = $9;
+	  sql_dbname = $15;
+	  sql_dbport = Some $12;
+	  sql_dbpwd  = $6;
+	  sql_dbuser = $3;
 	}
       }
 
@@ -135,11 +135,11 @@ mysql:
   MYSQL_DBNAME EQUAL txt_plus
       {
 	Some {
-	  dbhost = Some $9;
-	  dbname = Some $12;
-	  dbport = None;
-	  dbpwd  = Some $6;
-	  dbuser = Some $3;
+	  sql_dbhost = $9;
+	  sql_dbname = $12;
+	  sql_dbport = None;
+	  sql_dbpwd  = $6;
+	  sql_dbuser = $3;
 	}
       }
 ;

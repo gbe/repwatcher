@@ -130,29 +130,25 @@ This is free software under the MIT license.\n\n";
       begin
 	match conf.c_mysql with
 	  | None -> ()
-	  | Some mysql' ->
+	  | Some sqlparam' ->
 
-	    match mysql'.dbname with
-	      | None -> assert false
-	      | Some dbname ->
-
-		(* if Check_conf.sql_connection goes wrong, the program exits *)
-		checker#sql_connection ;
+	    (* if Check_conf.sql_connection goes wrong, the program exits *)
+	    checker#sql_connection ;
 		
-		(* since the sql_connection tested above works
-		 * then sql is activated for the at_exit call *)
-		is_sql_activated := true;
+	    (* since the sql_connection tested above works
+	     * then sql is activated for the at_exit call *)
+	    is_sql_activated := true;
 
-		let sql = new Sqldb.sqldb in
+	    let sql = new Sqldb.sqldb in
 		
-		(* if Sqldb.create_db goes wrong, the program exits *)
-		sql#create_db dbname ;
+	    (* if Sqldb.create_db goes wrong, the program exits *)
+	    sql#create_db sqlparam'.sql_dbname ;
 
-		(* if Sqldb.create_table_accesses goes wrong, the program exits *)
-		sql#create_table_accesses ;
+	    (* if Sqldb.create_table_accesses goes wrong, the program exits *)
+	    sql#create_table_accesses ;
 
-		(* Set to zero every files marked as 'in progress' in the RDBMS *)
-		sql#reset_in_progress ;
+	    (* Set to zero every files marked as 'in progress' in the RDBMS *)
+	    sql#reset_in_progress ;
       end ;
 
       checker#rights !config_file ;

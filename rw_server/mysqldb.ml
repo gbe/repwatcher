@@ -1,5 +1,6 @@
 open Mysql
 open Types
+open Types_conf
 
 exception Sql_not_connected
 exception Sql_no_last_result
@@ -12,10 +13,12 @@ object(self)
 
   inherit Abstract_sql.abstract_sql
 
+
   method private _to_strsql int64opt =
     match int64opt with
       | None -> "NULL"
       | Some var_int64 -> ml2str (Int64.to_string var_int64)
+
 
   (* nodb = true only when creating the db *)
   method private _query ?(log=true) ?(nodb=false) ?(get_prim_key=false) q =
@@ -64,13 +67,40 @@ object(self)
 
   method private _connect ?(log=true) ?(nodb=false) () =
 
-    try
-      let dbparam' = match nodb with
-	| false ->  (Config.cfg)#get_sql
-	| true -> { (Config.cfg)#get_sql with dbname = None }
-      in
+    try 
+      let sqlparam = (Config.cfg)#get_sql in
 
-      let cid' = Mysql.connect dbparam' in
+      let cid' =
+	match nodb, sqlparam.sql_dbport with
+	  | false, None ->
+	    Mysql.quick_connect
+	      ~host:sqlparam.sql_dbhost
+	      ~database:sqlparam.sql_dbname
+	      ~password:sqlparam.sql_dbpwd
+	      ~user:sqlparam.sql_dbuser
+	      ()
+	  | false, Some port ->
+	    Mysql.quick_connect
+	      ~host:sqlparam.sql_dbhost
+	      ~database:sqlparam.sql_dbname
+	      ~port:port
+	      ~password:sqlparam.sql_dbpwd
+	      ~user:sqlparam.sql_dbuser
+	      ()
+	  | true, None ->
+	    Mysql.quick_connect
+	      ~host:sqlparam.sql_dbhost
+	      ~password:sqlparam.sql_dbpwd
+	      ~user:sqlparam.sql_dbuser
+	      ()
+	  | true, Some port ->
+	    Mysql.quick_connect
+	      ~host:sqlparam.sql_dbhost
+	      ~port:port
+	      ~password:sqlparam.sql_dbpwd
+	      ~user:sqlparam.sql_dbuser
+	      ()
+      in
 
       if log then
 	Log.log ("Connected to MySQL", Normal_Extra) ;
