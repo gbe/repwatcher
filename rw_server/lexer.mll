@@ -26,11 +26,11 @@ rule nexttoken = parse
   | "specified_programs"               { SPECIFIED_PROGRAMS }
   | "unwanted_programs"                { UNWANTED_PROGRAMS }
   | "process_identity"                 { PROCESS_IDENTITY }
-  | "mysql_login"                      { MYSQL_LOGIN }
-  | "mysql_pswd"                       { MYSQL_PSWD }
-  | "mysql_host"                       { MYSQL_HOST }
-  | "mysql_port"                       { MYSQL_PORT }
-  | "mysql_dbname"                     { MYSQL_DBNAME }
+  | "sql_login"                        { SQL_LOGIN }
+  | "sql_pswd"                         { SQL_PSWD }
+  | "sql_host"                         { SQL_HOST }
+  | "sql_port"                         { SQL_PORT }
+  | "sql_dbname"                       { SQL_DBNAME }
   | "notify_locally"                   { NOTIFY_LOCALLY }
   | "notify_remotely"                  { NOTIFY_REMOTELY }
   | "notify_parent_folders"            { PARENT_FOLDERS }

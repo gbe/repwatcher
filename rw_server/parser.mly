@@ -20,11 +20,11 @@ let check_options cert =
 %token SPECIFIED_PROGRAMS
 %token UNWANTED_PROGRAMS
 %token PROCESS_IDENTITY
-%token MYSQL_LOGIN
-%token MYSQL_PSWD
-%token MYSQL_HOST
-%token MYSQL_PORT
-%token MYSQL_DBNAME
+%token SQL_LOGIN
+%token SQL_PSWD
+%token SQL_HOST
+%token SQL_PORT
+%token SQL_DBNAME
 %token NOTIFY_LOCALLY
 %token NOTIFY_REMOTELY
 %token SERVER_CA_PATH
@@ -114,11 +114,11 @@ process_identity:
 
 sql:
 | { None }
-| MYSQL_LOGIN EQUAL txt_plus
-  MYSQL_PSWD EQUAL txt_plus
-  MYSQL_HOST EQUAL txt_plus
-  MYSQL_PORT EQUAL uint
-  MYSQL_DBNAME EQUAL txt_plus
+| SQL_LOGIN EQUAL txt_plus
+  SQL_PSWD EQUAL txt_plus
+  SQL_HOST EQUAL txt_plus
+  SQL_PORT EQUAL uint
+  SQL_DBNAME EQUAL txt_plus
       {
 	Some {
 	  sql_dbhost = $9;
@@ -129,10 +129,10 @@ sql:
 	}
       }
 
-| MYSQL_LOGIN EQUAL txt_plus
-  MYSQL_PSWD EQUAL txt_plus
-  MYSQL_HOST EQUAL txt_plus
-  MYSQL_DBNAME EQUAL txt_plus
+| SQL_LOGIN EQUAL txt_plus
+  SQL_PSWD EQUAL txt_plus
+  SQL_HOST EQUAL txt_plus
+  SQL_DBNAME EQUAL txt_plus
       {
 	Some {
 	  sql_dbhost = $9;
