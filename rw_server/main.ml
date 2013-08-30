@@ -128,7 +128,7 @@ This is free software under the MIT license.\n\n";
       end;
 
       begin
-	match conf.c_mysql with
+	match conf.c_sql with
 	  | None -> ()
 	  | Some sqlparam' ->
 

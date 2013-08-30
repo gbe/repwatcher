@@ -98,7 +98,7 @@ object(self)
   method get_sql =
       let c =
 	try
-	  (self#get).c_mysql
+	  (self#get).c_sql
 	with Config_error ->
 	  let err = "Cannot retrieve SQL configuration since the config file has not been parsed" in
 	 Log.log (err, Error);

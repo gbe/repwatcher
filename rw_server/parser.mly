@@ -60,12 +60,12 @@ let check_options cert =
 %%
 
 
-configuration: watch mode process_identity mysql notify server email log EOF {
+configuration: watch mode process_identity sql notify server email log EOF {
    {
       c_watch = $1;
       c_mode = $2;
       c_process_identity = $3;
-      c_mysql = $4;
+      c_sql = $4;
       c_notify = $5;
       c_server = $6;
       c_email = $7;
@@ -112,7 +112,7 @@ process_identity:
 | PROCESS_IDENTITY EQUAL txt_plus { Some $3 }
 ;
 
-mysql:
+sql:
 | { None }
 | MYSQL_LOGIN EQUAL txt_plus
   MYSQL_PSWD EQUAL txt_plus
