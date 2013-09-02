@@ -26,6 +26,10 @@ object(self)
     if log then
       Log.log (("Next SQL query to compute:\n"^q^"\n"), Normal_Extra) ;
 
+
+    (* Lock added since the discovery of the race in postgresqldb.ml *)
+    Mutex.lock self#get_lock;
+
     if self#is_connected = false then begin
       match nodb with
 	| false -> self#_connect () 
@@ -61,7 +65,9 @@ object(self)
 	  | _ -> ()
 	end;
       
-      self#disconnect ()
+      self#disconnect ();
+      Mutex.unlock self#get_lock
+
     with Mysql.Error error -> Log.log (error, Error)
 
 

@@ -1,5 +1,6 @@
 open Postgresql
 open Types
+open Types_conf
 
 exception Sql_not_connected;;
 exception Sql_no_last_result;;
@@ -18,10 +19,16 @@ object(self)
   val mutable requiressl = None
 
   initializer
-    host <- Some "192.168.69.22";
-    dbname <- Some "repwatcher";
-    user <- Some "postgres" ;
-    pwd <- Some "postgres" ;
+  let sqlparam = (Config.cfg)#get_sql in
+
+  host <- Some sqlparam.sql_dbhost ;
+  dbname <- Some sqlparam.sql_dbname ;
+  user <- Some sqlparam.sql_dbuser ;
+  pwd <- Some sqlparam.sql_dbpwd ;
+  port <-
+    (match sqlparam.sql_dbport with
+      | None -> None
+      | Some p -> Some (string_of_int p))
 
 
   method private _to_strsql int64opt =
@@ -73,8 +80,8 @@ object(self)
 	Log.log ("Connected to PostgreSQL", Normal_Extra) ;
       cid <- Some c
     with
-      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
-      | e -> Log.log ((Printexc.to_string e), Error)
+      | Postgresql.Error e -> Log.log (string_of_error e, Error)
+      | e -> Log.log (Printexc.to_string e, Error)
 
 
   method connect_without_db =
@@ -92,14 +99,22 @@ object(self)
     with
       | Sql_not_connected ->
 	Log.log ("Object not connected to Postgresql, cannot disconnect", Error)
-      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
-      | e -> Log.log ((Printexc.to_string e), Error)
+      | Postgresql.Error e -> Log.log ("erreur1: "^(string_of_error e), Error)
+      | e -> Log.log ("ERREUR1:"^(Printexc.to_string e), Error)
 
 
 
   method private _query ~expect ?(log=true) ?(nodb=false) q =
     if log then
       Log.log (("Next SQL query to compute: "^q), Normal_Extra);
+
+    (* Lock proven to be useful because of the offset_thread using the very same object
+     * There was a concurrency between the 2 threads.
+     * One disconnected from postgres while the other thread thought to be still connected
+     * while executing the query.
+     * It resulted in the error: Failure("Postgresql.check_null: connection already finished")
+     *)
+    Mutex.lock self#get_lock;
 
     if self#is_connected = false then begin
       match nodb with
@@ -109,13 +124,14 @@ object(self)
 	  
     try
       last_result <- Some ((self#_get_cid)#exec ~expect:[expect] q) ;
-      self#disconnect ~log:log ()
+      self#disconnect ~log:log ();
+      Mutex.unlock self#get_lock
 
     with 
       | Sql_not_connected ->
 	Log.log ("Object not connected to Postgresql, cannot query", Error)
-      | Postgresql.Error e -> Log.log ((string_of_error e), Error)
-      | e -> Log.log ((Printexc.to_string e), Error)
+      | Postgresql.Error e -> Log.log (string_of_error e, Error)
+      | e -> Log.log (Printexc.to_string e, Error)
 
 
 
@@ -172,7 +188,9 @@ object(self)
 	  (self#_to_strsql offset)
 	  pkey
       in
-      self#_query ~expect:Command_ok update_query
+      prerr_endline "avant ma query file_closed" ;
+      self#_query ~expect:Command_ok update_query ;
+      prerr_endline "après ma query file_closed" ;
     with No_primary_key ->
       Log.log ("file closed: no prim key", Error)
 
@@ -260,7 +278,7 @@ object(self)
       | false ->
 	let q = "CREATE DATABASE "^dbname' in
 	self#_query ~expect:Command_ok ~nodb:true q;
-	Log.log ((dbname'^" created"), Normal_Extra)
+	Log.log (("Database '"^dbname'^"' created"), Normal_Extra)
 
 
   method create_table_accesses =
