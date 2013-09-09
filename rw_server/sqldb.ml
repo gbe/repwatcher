@@ -1,3 +1,5 @@
+open Types_conf
+
 type dbkind = Mysql of Mysqldb.mysqldb | Postgresql of Postgresqldb.pgsql
 
 class sqldb =
@@ -6,9 +8,9 @@ object(self)
 
   val connector =
     match Config.cfg#get_sql_rdbms with
-      | "postgresql" -> Postgresql (new Postgresqldb.pgsql)
-      | "mysql" -> Mysql (new Mysqldb.mysqldb)
-      | _ -> assert false
+      | MySQL -> Mysql (new Mysqldb.mysqldb)
+      | PostgreSQL -> Postgresql (new Postgresqldb.pgsql)
+
 
   method is_connected =
     match connector with

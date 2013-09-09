@@ -10,8 +10,8 @@ let check_options cert =
 
 let check_rdbms_value value =
   match (String.lowercase value) with
-    | "mysql" -> "mysql"
-    | "postgresql" -> "postgresql"
+    | "mysql" -> MySQL
+    | "postgresql" -> PostgreSQL
     | _ -> raise Parse_error
 ;;
 
