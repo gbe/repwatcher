@@ -45,7 +45,7 @@ let loop_check () =
 	  end
 
 
-	| Some offset ->
+	| Some _ ->
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core
 	   * Also reset the error_counter.

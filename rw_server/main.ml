@@ -148,6 +148,10 @@ This is free software under the MIT license.\n\n";
       (* First thing to do is to drop privileges *)
       change_main_process_identity ();
 
+      (* Not only used to update the last_known_offset in SQL,
+       * it is also used to force the closing event *)
+      ignore (Thread.create Offset_thread.loop_check ());
+
       if Config.cfg#is_sql_activated then begin
 	let c_sql = Config.cfg#get_sql in
 
@@ -169,8 +173,6 @@ This is free software under the MIT license.\n\n";
 
 	(* Set to zero every files marked as 'in progress' in the RDBMS *)
 	sql#reset_in_progress ;
-
-	ignore (Thread.create Offset_thread.loop_check ());
 
       end ;
 
