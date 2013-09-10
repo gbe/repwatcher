@@ -215,7 +215,7 @@ object(self)
     if int_of_string (Str.last_chars rights 1) != 0 then
       let err =
 	"Warning: "^file^" is readable by the group 'other'. \
-         You should changed this to prevent passwords leakage"
+         You should changed this to prevent passwords/private key leakage"
       in 
       Log.log (err, Error)
 
