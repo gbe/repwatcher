@@ -264,13 +264,13 @@ object(self)
 		| true -> ()
 		| false ->
 		  let error =
-		    "Can't chroot in "^dir^", it's not a directory"
+		    "Cannot chroot in "^dir^", it is not a directory"
 		  in
 		  Log.log (error, Error);
 		  failwith error
 	    with Sys_error err ->
 	      let error =
-		"Can't chroot in "^dir^", it's not a directory. "^err
+		"Cannot chroot in "^dir^", it is not a directory or it does not exist. "^err
 	      in
 	      Log.log (error, Error);
 	      failwith error
