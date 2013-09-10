@@ -243,7 +243,7 @@ let run tor server =
   (* Operations on the process itself *)
   
   (* If the processus' identity is root *)
-  if Unix.geteuid() = 0 && Unix.getegid() = 0 then begin
+  if Unix.geteuid () = 0 && Unix.getegid () = 0 then begin
       
     (* Check needs to be done before chrooting *)
     let check_identity identity =

@@ -128,19 +128,23 @@ object(self)
       try
 	(self#get).c_process_identity
       with Config_error ->
-	let err = "Cannot retrieve process identity configuration since the config file has not been parsed" in
+	let err =
+	  "Cannot retrieve process identity configuration since the config file has not been parsed"
+	in
 	Log.log (err, Error);
 	exit 1
     in
     match c with
       | None -> raise Process_identity_not_configured
-      | Some process_id_conf -> process_id_conf
+      | Some main_process_id -> main_process_id
 
   method get_log_verbosity =
     try
       (self#get).c_log
     with Config_error ->
-      let err = "Cannot retrieve the log verbosity since the config file has not been parsed" in
+      let err =
+	"Cannot retrieve the log verbosity since the config file has not been parsed"
+      in
       Log.log (err, Error);
       exit 1
 
@@ -159,7 +163,7 @@ object(self)
      - exist and can be read: CA, cert
      - exist, can be read and rights: key
      - chroot folder
-     - server identity
+     - server process identity
      
      - if the smtp server can be reached
   *)
@@ -167,46 +171,53 @@ object(self)
 
 
 
-  (* Does the file exist and can it be read ? *)
-  method private _can_be_accessed file_dir rights =
-    try
-      (* Checks if the file exists and if the process can read it *)
-      Unix.access file_dir rights ;
-      
-    with Unix_error (error,_,file_dir') ->
-      let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
-      Log.log (err, Error) ;
-      failwith err
-
-
 (* Check if the identity which should be taken
- * by the main process exists
- * (only if the current identity is root)
+ * by the main/remote process exists
+ * (only if the effective current identity is root)
  *)
-  method process_identity =
-    try
-    let proc_id = self#get_process_identity in
-
+  method private _check_identity identity =
     if Unix.geteuid () = 0 && Unix.getegid () = 0 then
       try
-	(* Check in /etc/passwd if the user "proc_id" exists *)
-	ignore (Unix.getpwnam proc_id);
+	(* Check in /etc/passwd if the user "identity" exists *)
+	ignore (Unix.getpwnam identity);
       with Not_found ->
 	let error =
-	  "Fatal error. User "^proc_id^" doesn't exist. \
-            The process can't take this identity"
+	  "Fatal error. User "^identity^" does not exist. \
+            The process cannot take this identity"
 	in
 	Log.log (error, Error);
 	failwith error
+
+  method check_process_identity =
+    try
+    let proc_id = self#get_process_identity in
+    self#_check_identity proc_id
     with Process_identity_not_configured ->
       Log.log ("Cannot check the process identity since it is disabled", Normal_Extra)
 
 
-(* print and log if others have read permission on file *)
+(* Check if the identity which should be taken by
+ * the remote process exists (only if the current identity is root)
+ *)
+  method check_remote_process_identity =
+    match (self#get).c_server with
+      | None -> assert false
+      | Some server ->
+	match server.s_process_identity with
+	  | None -> ()
+	  | Some new_remote_identity ->
+	    self#_check_identity new_remote_identity
+
+
+  (* print and log if the 'others' have read permission on file *)
   method rights file =
     let rights = Printf.sprintf "%o" ((Unix.stat file).st_perm) in
     if int_of_string (Str.last_chars rights 1) != 0 then
-      Log.log ("Warning: "^file^" is accessible by the group 'other'", Error)
+      let err =
+	"Warning: "^file^" is readable by the group 'other'. \
+         You should changed this to prevent passwords leakage"
+      in 
+      Log.log (err, Error)
 
 
   method server_certs =
@@ -216,14 +227,27 @@ object(self)
 	match server.s_certs with
 	  | None -> assert false
 	  | Some certs -> 
+
+	    (* Does the file exist and can it be read ? *)
+	    let can_be_accessed file_dir rights =
+	      try
+		(* Checks if the file exists and if the process can read it *)
+		Unix.access file_dir rights ;
+		
+	      with Unix_error (error,_,file_dir') ->
+		let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
+		Log.log (err, Error) ;
+		failwith err
+	    in
+
 	    (* checks the CA *)
-	    self#_can_be_accessed certs.c_ca_path [F_OK ; R_OK];
+	    can_be_accessed certs.c_ca_path [F_OK ; R_OK];
 
 	    (* checks the cert *)
-	    self#_can_be_accessed certs.c_serv_cert_path [F_OK ; R_OK];
+	    can_be_accessed certs.c_serv_cert_path [F_OK ; R_OK];
 
 	    (* checks the key *)
-	    self#_can_be_accessed certs.c_serv_key_path [F_OK ; R_OK];
+	    can_be_accessed certs.c_serv_key_path [F_OK ; R_OK];
 	    self#rights certs.c_serv_key_path
 
 
@@ -250,32 +274,6 @@ object(self)
 	      in
 	      Log.log (error, Error);
 	      failwith error
-
-
-(* Check if the identity which should be taken by
- * the remote process exists (only if the current identity is root)
- *)
-  method remote_process_identity =
-    match (self#get).c_server with
-      | None -> assert false
-      | Some server ->
-	match server.s_process_identity with
-	  | None -> ()
-	  | Some new_remote_identity ->
-	    if Unix.geteuid () = 0 && Unix.getegid () = 0 then
-	      try
-		(*
-		 * Check in /etc/passwd
-		 * if the user "new_remote_identity" exists
-		 *)
-		ignore (Unix.getpwnam new_remote_identity);
-	      with Not_found ->
-		let error =
-		  "Fatal error. User "^new_remote_identity^" doesn't exist. \
-                The network process can't take this identity"
-		in
-		Log.log (error, Error);
-		failwith error
 
 
   (* Check if a connection can be done with the SMTP server *)

@@ -1,14 +1,14 @@
 open Unix
 open Printf
-
 open Types
 open Types_conf
+open Config
 
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
 (* Configuration file fullpath *)
 let config_file = ref "repwatcher.conf" ;;
-let is_sql_activated = ref false ;;
+let is_sql_activated_and_working = ref false ;;
 
 let clean_exit () =
   Unix.close Core.core#get_fd ;
@@ -16,38 +16,45 @@ let clean_exit () =
   (* No need to handle SQL because each connection is closed immediately
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proven to be useful for outside apps *)
-  if !is_sql_activated then
+  if !is_sql_activated_and_working then
     let sql = new Sqldb.sqldb in
     sql#reset_in_progress
 ;;
 
 
-let drop_identity new_identity =
+let change_main_process_identity () =
   
   (* Drop privileges by changing the processus' identity
    * if its current id is root *)
   if Unix.geteuid () = 0 && Unix.getegid () = 0 then begin
 
-    (* Should be performed before dropping root rights (if any) *)
-    Config.cfg#process_identity ;
+    (* Does the new identity exist ? Failwith in case it does not *)
+    Config.cfg#check_process_identity ;
 
     try
       (* Check in the file /etc/passwd
        * if the user "new_identity" exists *)
-      let passwd_entry = Unix.getpwnam new_identity in
+      let passwd_entry = Unix.getpwnam Config.cfg#get_process_identity in
       setgid passwd_entry.pw_gid;
       setuid passwd_entry.pw_uid;
+      
+    with
+      | Process_identity_not_configured ->
+	let error =
+	  "Fatal programming error. The process identity was not set \
+           in the configuration file, the process cannot take the identity."
+	in
+	Log.log (error, Error);
+	failwith error
+      | Not_found ->
+	let error =
+	  "Fatal error. User "^Config.cfg#get_process_identity^" does not exist \
+           in the configuration file. Repwatcher's main process cannot take this \
+           identity and will therefore exit"
+	in
+	Log.log (error, Error);
+	failwith error
 
-    with Not_found ->
-      (* This shouldn't be triggered here
-       * because the test has been already done
-       * in the function check() *)
-      let error =
-	"Fatal error. User "^new_identity^" doesn't exist. \
-                  The process can't take this identity"
-      in
-      Log.log (error, Error);
-      failwith error
   end
 ;;
 
@@ -58,7 +65,7 @@ let check_sql_connection () =
 
   match sql#is_connected with
     | false -> failwith "Could not connect to SQL server, read the log"
-    | true ->	sql#disconnect ()
+    | true -> sql#disconnect ()
 ;;
 
 
@@ -83,30 +90,34 @@ This is free software under the MIT license.\n\n";
   at_exit clean_exit;
 
   Config.cfg#parse !config_file;
-  (* Prior to the config file parsing, the "log" assumed it was default.
-   * Now that the config file has been parsed, it must be informed of the real value *)
+  (* Prior to the config file parsing, the "log" assumed it was on by default.
+   * Now that the config file has been parsed,
+   * it must be informed of the real value: en/disabled, debug, ... *)
   let conf = Config.cfg#get in
+
+  (* This must be the first thing done after having parsed the file *)
   Log.sysl#set_config Config.cfg#get_log_verbosity ;
 
-  (* Check if a connection can be done with the SMTP server *)
-  Config.cfg#check_smtp_server;
-
+  (* Check if the config file permission has read rights for the group others
+   * If it does, it is a user mistake *)
+  Config.cfg#rights !config_file ;
 
   (* Fork if remote notifications are activated *)
   let fd =
     match conf.c_notify.n_remotely with
     | true  ->
 
-      (* Should be performed before dropping root rights (if any) *)
-      Config.cfg#remote_process_identity;
-      (* Should be performed before dropping root rights (if any) *)
+      (* Checks it the new remote process identity and chroot exist
+       * The actual operations are not done yet as those checks must be done before
+       * forking with still the root rights *)
+      Config.cfg#check_remote_process_identity;
       Config.cfg#chroot;
 
       (* Match left here willingly *)
       begin match conf.c_server with
 	| None -> assert false
 	| Some server ->
-	  Log.log ("Start server for remote notifications", Normal_Extra) ;
+	  Log.log ("Creates the pipes and forks the process", Normal_Extra) ;
 
 	  (* Pipes initialization must be done before the fork *)
 	  Pipe.father2child#create;
@@ -117,54 +128,56 @@ This is free software under the MIT license.\n\n";
     | false -> -1
   in
   
-  
   (* If the process has been forked *)
   match fd with
     | 0 ->
+      (* Stuff to do in the child process *)
       if conf.c_notify.n_remotely then begin
 
-	(* Start the server *)
+	(* Start the remote notification server *)
 	match conf.c_server with
 	  | None -> assert false
 	  | Some server ->
+	    Log.log ("Start remote notifications server", Normal_Extra) ;
 	    Ssl_server.run Pipe.father2child#get_toread server
       end
 
     | _ ->
+      (* Stuff to do in the father process *)
 
-      begin match conf.c_process_identity with
-	| None -> ()
-	| Some new_identity -> drop_identity new_identity
-      end;
+      (* First thing to do is to drop privileges *)
+      change_main_process_identity ();
 
-      begin
-	match conf.c_sql with
-	  | None -> ()
-	  | Some sqlparam' ->
+      if Config.cfg#is_sql_activated then begin
+	let c_sql = Config.cfg#get_sql in
 
-	    (* if a connection to the SQL backend is not possible
-	     * then the program exits *)
-	    check_sql_connection ();
+	(* if a connection to the SQL backend is not possible
+	 * then the program exits *)
+	check_sql_connection ();
 		
-	    (* since the sql_connection tested above works
-	     * then sql is activated for the at_exit call *)
-	    is_sql_activated := true;
+	(* since the sql_connection tested above works
+	 * then sql is activated for the at_exit call *)
+	is_sql_activated_and_working := true;
 
-	    let sql = new Sqldb.sqldb in
+	let sql = new Sqldb.sqldb in
 		
-	    (* if Sqldb.create_db goes wrong, the program exits *)
-	    sql#create_db sqlparam'.sql_dbname ;
+	(* if Sqldb.create_db goes wrong, the program exits *)
+	sql#create_db c_sql.sql_dbname ;
 
-	    (* if Sqldb.create_table_accesses goes wrong, the program exits *)
-	    sql#create_table_accesses ;
+	(* if Sqldb.create_table_accesses goes wrong, the program exits *)
+	sql#create_table_accesses ;
 
-	    (* Set to zero every files marked as 'in progress' in the RDBMS *)
-	    sql#reset_in_progress ;
+	(* Set to zero every files marked as 'in progress' in the RDBMS *)
+	sql#reset_in_progress ;
+
+	ignore (Thread.create Offset_thread.loop_check ());
+
       end ;
 
-      Config.cfg#rights !config_file ;
-      
-      (* If the server is enabled *)
+      (* Check if a connection can be done with the SMTP server *)
+      Config.cfg#check_smtp_server;
+     
+      (* Start the pipes if the remote notification server is enabled *)
       if conf.c_notify.n_remotely then begin
 	Config.cfg#server_certs ;
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
@@ -181,15 +194,16 @@ This is free software under the MIT license.\n\n";
       in
 
       (* Watch the directories and their children *)
-      List.iter (fun dir -> Core.core#add_watch dir ~wd_father_opt:None ~is_config_file:false) dirs;
-      Core.core#add_watch_children children;
+      List.iter (fun dir ->
+	Core.core#add_watch dir ~wd_father_opt:None ~is_config_file:false
+      ) dirs;
 
-      if Config.cfg#is_sql_activated then
-	ignore (Thread.create Offset_thread.loop_check ());
+      Core.core#add_watch_children children;
 
       let notif_txt = "Repwatcher is watching youuu ! :)" in
       Report.report#notify (Local_notif notif_txt);
       Log.log (notif_txt, Normal) ;
+
 
       (* **************************** *)
       (* For interruptions *)
@@ -201,6 +215,7 @@ This is free software under the MIT license.\n\n";
       ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
       ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
       (* **************************** *)
+
 
       while !loop do
 	let event_l = 
