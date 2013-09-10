@@ -188,9 +188,7 @@ object(self)
 	  (self#_to_strsql offset)
 	  pkey
       in
-      prerr_endline "avant ma query file_closed" ;
       self#_query ~expect:Command_ok update_query ;
-      prerr_endline "après ma query file_closed" ;
     with No_primary_key ->
       Log.log ("file closed: no prim key", Error)
 
