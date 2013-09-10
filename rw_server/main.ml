@@ -21,14 +21,15 @@ let clean_exit () =
     sql#reset_in_progress
 ;;
 
-let drop_identity checker new_identity =
+
+let drop_identity new_identity =
   
   (* Drop privileges by changing the processus' identity
    * if its current id is root *)
   if Unix.geteuid () = 0 && Unix.getegid () = 0 then begin
 
     (* Should be performed before dropping root rights (if any) *)
-    checker#process_identity ;
+    Config.cfg#process_identity ;
 
     try
       (* Check in the file /etc/passwd
@@ -49,6 +50,17 @@ let drop_identity checker new_identity =
       failwith error
   end
 ;;
+
+
+let check_sql_connection () =
+  let sql = new Sqldb.sqldb in
+  sql#connect_without_db ;
+
+  match sql#is_connected with
+    | false -> failwith "Could not connect to SQL server, read the log"
+    | true ->	sql#disconnect ()
+;;
+
 
 (* Main function *)
 let _ =  
@@ -76,10 +88,8 @@ This is free software under the MIT license.\n\n";
   let conf = Config.cfg#get in
   Log.sysl#set_config Config.cfg#get_log_verbosity ;
 
-  let checker = new Check_conf.config_checker in
-
   (* Check if a connection can be done with the SMTP server *)
-  checker#check_smtp_server;
+  Config.cfg#check_smtp_server;
 
 
   (* Fork if remote notifications are activated *)
@@ -88,9 +98,9 @@ This is free software under the MIT license.\n\n";
     | true  ->
 
       (* Should be performed before dropping root rights (if any) *)
-      checker#remote_process_identity;
+      Config.cfg#remote_process_identity;
       (* Should be performed before dropping root rights (if any) *)
-      checker#chroot;
+      Config.cfg#chroot;
 
       (* Match left here willingly *)
       begin match conf.c_server with
@@ -124,7 +134,7 @@ This is free software under the MIT license.\n\n";
 
       begin match conf.c_process_identity with
 	| None -> ()
-	| Some new_identity -> drop_identity checker new_identity
+	| Some new_identity -> drop_identity new_identity
       end;
 
       begin
@@ -132,8 +142,9 @@ This is free software under the MIT license.\n\n";
 	  | None -> ()
 	  | Some sqlparam' ->
 
-	    (* if Check_conf.sql_connection goes wrong, the program exits *)
-	    checker#sql_connection ;
+	    (* if a connection to the SQL backend is not possible
+	     * then the program exits *)
+	    check_sql_connection ();
 		
 	    (* since the sql_connection tested above works
 	     * then sql is activated for the at_exit call *)
@@ -151,11 +162,11 @@ This is free software under the MIT license.\n\n";
 	    sql#reset_in_progress ;
       end ;
 
-      checker#rights !config_file ;
+      Config.cfg#rights !config_file ;
       
       (* If the server is enabled *)
       if conf.c_notify.n_remotely then begin
-	checker#server_certs ;
+	Config.cfg#server_certs ;
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
       end; 
      
