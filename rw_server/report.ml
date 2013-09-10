@@ -145,43 +145,48 @@ object(self)
 
   method sql sql_report =
 
-    match sql_report.s_state with
-      | SQL_File_Opened ->
-	let sql = new Sqldb.sqldb in
-	sql#file_opened
-	  sql_report.s_file
-	  sql_report.s_created
-	  sql_report.s_date
-	  sql_report.s_size
-	  sql_report.s_offset;
-	Some sql
-	  
-      | SQL_File_Closed ->
-	begin match sql_report.s_sql_obj with
-	  | None -> assert false
-	  | Some sql ->
-	    sql#file_closed
+    match Config.cfg#is_sql_activated with
+      | false -> None
+      | true ->
+
+	match sql_report.s_state with
+	  | SQL_File_Opened ->
+	    let sql = new Sqldb.sqldb in
+	    sql#file_opened
+	      sql_report.s_file
+	      sql_report.s_created
 	      sql_report.s_date
 	      sql_report.s_size
-	      sql_report.s_offset	    
-	end;
-	None
+	      sql_report.s_offset;
+	    Some sql
+	  
+	  | SQL_File_Closed ->
+	    begin match sql_report.s_sql_obj with
+	      | None -> assert false
+	      | Some sql ->
+		sql#file_closed
+		  sql_report.s_date
+		  sql_report.s_size
+		  sql_report.s_offset	    
+	    end;
+	    None
 
-      | SQL_FK_Offset ->
-	begin match sql_report.s_sql_obj with
-	  | None -> assert false
-	  | Some sql ->
-	    sql#first_known_offset sql_report.s_offset
-	end;
-	None
+	  | SQL_FK_Offset ->
+	    begin match sql_report.s_sql_obj with
+	      | None -> assert false
+	      | Some sql ->
+		sql#first_known_offset sql_report.s_offset
+	    end;
+	    None
 
-      | SQL_LK_Offset ->
-	begin match sql_report.s_sql_obj with
-	  | None -> assert false
-	  | Some sql ->
-	    sql#last_known_offset sql_report.s_offset
-	end;
-	None
+	  | SQL_LK_Offset ->
+	    begin match sql_report.s_sql_obj with
+	      | None -> assert false
+	      | Some sql ->
+		sql#last_known_offset sql_report.s_offset
+	    end;
+	    None
+
 
   method mail tobemailed =
 

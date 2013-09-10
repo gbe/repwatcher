@@ -311,7 +311,6 @@ object(self)
 	      if debug_event then
 		self#_print_file file;
 
-	      (* Notify right away *)
 	      let date = Date.date () in
 	      
 	      let has_what =
@@ -329,67 +328,65 @@ object(self)
 		Files.get_offset file.f_program_pid file.f_descriptor
 	      in
 
-	      (* if the file is being created then the
-	       * filesize is unknown for the moment
-	       *)
-	      let filesize =
-		match created with
-		  | false -> Some filesize
-		  | true -> None
-	      in
-
 	      let file_prepared = Report.report#prepare_data file in
 
+	      (* *** Notifications *** *)
 	      begin match created with
 		| false ->
-		  Report.report#notify (New_notif (file_prepared, File_Opened));
-		  let tobemailed =
-		    {
-		      m_filestate = File_Opened;
-		      m_file = file_prepared;
-		      m_offset = offset_opt;
-		      m_filesize = filesize;
-
-		    (* Irrevelevant since the mail will tell the date *)
-		      m_opening_date = None;
-		    }
-		  in
-		  Report.report#mail tobemailed
-
+		  Report.report#notify (New_notif (file_prepared, File_Opened))
 		| true ->
-		  let tobemailed =
-		    {
-		      m_filestate = File_Created;
-		      m_file = file_prepared;
-		      m_offset = offset_opt;
-		      m_filesize = filesize;
-		      
-		    (* Irrevelevant since the mail will tell the date *)
-		      m_opening_date = None;
-		    }
-		  in
-		  Report.report#notify (New_notif (file_prepared, File_Created));
-		  Report.report#mail tobemailed
+		  Report.report#notify (New_notif (file_prepared, File_Created))
 	      end;
+	      (* ********************* *)
 
-	      let sql_obj_opt =
-		match Config.cfg#is_sql_activated with
-		  | false -> None
-		  | true ->
-		    let sql_report =
-		      {
-			s_file = file ;
-			s_state = SQL_File_Opened ;
-			s_size = filesize ;
-			s_date = date ;
-			s_offset = offset_opt ;
-			s_sql_obj = None ;
-			s_created = created ;
-		      }
-		    in
-		    Report.report#sql sql_report
+
+	      (* The filesize must be overriden as unknown if the file is being created *)
+	      let filesize_opt =
+		match created with
+		  | true -> None
+		  | false -> Some filesize
 	      in
 
+
+	      (* *** Emails *** *)
+	      let tobemailed =
+		{
+		  m_filestate = File_Opened;
+		  m_file = file_prepared;
+		  m_offset = offset_opt;
+		  m_filesize = filesize_opt;
+		    
+		  (* Irrevelevant since the mail will tell the date *)
+		  m_opening_date = None;
+		}
+	      in
+	      begin match created with
+		| false ->
+		  Report.report#mail tobemailed
+		| true ->
+		  Report.report#mail { tobemailed with
+		    m_filestate = File_Created }
+	      end;
+	      (* ************** *)
+
+
+	      (* *** SQL *** *)
+	      let sql_obj_opt =
+		let sql_report =
+		  {
+		    s_file = file ;
+		    s_state = SQL_File_Opened ;
+		    s_size = filesize_opt ;
+		    s_date = date ;
+		    s_offset = offset_opt ;
+		    s_sql_obj = None ;
+		    s_created = created ;
+		  }
+		in
+		Report.report#sql sql_report
+	      in
+	      (* *********** *)
+	      
 	      let isfirstoffsetknown =
 		match offset_opt with
 		  | None -> false
@@ -399,7 +396,7 @@ object(self)
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
 		(date,
-		 filesize,
+		 filesize_opt,
 		 (isfirstoffsetknown, offset_opt, 0),
 		 sql_obj_opt,
 		 created)
@@ -421,7 +418,7 @@ object(self)
 	| None ->
 	  let err =
 	    sprintf "%s has been closed (nowrite) \
-		      but I can't report it because I can't find\
+		      but I can't report it because I cannot find\
 		      its wd info" name
 	  in
 	  Log.log (err, Error)
