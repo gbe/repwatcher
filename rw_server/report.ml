@@ -179,6 +179,8 @@ object(self)
 	    end;
 	    None
 
+	  (* Really rare case, since to happen, the offset should not be
+	     readable during the file_open *)
 	  | SQL_LK_Offset ->
 	    begin match sql_report.s_sql_obj with
 	      | None -> assert false

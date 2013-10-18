@@ -214,10 +214,7 @@ object(self)
 
 
   method reset_in_progress =
-    let reset_accesses =
-      "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
-    in
-    self#_query reset_accesses
+    self#_query reset_accesses_query
 
 
 

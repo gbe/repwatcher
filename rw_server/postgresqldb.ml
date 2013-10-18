@@ -34,7 +34,7 @@ object(self)
   method private _to_strsql int64opt =
     match int64opt with
       | None -> "NULL"
-      | Some var_int64 -> "'"^(Int64.to_string var_int64)^"'"
+      | Some var_int64 -> Int64.to_string var_int64
 
 
   method private _get_dbname =
@@ -100,13 +100,22 @@ object(self)
       | Sql_not_connected ->
 	Log.log ("Object not connected to Postgresql, cannot disconnect", Error)
       | Postgresql.Error e -> Log.log ("erreur1: "^(string_of_error e), Error)
-      | e -> Log.log ("ERREUR1:"^(Printexc.to_string e), Error)
+      | e -> Log.log (Printexc.to_string e, Error)
 
 
 
-  method private _query ~expect ?(log=true) ?(nodb=false) q =
+  method private _query ~expect ?(log=true) ?(nodb=false) ?(args=[||]) q =
     if log then
-      Log.log (("Next SQL query to compute: "^q), Normal_Extra);
+      begin
+	let rec args_list_to_string res arg_l =
+	  match arg_l with
+	    | [] -> res
+	    | arg :: [] -> res^arg
+	    | arg :: t -> args_list_to_string (res^arg^", ") t
+	in
+	let txt = args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
+	Log.log (txt, Normal_Extra);
+      end;
 
     (* Lock proven to be useful because of the offset_thread using the very same object
      * There was a concurrency between the 2 threads.
@@ -123,10 +132,9 @@ object(self)
     end;
 	  
     try
-      last_result <- Some ((self#_get_cid)#exec ~expect:[expect] q) ;
+      last_result <- Some ((self#_get_cid)#exec ~expect:[expect] ~params:args q) ;
       self#disconnect ~log:log ();
       Mutex.unlock self#get_lock
-
     with 
       | Sql_not_connected ->
 	Log.log ("Object not connected to Postgresql, cannot query", Error)
@@ -145,24 +153,28 @@ object(self)
       Printf.sprintf "INSERT INTO accesses \
          (login, username, program, program_pid, path, filename, filesize, \
          filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES ('%s', '%s', '%s', '%s', '%s', '%s', %s, '%s', %s, '%s', '%s', '1') \
+	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '1') \
           RETURNING ID"
-	f.f_login
-	username
-	f.f_program
-	(string_of_int (Fdinfo.int_of_pid f.f_program_pid))
-	f.f_path
-	f.f_name
-	(self#_to_strsql filesize)
-	(string_of_int (Fdinfo.int_of_fd f.f_descriptor))
-	(self#_to_strsql offset)
-	creation_date
+    in
+    let insert_query_args =
+      [|
+	f.f_login;
+	username;
+	f.f_program;
+	(string_of_int (Fdinfo.int_of_pid f.f_program_pid));
+	f.f_path;
+	f.f_name;
+	(self#_to_strsql filesize);
+	(string_of_int (Fdinfo.int_of_fd f.f_descriptor));
+	(self#_to_strsql offset);
+	creation_date;
 	(match s_created with
 	  | true -> "1"
 	  | false -> "0"
 	)
+      |]
     in
-    self#_query ~expect:Tuples_ok insert_query;
+    self#_query ~expect:Tuples_ok ~args:insert_query_args insert_query;
 
     try
       let res = self#_get_last_result in     
@@ -180,15 +192,19 @@ object(self)
 
       let update_query =
 	Printf.sprintf "UPDATE accesses \
-        	  SET CLOSING_DATE = '%s', FILESIZE = %s, \
-                  LAST_KNOWN_OFFSET = %s, IN_PROGRESS = '0' \
-        	  WHERE ID = '%s'"
-	  closing_date
-	  (self#_to_strsql filesize)
-	  (self#_to_strsql offset)
-	  pkey
+        	  SET CLOSING_DATE = $1, FILESIZE = $2, \
+                  LAST_KNOWN_OFFSET = $3, IN_PROGRESS = '0' \
+        	  WHERE ID = $4"
       in
-      self#_query ~expect:Command_ok update_query ;
+      let update_query_args =
+	[|
+	  closing_date;
+	  (self#_to_strsql filesize);
+	  (self#_to_strsql offset);
+	  pkey
+	|]
+      in
+      self#_query ~expect:Command_ok ~args:update_query_args update_query ;
     with No_primary_key ->
       Log.log ("file closed: no prim key", Error)
 
@@ -205,23 +221,25 @@ object(self)
       in
 
       let update_offset_query =
-	Printf.sprintf "UPDATE accesses \
-        	  SET %s = %s \
-	          WHERE ID = '%s'"
-	  field
-	  (self#_to_strsql offset)
-	  pkey
+	"UPDATE accesses SET "^field^" = $1 WHERE ID = $2"
       in
-      self#_query ~expect:Command_ok ~log:false update_offset_query
+      let update_off_query_args =
+	[|
+	  (self#_to_strsql offset);
+	  pkey
+	|]
+      in
+      self#_query
+	~expect:Command_ok
+	~log:true
+	~args:update_off_query_args
+	update_offset_query
     with No_primary_key ->
       Log.log ("update offset: no prim key", Error)
 
 
   method reset_in_progress =
-    let reset_accesses =
-      "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
-    in
-    self#_query ~expect:Command_ok reset_accesses
+    self#_query ~expect:Command_ok reset_accesses_query
 
 
   method first_known_offset offset =
@@ -235,8 +253,8 @@ object(self)
   method private _db_exists =
     let db = self#_get_dbname in
 
-    let q = "select count(*) from pg_catalog.pg_database where datname = '"^db^"'" in
-    self#_query ~expect:Tuples_ok ~nodb:true q ;
+    let q = "SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = $1" in
+    self#_query ~expect:Tuples_ok ~nodb:true ~args:[|db|] q ;
 
     try
       let result = self#_get_last_result in
@@ -251,9 +269,8 @@ object(self)
 
 
   method private _index_exists idx =
-    let q = "select count(*) from pg_class where relname='"^idx^"'" in
-    
-    self#_query ~expect:Tuples_ok q;
+    let q = "SELECT COUNT(*) FROM pg_class WHERE relname = $1" in    
+    self#_query ~expect:Tuples_ok ~args:[|idx|] q;
 
     try
       let result = self#_get_last_result in
@@ -269,8 +286,6 @@ object(self)
 
   (* TO DO: get rid of dbname arg *)
   method create_db dbname' =
-(*    let dbname' = self#_get_dbname in*)
-
     match self#_db_exists with
       | true -> Log.log (("Database '"^dbname'^"' already exists"), Normal_Extra);
       | false ->
@@ -304,12 +319,12 @@ object(self)
       
       let idx = "in_progress_idx" in
 
-      let create_progress_idx =
+      let create_progress_idx_query =
 	Printf.sprintf "CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
       in
 
       if (self#_index_exists idx) = false then
-	self#_query ~expect:Command_ok create_progress_idx
+	self#_query ~expect:Command_ok create_progress_idx_query
 
     with Sql_not_connected ->
       Log.log ("Object not connected to Postgresql, cannot create table", Error)

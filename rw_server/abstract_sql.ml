@@ -8,6 +8,8 @@ object(self)
   val mutable cid = None
   val mutable primary_key = None
   val mutable last_result = None
+  val reset_accesses_query =
+    "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
 
   (* Lock proven to be useful because of the offset_thread using the very same object
    * There was a concurrency between the 2 threads.
