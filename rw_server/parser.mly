@@ -13,6 +13,15 @@ let check_rdbms_value value =
     | "mysql" -> MySQL
     | "postgresql" -> PostgreSQL
     | _ -> raise Parse_error
+
+let check_authorized_chars istr =
+  let forbidden_chars = Str.regexp "['%'|';'|'\'']" in
+
+  (* if the exception Not_found is raised, it means the input string is most probably safe *)
+  try
+    ignore (Str.search_forward forbidden_chars istr 0);
+    raise Parse_error
+  with Not_found -> istr
 ;;
 
 %}
@@ -130,8 +139,8 @@ sql:
       {
 	Some {
 	  sql_rdbms = check_rdbms_value $3;
-	  sql_dbhost = $12;
-	  sql_dbname = $18;
+	  sql_dbhost = check_authorized_chars $12;
+	  sql_dbname = check_authorized_chars $18;
 	  sql_dbport = Some $15;
 	  sql_dbpwd  = $9;
 	  sql_dbuser = $6;
@@ -146,8 +155,8 @@ sql:
       {
 	Some {
 	  sql_rdbms = check_rdbms_value $3 ;
-	  sql_dbhost = $12;
-	  sql_dbname = $15;
+	  sql_dbhost = check_authorized_chars $12;
+	  sql_dbname = check_authorized_chars $15;
 	  sql_dbport = None;
 	  sql_dbpwd  = $9;
 	  sql_dbuser = $6;
@@ -287,7 +296,7 @@ smtp:
   SMTP_SSL EQUAL true_or_false
   {
     {
-      sm_host = $3;
+      sm_host = check_authorized_chars $3;
       sm_port = $4;
       sm_credentials = $5;
       sm_ssl = $8
