@@ -1,10 +1,7 @@
 open Mysql
 open Types
 open Types_conf
-
-exception Sql_not_connected
-exception Sql_no_last_result
-exception No_primary_key
+open Abstract_sql
 
 type mysql_result = ResultOK | ResultEmpty | ResultError of string option
 
@@ -66,7 +63,9 @@ object(self)
       self#disconnect ();
       Mutex.unlock self#_get_lock
 
-    with Mysql.Error error -> Log.log (error, Error)
+    with
+      | Mysql.Error error -> Log.log (error, Error)
+      | Sql_not_connected -> Log.log ("RW could not connect to MySQL to query", Error)
 
 
   method private _connect ?(log=true) ?(nodb=false) () =
@@ -253,16 +252,21 @@ object(self)
       ~args:args
       query ;
 
-    match self#_get_last_result with
-      | (ResultOK | ResultEmpty) ->
-	Log.log ("MySQL: File successfully opened", Normal_Extra);
-      | ResultError err ->
-	match err with
-	  | None ->
-	    Log.log ("Oops. Mysql had an error when doing file_opened \
+    try
+      match self#_get_last_result with
+	| (ResultOK | ResultEmpty) ->
+	  Log.log ("MySQL: File successfully opened", Normal_Extra);
+	| ResultError err ->
+	  match err with
+	    | None ->
+	      Log.log ("Oops. Mysql had an error when doing file_opened \
                        and cannot tell which one", Error)
-	  | Some errmsg' -> Log.log (errmsg', Error)
-
+	    | Some errmsg' -> Log.log (errmsg', Error)
+    with Sql_no_last_result ->
+      let err = "RW could not get any result from MySQL \
+                 after the event file_opened on file "^f.f_name 
+      in
+      Log.log (err, Error)
 
   method file_closed closing_date filesize offset =
 
