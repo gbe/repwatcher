@@ -30,22 +30,43 @@ object(self)
   method virtual create_db : string -> unit
   method virtual create_table_accesses : unit
 
+
   method private _get_cid =
     match cid with
       | None -> raise Sql_not_connected
       | Some cid' -> cid'
+
 
   method private _get_primary_key =
     match primary_key with
       | None -> raise No_primary_key
       | Some pkey -> pkey
 
+
   method private _get_last_result =
     match last_result with
       | None -> raise Sql_no_last_result
       | Some last_r -> last_r
 
-  method private get_lock = lock'
+
+  method private _to_strsql int64opt =
+    match int64opt with
+      | None -> "NULL"
+      | Some var_int64 -> Int64.to_string var_int64
+
+
+  method private _args_list_to_string res arg_l =
+    let rec r_args_list_to_string r a_l =
+      match a_l with
+	| [] -> r
+	| arg :: [] -> r^arg
+	| arg :: t -> r_args_list_to_string (r^arg^", ") t
+    in
+    r_args_list_to_string res arg_l
+
+
+  method private _get_lock = lock'
+
 
   method is_connected =
     match cid with

@@ -30,13 +30,6 @@ object(self)
       | None -> None
       | Some p -> Some (string_of_int p))
 
-
-  method private _to_strsql int64opt =
-    match int64opt with
-      | None -> "NULL"
-      | Some var_int64 -> Int64.to_string var_int64
-
-
   method private _get_dbname =
     match dbname with
       | None -> assert false
@@ -107,13 +100,7 @@ object(self)
   method private _query ~expect ?(log=true) ?(nodb=false) ?(args=[||]) q =
     if log then
       begin
-	let rec args_list_to_string res arg_l =
-	  match arg_l with
-	    | [] -> res
-	    | arg :: [] -> res^arg
-	    | arg :: t -> args_list_to_string (res^arg^", ") t
-	in
-	let txt = args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
+	let txt = self#_args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
 	Log.log (txt, Normal_Extra);
       end;
 
@@ -123,7 +110,7 @@ object(self)
      * while executing the query.
      * It resulted in the error: Failure("Postgresql.check_null: connection already finished")
      *)
-    Mutex.lock self#get_lock;
+    Mutex.lock self#_get_lock;
 
     if self#is_connected = false then begin
       match nodb with
@@ -134,7 +121,7 @@ object(self)
     try
       last_result <- Some ((self#_get_cid)#exec ~expect:[expect] ~params:args q) ;
       self#disconnect ~log:log ();
-      Mutex.unlock self#get_lock
+      Mutex.unlock self#_get_lock
     with 
       | Sql_not_connected ->
 	Log.log ("Object not connected to Postgresql, cannot query", Error)
@@ -231,7 +218,7 @@ object(self)
       in
       self#_query
 	~expect:Command_ok
-	~log:true
+	~log:false
 	~args:update_off_query_args
 	update_offset_query
     with No_primary_key ->
