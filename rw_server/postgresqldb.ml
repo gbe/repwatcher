@@ -132,11 +132,6 @@ object(self)
 
 
   method file_opened f s_created creation_date filesize offset =
-    let username =
-      match Txt_operations.name f.f_login with
-	| None -> "NULL"
-	| Some username -> username
-    in
     let insert_query =
       "INSERT INTO accesses \
        (login, username, program, program_pid, path, filename, filesize, \
@@ -147,7 +142,7 @@ object(self)
     let insert_query_args =
       [|
 	f.f_login;
-	username;
+	(match Txt_operations.name f.f_login with | None -> "NULL" | Some username -> username);
 	f.f_program;
 	(string_of_int (Fdinfo.int_of_pid f.f_program_pid));
 	f.f_path;
@@ -183,10 +178,10 @@ object(self)
       let pkey = self#_get_primary_key in
 
       let update_query =
-	Printf.sprintf "UPDATE accesses \
-        	  SET CLOSING_DATE = $1, FILESIZE = $2, \
-                  LAST_KNOWN_OFFSET = $3, IN_PROGRESS = '0' \
-        	  WHERE ID = $4"
+	"UPDATE accesses \
+         SET CLOSING_DATE = $1, FILESIZE = $2, \
+         LAST_KNOWN_OFFSET = $3, IN_PROGRESS = '0' \
+         WHERE ID = $4"
       in
       let update_query_args =
 	[|
@@ -289,7 +284,7 @@ object(self)
   method create_table_accesses =
     try
       let create_tbl =
-	Printf.sprintf "CREATE TABLE IF NOT EXISTS accesses (\
+	 "CREATE TABLE IF NOT EXISTS accesses (\
           ID SERIAL PRIMARY KEY,\
           LOGIN varchar(20) NOT NULL,\
           USERNAME varchar(256) DEFAULT NULL,\
@@ -312,7 +307,7 @@ object(self)
       let idx = "in_progress_idx" in
 
       let create_progress_idx_query =
-	Printf.sprintf "CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
+	"CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
       in
 
       if (self#_index_exists idx) = false then

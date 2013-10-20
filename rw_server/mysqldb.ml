@@ -166,7 +166,7 @@ object(self)
   method create_table_accesses =
 
     let q =
-      Printf.sprintf "CREATE TABLE IF NOT EXISTS `accesses` (\
+  "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(10) NOT NULL AUTO_INCREMENT,\
   `LOGIN` varchar(20) NOT NULL,\
   `USERNAME` varchar(256) DEFAULT NULL,\
@@ -216,13 +216,6 @@ object(self)
 
 
   method file_opened f s_created creation_date filesize offset =
-    let username =
-      match Txt_operations.name f.f_login with
-	| None -> "NULL"
-	| Some username -> (ml2str username)
-    in
-
-    (* ml2str adds quotes. ml2str "txt" -> "'txt'" *)
     let query =
       "INSERT INTO accesses \
       (login, username, program, program_pid, path, filename, filesize, \
@@ -230,9 +223,10 @@ object(self)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '1')"
     in
 
-    let args = [|
+    let args =
+      [|
         f.f_login;
-	username;
+	(match Txt_operations.name f.f_login with | None -> "NULL" | Some username -> username);
 	f.f_program;
 	string_of_int (Fdinfo.int_of_pid f.f_program_pid);
 	f.f_path;
@@ -245,7 +239,7 @@ object(self)
 	  | true -> "1"
 	  | false -> "0"
 	)
-	       |]
+      |]
     in
     self#_query
       ~save_prim_key:true
