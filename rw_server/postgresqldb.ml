@@ -1,10 +1,7 @@
 open Postgresql
 open Types
 open Types_conf
-
-exception Sql_not_connected;;
-exception Sql_no_last_result;;
-exception No_primary_key;;
+open Abstract_sql
 
 class pgsql =
 object(self)
@@ -100,7 +97,11 @@ object(self)
   method private _query ~expect ?(log=true) ?(nodb=false) ?(args=[||]) q =
     if log then
       begin
-	let txt = self#_args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
+	let txt =
+	  self#_args_list_to_string
+	    ("Next SQL query to compute: "^q^" --- Args: ")
+	    (Array.to_list args)
+	in
 	Log.log (txt, Normal_Extra);
       end;
 
@@ -137,11 +138,11 @@ object(self)
 	| Some username -> username
     in
     let insert_query =
-      Printf.sprintf "INSERT INTO accesses \
-         (login, username, program, program_pid, path, filename, filesize, \
-         filedescriptor, first_known_offset, opening_date, created, in_progress) \
-	  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '1') \
-          RETURNING ID"
+      "INSERT INTO accesses \
+       (login, username, program, program_pid, path, filename, filesize, \
+        filedescriptor, first_known_offset, opening_date, created, in_progress) \
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '1') \
+       RETURNING ID"
     in
     let insert_query_args =
       [|
@@ -170,7 +171,11 @@ object(self)
 	  primary_key <- Some (res#getvalue 0 0)
 	| _ -> assert false
     with Sql_no_last_result ->
-      Log.log ("file_opened, no result ? Should not be possible", Error)
+      let err =
+	"RW could not get any result from PostgreSQL \
+        after the file_opened event on file "^f.f_name
+      in
+      Log.log (err, Error)
 
 
   method file_closed closing_date filesize offset =
@@ -193,7 +198,7 @@ object(self)
       in
       self#_query ~expect:Command_ok ~args:update_query_args update_query ;
     with No_primary_key ->
-      Log.log ("file closed: no prim key", Error)
+      Log.log ("Could not query the file closing as there is no primary key", Error)
 
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
@@ -222,7 +227,7 @@ object(self)
 	~args:update_off_query_args
 	update_offset_query
     with No_primary_key ->
-      Log.log ("update offset: no prim key", Error)
+      Log.log ("Could not update the offset as there is no primary key", Error)
 
 
   method reset_in_progress =
