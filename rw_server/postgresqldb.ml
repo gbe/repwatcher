@@ -315,4 +315,8 @@ object(self)
 
     with Sql_not_connected ->
       Log.log ("Object not connected to Postgresql, cannot create table", Error)
+
+  method cleanup_prepare_stmts =
+    print_endline "plop"
+
 end;;

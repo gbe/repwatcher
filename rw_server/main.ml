@@ -17,8 +17,21 @@ let clean_exit () =
    * However, we do need to set all the IN_PROGRESS accesses to zero.
    * This has been proven to be useful for outside apps *)
   if !is_sql_activated_and_working then
-    let sql = new Sqldb.sqldb in
-    sql#reset_in_progress
+    begin
+      let sql = new Sqldb.sqldb in
+      sql#reset_in_progress;
+
+      (* Cleanup every ongoing prepared stmts
+       * for every files in progress and disconnect from RDBMS *)
+      Hashtbl.iter (fun (_) (_, _, (_), (sql_obj_opt : Sqldb.sqldb option), _) ->
+	match sql_obj_opt with
+	  | None -> ()
+	  | Some sqlobj ->
+	    sqlobj#cleanup_prepare_stmts;
+	    sqlobj#disconnect ()
+
+      ) Files_progress.ht;
+    end
 ;;
 
 

@@ -84,4 +84,11 @@ object(self)
       | Postgresql con ->
 	con#create_table_accesses
 
+  method cleanup_prepare_stmts =
+    match connector with
+      | Mysql con ->
+	con#cleanup_prepare_stmts
+      | Postgresql con ->
+	con#cleanup_prepare_stmts
+
 end;;

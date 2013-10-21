@@ -27,8 +27,34 @@ object(self)
   val mutable stmt_update_reset_progress = ref None
 
 
-  (* nodb = true only when creating the db *)
-  method private _query ?(log=true) ?(nodb=false) ?(save_prim_key=false) ?(disconnect=false) ?(args=[||]) (tquery, q) =
+  method cleanup_prepare_stmts =
+    let cleanup_ctr = ref 0 in
+    List.iter (fun st ->
+      match !st with
+	| None -> ()
+	| Some st' ->
+	  Prepared.close st';
+	  st := None;
+	  incr cleanup_ctr;
+    )
+      [stmt_create_db ;
+       stmt_create_table ;
+       stmt_insert_open ;
+       stmt_update_first_offset ;
+       stmt_update_last_offset ;
+       stmt_update_close ;
+       stmt_update_reset_progress];
+    Log.log
+      ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra)
+
+
+  method private _query 
+    ?(log=true) 
+    ?(nodb=false)  (* nodb = true only when creating the db *)
+    ?(save_prim_key=false) 
+    ?(disconnect=false) 
+    ?(args=[||]) 
+    (tquery, q) =
 
     if log then
       begin
@@ -103,25 +129,7 @@ object(self)
        * - reset_progress
        * - the file_close *)      
       if disconnect then begin
-	(* clean up the prepare statements *)
-	let cleanup_ctr = ref 0 in
-	List.iter (fun st ->
-	  match !st with
-	    | None -> ()
-	    | Some st' ->
-	      Prepared.close st';
-	      st := None;
-	      incr cleanup_ctr;
-	)
-	  [stmt_create_db ;
-	   stmt_create_table ;
-	   stmt_insert_open ;
-	   stmt_update_first_offset ;
-	   stmt_update_last_offset ;
-	   stmt_update_close ;
-	   stmt_update_reset_progress];
-	Log.log
-	  ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra);
+	self#cleanup_prepare_stmts;
 	self#disconnect ();
       end;
 
