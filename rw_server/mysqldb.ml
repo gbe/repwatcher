@@ -212,7 +212,7 @@ object(self)
     try
       match self#_get_last_result with
 	| ResultOK ->
-	  Log.log (("Database "^dbname^" successfully created"), Normal_Extra)
+	  Log.log (("Database "^dbname^" successfully created or already existing"), Normal_Extra)
 
 	| ResultEmpty -> ()
 
@@ -262,7 +262,7 @@ object(self)
 
       match self#_get_last_result with
 	| (ResultOK | ResultEmpty) ->
-	  Log.log (("Table accesses successfully created"), Normal_Extra)	 
+	  Log.log (("Table accesses successfully created or already existing"), Normal_Extra)
 
 	| ResultError err ->
 	  begin
