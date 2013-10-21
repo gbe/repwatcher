@@ -11,7 +11,7 @@ object(self)
   inherit Abstract_sql.abstract_sql
 
   (* nodb = true only when creating the db *)
-  method private _query ?(log=true) ?(nodb=false) ?(save_prim_key=false) ?(args=[||]) q =
+  method private _query ?(log=true) ?(nodb=false) ?(save_prim_key=false) ?(disconnect=false) ?(args=[||]) q =
     if log then
       begin
 	let txt = self#_args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
@@ -59,8 +59,12 @@ object(self)
 	end;
 
       Prepared.close statemt;
-      
-      self#disconnect ();
+
+      (* The disconnection is performed on a by-object basis and
+       * when the file_close event occurs *)      
+      if disconnect then
+	self#disconnect ();
+
       Mutex.unlock self#_get_lock
 
     with
@@ -284,7 +288,8 @@ object(self)
       in
 
       self#_query
-	~args:args 
+	~disconnect:true
+	~args:args
 	update_query ;
 
       match self#_get_last_result with
