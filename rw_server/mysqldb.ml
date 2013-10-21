@@ -4,20 +4,37 @@ open Types_conf
 open Abstract_sql
 
 type mysql_result = ResultOK | ResultEmpty | ResultError of string option
+type mysql_tquery = 
+  | CreateDb
+  | CreateTable
+  | InsertOpen
+  | UpdateFirstOffset
+  | UpdateLastOffset
+  | UpdateClose
+  | UpdateResetProgress
 
 class mysqldb =
 object(self)
 
   inherit Abstract_sql.abstract_sql
 
+  val mutable stmt_create_db = ref None
+  val mutable stmt_create_table = ref None
+  val mutable stmt_insert_open = ref None
+  val mutable stmt_update_first_offset = ref None
+  val mutable stmt_update_last_offset = ref None
+  val mutable stmt_update_close = ref None
+  val mutable stmt_update_reset_progress = ref None
+
+
   (* nodb = true only when creating the db *)
-  method private _query ?(log=true) ?(nodb=false) ?(save_prim_key=false) ?(disconnect=false) ?(args=[||]) q =
+  method private _query ?(log=true) ?(nodb=false) ?(save_prim_key=false) ?(disconnect=false) ?(args=[||]) (tquery, q) =
+
     if log then
       begin
 	let txt = self#_args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
 	Log.log (txt, Normal_Extra);
       end;
-
 
     (* Lock added since the discovery of the race in postgresqldb.ml *)
     Mutex.lock self#_get_lock;
@@ -30,7 +47,29 @@ object(self)
 
     try
       let cid' = self#_get_cid in
-      let statemt = Prepared.create cid' q in
+
+      let create_statement statement =
+	match !statement with
+	  | None ->
+	    let st = Prepared.create cid' q in
+	    Log.log ("Prepared statement computed", Normal_Extra);
+	    statement := Some st;
+	    st
+	  | Some st -> st
+      in
+
+      (* sorted by order of usage *)
+      let statemt =
+	match tquery with
+	  | UpdateLastOffset -> create_statement stmt_update_last_offset
+	  | InsertOpen -> create_statement stmt_insert_open
+	  | UpdateClose -> create_statement stmt_update_close
+	  | UpdateResetProgress -> create_statement stmt_update_reset_progress
+	  | CreateDb -> create_statement stmt_create_db
+	  | CreateTable -> create_statement stmt_create_table
+	  | UpdateFirstOffset -> create_statement stmt_update_first_offset
+      in
+
       ignore (Prepared.execute statemt args);
 
       let status' = status cid' in
@@ -58,12 +97,33 @@ object(self)
 	  | _ -> ()
 	end;
 
-      Prepared.close statemt;
-
       (* The disconnection is performed on a by-object basis and
-       * when the file_close event occurs *)      
-      if disconnect then
+       * when occurs the events :
+       * - create database
+       * - reset_progress
+       * - the file_close *)      
+      if disconnect then begin
+	(* clean up the prepare statements *)
+	let cleanup_ctr = ref 0 in
+	List.iter (fun st ->
+	  match !st with
+	    | None -> ()
+	    | Some st' ->
+	      Prepared.close st';
+	      st := None;
+	      incr cleanup_ctr;
+	)
+	  [stmt_create_db ;
+	   stmt_create_table ;
+	   stmt_insert_open ;
+	   stmt_update_first_offset ;
+	   stmt_update_last_offset ;
+	   stmt_update_close ;
+	   stmt_update_reset_progress];
+	Log.log
+	  ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra);
 	self#disconnect ();
+      end;
 
       Mutex.unlock self#_get_lock
 
@@ -144,7 +204,10 @@ object(self)
   method create_db dbname =
 
     let q = "CREATE DATABASE IF NOT EXISTS "^dbname in
-    self#_query ~nodb:true q;
+    self#_query 
+      ~nodb:true 
+      ~disconnect:true 
+      (CreateDb, q);
 
     try
       match self#_get_last_result with
@@ -192,7 +255,10 @@ object(self)
     in
     
     try
-      self#_query q;
+      (* No need to disconnect after this query as
+       * the same object is used to reset_in_progress.
+       * The disconnection is performed after the reset_in_progress *)
+      self#_query (CreateTable, q);
 
       match self#_get_last_result with
 	| (ResultOK | ResultEmpty) ->
@@ -215,7 +281,9 @@ object(self)
 
 
   method reset_in_progress =
-    self#_query reset_accesses_query
+    self#_query 
+      ~disconnect:true
+      (UpdateResetProgress, reset_accesses_query)
 
 
 
@@ -248,7 +316,7 @@ object(self)
     self#_query
       ~save_prim_key:true
       ~args:args
-      query ;
+      (InsertOpen, query) ;
 
     try
       match self#_get_last_result with
@@ -290,7 +358,7 @@ object(self)
       self#_query
 	~disconnect:true
 	~args:args
-	update_query ;
+	(UpdateClose, update_query) ;
 
       match self#_get_last_result with
 	| (ResultOK | ResultEmpty) ->
@@ -313,10 +381,10 @@ object(self)
     try
       let pkey = self#_get_primary_key in
 
-      let field =
+      let (tquery, field) =
 	match first, last with
-	  | false, true -> "LAST_KNOWN_OFFSET"
-	  | true, false -> "FIRST_KNOWN_OFFSET"
+	  | false, true -> (UpdateLastOffset, "LAST_KNOWN_OFFSET")
+	  | true, false -> (UpdateFirstOffset, "FIRST_KNOWN_OFFSET")
 	  | _ -> assert false
       in
 
@@ -335,7 +403,7 @@ object(self)
       self#_query
 	~log:false
 	~args:args
-	update_offset_query;
+	(tquery, update_offset_query);
 
       match self#_get_last_result with
 	| (ResultOK | ResultEmpty) ->
