@@ -47,16 +47,15 @@ object(self)
 	  | Some Postgresqlst -> assert false
       in
 
-      (* sorted by order of usage *)
       let statemt =
 	match tquery with
-	  | UpdateLastOffset -> create_statement stmt_update_last_offset
-	  | InsertOpen -> create_statement stmt_insert_open
-	  | UpdateClose -> create_statement stmt_update_close
-	  | UpdateResetProgress -> create_statement stmt_update_reset_progress
 	  | CreateDb -> create_statement stmt_create_db
 	  | CreateTable -> create_statement stmt_create_table
+	  | UpdateResetProgress -> create_statement stmt_update_reset_progress
+	  | InsertOpen -> create_statement stmt_insert_open
 	  | UpdateFirstOffset -> create_statement stmt_update_first_offset
+	  | UpdateLastOffset -> create_statement stmt_update_last_offset
+	  | UpdateClose -> create_statement stmt_update_close
 	  | _ -> assert false (* other cases are postgresql's *)
       in
 
