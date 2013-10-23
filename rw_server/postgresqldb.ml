@@ -3,18 +3,6 @@ open Types
 open Types_conf
 open Abstract_sql
 
-type mysql_tquery = 
-  | CreateDb
-  | CreateTable
-  | CreateIndex
-  | InsertOpen
-  | UpdateFirstOffset
-  | UpdateLastOffset
-  | UpdateClose
-  | UpdateResetProgress
-  | SelectDbExists
-  | SelectIndexExists
-
 class pgsql =
 object(self)
 
@@ -27,16 +15,6 @@ object(self)
   val mutable pwd = None
   val mutable requiressl = None
 
-  val mutable stmt_db_exists = ref None
-  val mutable stmt_idx_exists = ref None
-  val mutable stmt_create_idx = ref None
-  val mutable stmt_create_db = ref None
-  val mutable stmt_create_table = ref None
-  val mutable stmt_insert_open = ref None
-  val mutable stmt_update_first_offset = ref None
-  val mutable stmt_update_last_offset = ref None
-  val mutable stmt_update_close = ref None
-  val mutable stmt_update_reset_progress = ref None
 
   initializer
   let sqlparam = (Config.cfg)#get_sql in
@@ -158,9 +136,10 @@ object(self)
 	  | None ->
 	    let res = cid'#prepare stmt_str q in
 	    Log.log ("Prepared statement '"^stmt_str^"' computed", Normal_Extra);
-	    stmt_var := Some true;
+	    stmt_var := Some Postgresqlst;
 	    stmt_str
-	  | Some _ -> stmt_str
+	  | Some Postgresqlst -> stmt_str
+	  | Some Mysqlst _ -> assert false
       in
 
       let statemt =
@@ -393,30 +372,6 @@ object(self)
 
     with Sql_not_connected ->
       Log.log ("Object not connected to Postgresql, cannot create table", Error)
-
-  method cleanup_prepare_stmts =
-    let cleanup_ctr = ref 0 in
-    List.iter (fun st ->
-      match !st with
-	| None -> ()
-	| Some st' ->
-	  st := None;
-	  incr cleanup_ctr;
-    )
-      [stmt_db_exists;
-       stmt_create_db ;
-       stmt_create_table ;
-       stmt_idx_exists ;
-       stmt_create_idx ;
-       stmt_insert_open ;
-       stmt_update_first_offset ;
-       stmt_update_last_offset ;
-       stmt_update_close ;
-       stmt_update_reset_progress
-      ];
-
-    Log.log
-      ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra)
 
 
   method reset_in_progress =

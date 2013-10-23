@@ -4,49 +4,11 @@ open Types_conf
 open Abstract_sql
 
 type mysql_result = ResultOK | ResultEmpty | ResultError of string option
-type mysql_tquery = 
-  | CreateDb
-  | CreateTable
-  | InsertOpen
-  | UpdateFirstOffset
-  | UpdateLastOffset
-  | UpdateClose
-  | UpdateResetProgress
 
 class mysqldb =
 object(self)
 
   inherit Abstract_sql.abstract_sql
-
-  val mutable stmt_create_db = ref None
-  val mutable stmt_create_table = ref None
-  val mutable stmt_insert_open = ref None
-  val mutable stmt_update_first_offset = ref None
-  val mutable stmt_update_last_offset = ref None
-  val mutable stmt_update_close = ref None
-  val mutable stmt_update_reset_progress = ref None
-
-
-  method cleanup_prepare_stmts =
-    let cleanup_ctr = ref 0 in
-    List.iter (fun st ->
-      match !st with
-	| None -> ()
-	| Some st' ->
-	  Prepared.close st';
-	  st := None;
-	  incr cleanup_ctr;
-    )
-      [stmt_create_db ;
-       stmt_create_table ;
-       stmt_insert_open ;
-       stmt_update_first_offset ;
-       stmt_update_last_offset ;
-       stmt_update_close ;
-       stmt_update_reset_progress];
-    Log.log
-      ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra)
-
 
   method private _query 
     ?(log=true) 
@@ -74,14 +36,15 @@ object(self)
     try
       let cid' = self#_get_cid in
 
-      let create_statement statement =
-	match !statement with
+      let create_statement statement_var =
+	match !statement_var with
 	  | None ->
 	    let st = Prepared.create cid' q in
 	    Log.log ("Prepared statement computed", Normal_Extra);
-	    statement := Some st;
+	    statement_var := Some (Mysqlst st);
 	    st
-	  | Some st -> st
+	  | Some Mysqlst st -> st
+	  | Some Postgresqlst -> assert false
       in
 
       (* sorted by order of usage *)
@@ -94,6 +57,7 @@ object(self)
 	  | CreateDb -> create_statement stmt_create_db
 	  | CreateTable -> create_statement stmt_create_table
 	  | UpdateFirstOffset -> create_statement stmt_update_first_offset
+	  | _ -> assert false (* other cases are postgresql's *)
       in
 
       ignore (Prepared.execute statemt args);
@@ -127,7 +91,7 @@ object(self)
        * when occurs the events :
        * - create database
        * - reset_progress
-       * - the file_close *)      
+       * - the file_close *)
       if disconnect then begin
 	self#cleanup_prepare_stmts;
 	self#disconnect ();
@@ -436,5 +400,5 @@ object(self)
 
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
-     
+
 end;;

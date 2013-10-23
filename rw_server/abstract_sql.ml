@@ -1,6 +1,23 @@
+open Types
+open Types_conf
+
 exception Sql_not_connected
 exception Sql_no_last_result
 exception No_primary_key
+
+type sql_tquery = 
+  | CreateDb
+  | CreateTable
+  | CreateIndex
+  | InsertOpen
+  | UpdateFirstOffset
+  | UpdateLastOffset
+  | UpdateClose
+  | UpdateResetProgress
+  | SelectDbExists
+  | SelectIndexExists
+
+type a_statement = Mysqlst of Mysql.Prepared.stmt | Postgresqlst
 
 class virtual abstract_sql =
 object(self)
@@ -8,6 +25,16 @@ object(self)
   val mutable cid = None
   val mutable primary_key = None
   val mutable last_result = None
+  val mutable stmt_db_exists = ref None
+  val mutable stmt_idx_exists = ref None
+  val mutable stmt_create_idx = ref None
+  val mutable stmt_create_db = ref None
+  val mutable stmt_create_table = ref None
+  val mutable stmt_insert_open = ref None
+  val mutable stmt_update_first_offset = ref None
+  val mutable stmt_update_last_offset = ref None
+  val mutable stmt_update_close = ref None
+  val mutable stmt_update_reset_progress = ref None
   val reset_accesses_query =
     "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
 
@@ -72,5 +99,38 @@ object(self)
     match cid with
       | None -> false
       | Some _ -> true
+
+  method cleanup_prepare_stmts =
+
+    let cleanup_ctr = ref 0 in
+    
+    let cleanup statement_var =
+      statement_var := None;
+      incr cleanup_ctr;
+    in
+
+    List.iter (fun statement_var ->
+      match !statement_var with
+	| None -> ()
+	| Some (Mysqlst st') ->
+	  Mysql.Prepared.close st';
+	  cleanup statement_var
+	| Some Postgresqlst -> 
+	  cleanup statement_var
+    )
+      [stmt_db_exists;
+       stmt_create_db ;
+       stmt_create_table ;
+       stmt_idx_exists ;
+       stmt_create_idx ;
+       stmt_insert_open ;
+       stmt_update_first_offset ;
+       stmt_update_last_offset ;
+       stmt_update_close ;
+       stmt_update_reset_progress
+      ];
+
+    Log.log
+      ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra)
 
 end;;
