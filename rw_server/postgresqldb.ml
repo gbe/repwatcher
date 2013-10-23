@@ -3,6 +3,18 @@ open Types
 open Types_conf
 open Abstract_sql
 
+type mysql_tquery = 
+  | CreateDb
+  | CreateTable
+  | CreateIndex
+  | InsertOpen
+  | UpdateFirstOffset
+  | UpdateLastOffset
+  | UpdateClose
+  | UpdateResetProgress
+  | SelectDbExists
+  | SelectIndexExists
+
 class pgsql =
 object(self)
 
@@ -14,6 +26,17 @@ object(self)
   val mutable user = None
   val mutable pwd = None
   val mutable requiressl = None
+
+  val mutable stmt_db_exists = ref None
+  val mutable stmt_idx_exists = ref None
+  val mutable stmt_create_idx = ref None
+  val mutable stmt_create_db = ref None
+  val mutable stmt_create_table = ref None
+  val mutable stmt_insert_open = ref None
+  val mutable stmt_update_first_offset = ref None
+  val mutable stmt_update_last_offset = ref None
+  val mutable stmt_update_close = ref None
+  val mutable stmt_update_reset_progress = ref None
 
   initializer
   let sqlparam = (Config.cfg)#get_sql in
@@ -94,7 +117,14 @@ object(self)
 
 
 
-  method private _query ~expect ?(log=true) ?(nodb=false) ?(args=[||]) q =
+  method private _query
+    ~expect
+    ?(log=true)
+    ?(nodb=false)
+    ?(disconnect=false)
+    ?(args=[||])
+    (tquery, q) =
+    
     if log then
       begin
 	let txt =
@@ -120,8 +150,51 @@ object(self)
     end;
 	  
     try
-      last_result <- Some ((self#_get_cid)#exec ~expect:[expect] ~params:args q) ;
-      self#disconnect ~log:log ();
+
+      let cid' = self#_get_cid in
+
+      let create_statement stmt_var stmt_str =
+	match !stmt_var with
+	  | None ->
+	    let res = cid'#prepare stmt_str q in
+	    Log.log ("Prepared statement '"^stmt_str^"' computed", Normal_Extra);
+	    stmt_var := Some true;
+	    stmt_str
+	  | Some _ -> stmt_str
+      in
+
+      let statemt =
+	match tquery with
+	  | SelectDbExists -> create_statement stmt_db_exists "stmt_select_db_exists"
+	  | CreateDb -> create_statement stmt_create_db "stmt_create_db"
+	  | CreateTable -> create_statement stmt_create_table "stmt_create_table"
+	  | SelectIndexExists -> create_statement stmt_idx_exists "stmt_select_index_exists"
+	  | CreateIndex -> create_statement stmt_create_idx "stmt_create_index"
+	  | InsertOpen -> create_statement stmt_insert_open "stmt_insert_open"
+	  | UpdateFirstOffset -> create_statement
+	    stmt_update_first_offset
+	    "stmt_update_first_offset"
+	  | UpdateLastOffset -> create_statement
+	    stmt_update_last_offset
+	    "stmt_update_last_offset"
+	  | UpdateClose -> create_statement stmt_update_close "stmt_update_close"
+	  | UpdateResetProgress -> create_statement
+	    stmt_update_reset_progress
+	    "stmt_update_reset_progress"
+      in
+
+      last_result <- Some (cid'#exec_prepared ~expect:[expect] ~params:args statemt);
+
+      (* The disconnection is performed on a by-object basis and
+       * when occurs the events :
+       * - create database
+       * - reset_progress
+       * - the file_close *)
+      if disconnect then begin
+	self#cleanup_prepare_stmts;
+	self#disconnect ~log:log ()
+      end;
+
       Mutex.unlock self#_get_lock
     with 
       | Sql_not_connected ->
@@ -157,7 +230,10 @@ object(self)
 	)
       |]
     in
-    self#_query ~expect:Tuples_ok ~args:insert_query_args insert_query;
+    self#_query
+      ~expect:Tuples_ok
+      ~args:insert_query_args
+      (InsertOpen, insert_query);
 
     try
       let res = self#_get_last_result in     
@@ -191,7 +267,11 @@ object(self)
 	  pkey
 	|]
       in
-      self#_query ~expect:Command_ok ~args:update_query_args update_query ;
+      self#_query
+	~expect:Command_ok
+	~disconnect:true
+	~args:update_query_args
+ 	(UpdateClose, update_query)
     with No_primary_key ->
       Log.log ("Could not query the file closing as there is no primary key", Error)
 
@@ -200,15 +280,17 @@ object(self)
     try
       let pkey = self#_get_primary_key in
 
-      let field =
+      let (tquery, field) =
 	match first, last with
-	  | false, true -> "LAST_KNOWN_OFFSET"
-	  | true, false -> "FIRST_KNOWN_OFFSET"
+	  | false, true -> (UpdateLastOffset, "LAST_KNOWN_OFFSET")
+	  | true, false -> (UpdateFirstOffset, "FIRST_KNOWN_OFFSET")
 	  | _ -> assert false
       in
 
       let update_offset_query =
-	"UPDATE accesses SET "^field^" = $1 WHERE ID = $2"
+	"UPDATE accesses \
+         SET "^field^" = $1 \
+         WHERE ID = $2"
       in
       let update_off_query_args =
 	[|
@@ -218,30 +300,18 @@ object(self)
       in
       self#_query
 	~expect:Command_ok
-	~log:false
+	~log:true
 	~args:update_off_query_args
-	update_offset_query
+	(tquery, update_offset_query)
     with No_primary_key ->
       Log.log ("Could not update the offset as there is no primary key", Error)
-
-
-  method reset_in_progress =
-    self#_query ~expect:Command_ok reset_accesses_query
-
-
-  method first_known_offset offset =
-    self#_update_known_offset ~first:true offset
-
-
-  method last_known_offset offset =
-    self#_update_known_offset ~last:true offset
 
 
   method private _db_exists =
     let db = self#_get_dbname in
 
     let q = "SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = $1" in
-    self#_query ~expect:Tuples_ok ~nodb:true ~args:[|db|] q ;
+    self#_query ~expect:Tuples_ok ~nodb:true ~args:[|db|] (SelectDbExists, q) ;
 
     try
       let result = self#_get_last_result in
@@ -257,7 +327,7 @@ object(self)
 
   method private _index_exists idx =
     let q = "SELECT COUNT(*) FROM pg_class WHERE relname = $1" in    
-    self#_query ~expect:Tuples_ok ~args:[|idx|] q;
+    self#_query ~expect:Tuples_ok ~args:[|idx|] (SelectIndexExists, q);
 
     try
       let result = self#_get_last_result in
@@ -277,7 +347,11 @@ object(self)
       | true -> Log.log (("Database '"^dbname'^"' already exists"), Normal_Extra);
       | false ->
 	let q = "CREATE DATABASE "^dbname' in
-	self#_query ~expect:Command_ok ~nodb:true q;
+	self#_query
+	  ~expect:Command_ok
+	  ~disconnect:true
+	  ~nodb:true
+	  (CreateDb, q);
 	Log.log (("Database '"^dbname'^"' created"), Normal_Extra)
 
 
@@ -302,7 +376,9 @@ object(self)
           IN_PROGRESS smallint NOT NULL)"
       in
 
-      self#_query ~expect:Command_ok create_tbl;
+      self#_query
+	~expect:Command_ok
+	(CreateTable, create_tbl);
       
       let idx = "in_progress_idx" in
 
@@ -310,13 +386,51 @@ object(self)
 	"CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
       in
 
-      if (self#_index_exists idx) = false then
-	self#_query ~expect:Command_ok create_progress_idx_query
+      if (self#_index_exists idx) = false then begin
+	self#_query ~expect:Command_ok (CreateIndex, create_progress_idx_query);
+	Log.log ("Index created", Normal_Extra)
+      end;
 
     with Sql_not_connected ->
       Log.log ("Object not connected to Postgresql, cannot create table", Error)
 
   method cleanup_prepare_stmts =
-    print_endline "plop"
+    let cleanup_ctr = ref 0 in
+    List.iter (fun st ->
+      match !st with
+	| None -> ()
+	| Some st' ->
+	  st := None;
+	  incr cleanup_ctr;
+    )
+      [stmt_db_exists;
+       stmt_create_db ;
+       stmt_create_table ;
+       stmt_idx_exists ;
+       stmt_create_idx ;
+       stmt_insert_open ;
+       stmt_update_first_offset ;
+       stmt_update_last_offset ;
+       stmt_update_close ;
+       stmt_update_reset_progress
+      ];
+
+    Log.log
+      ((string_of_int !cleanup_ctr)^" prepared statement(s) closed", Normal_Extra)
+
+
+  method reset_in_progress =
+    self#_query
+      ~expect:Command_ok
+      ~disconnect:true
+      (UpdateResetProgress, reset_accesses_query)
+
+
+  method first_known_offset offset =
+    self#_update_known_offset ~first:true offset
+
+
+  method last_known_offset offset =
+    self#_update_known_offset ~last:true offset
 
 end;;
