@@ -156,8 +156,7 @@ object(self)
 	      sql_report.s_file
 	      sql_report.s_created
 	      sql_report.s_date
-	      sql_report.s_size
-	      sql_report.s_offset;
+	      sql_report.s_size;
 	    Some sql
 	  
 	  | SQL_File_Closed ->

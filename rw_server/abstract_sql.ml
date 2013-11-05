@@ -49,7 +49,7 @@ object(self)
 
   method virtual connect_without_db : unit
   method virtual disconnect : ?log:bool -> unit -> unit
-  method virtual file_opened : Types.f_file -> bool -> string -> int64 option -> int64 option -> unit
+  method virtual file_opened : Types.f_file -> bool -> string -> int64 option -> unit
   method virtual file_closed : string -> int64 option -> int64 option -> unit
   method virtual first_known_offset : int64 option -> unit
   method virtual last_known_offset : int64 option -> unit

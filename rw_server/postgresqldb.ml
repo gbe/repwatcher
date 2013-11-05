@@ -183,12 +183,12 @@ object(self)
 
 
 
-  method file_opened f s_created creation_date filesize offset =
+  method file_opened f s_created creation_date filesize =
     let insert_query =
       "INSERT INTO accesses \
        (login, username, program, program_pid, path, filename, filesize, \
-        filedescriptor, first_known_offset, opening_date, created, in_progress) \
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, '1') \
+        filedescriptor, opening_date, created, in_progress) \
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '1') \
        RETURNING ID"
     in
     let insert_query_args =
@@ -201,7 +201,6 @@ object(self)
 	f.f_name;
 	(self#_to_strsql filesize);
 	(string_of_int (Fdinfo.int_of_fd f.f_descriptor));
-	(self#_to_strsql offset);
 	creation_date;
 	(match s_created with
 	  | true -> "1"

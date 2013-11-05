@@ -35,12 +35,12 @@ object(self)
       | Postgresql con ->
 	con#disconnect ~log:log ()
 
-  method file_opened f s_created creation_date filesize offset =
+  method file_opened f s_created creation_date filesize =
     match connector with
       | Mysql con ->
-	con#file_opened f s_created creation_date filesize offset
+	con#file_opened f s_created creation_date filesize
       | Postgresql con ->
-	con#file_opened f s_created creation_date filesize offset
+	con#file_opened f s_created creation_date filesize
 
   method file_closed closing_date filesize offset =
     match connector with
