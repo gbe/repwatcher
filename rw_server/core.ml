@@ -378,7 +378,11 @@ object(self)
 		    s_state = SQL_File_Opened ;
 		    s_size = filesize_opt ;
 		    s_date = date ;
-		    s_offset = offset_opt ;
+		    (* Desactivate the first offset when opening_file,
+		     * useful when re-opening the file
+		     * s_offset = offset_opt ;
+		     *)
+		    s_offset = None ;
 		    s_sql_obj = None ;
 		    s_created = created ;
 		  }
@@ -390,7 +394,13 @@ object(self)
 	      let isfirstoffsetknown =
 		match offset_opt with
 		  | None -> false
-		  | Some _ -> true
+		  | Some _ ->
+		    (* Desactivate the first offset when opening_file,
+		     * useful when re-opening the file *)
+		    if Config.cfg#is_sql_activated then
+		      false
+		    else
+		      true
 	      in
 
 	      Hashtbl.add Files_progress.ht
@@ -472,7 +482,8 @@ object(self)
 	Mutex.unlock Files_progress.mutex_ht ;
 
 	let current_date = Date.date () in
-	print_endline (current_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+	print_endline
+	  (current_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
 	Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
@@ -487,7 +498,8 @@ object(self)
 		in
 		Some (Int64.of_int size)
 	      with Unix_error (err_code, funct_name, fullpath) ->
-		Log.log ("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
+		Log.log
+		  ("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
 		None
 	in
 
@@ -503,8 +515,7 @@ object(self)
 		  match filesize with
 		    (* in this case, the offset is 
 		     * the best answer we have *)
-		    | None -> offset 
-
+		    | None -> offset
 		    | Some filesize' ->
 		      if filesize' > offset' then
 			Some filesize'

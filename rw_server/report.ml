@@ -167,7 +167,7 @@ object(self)
 		sql#file_closed
 		  sql_report.s_date
 		  sql_report.s_size
-		  sql_report.s_offset	    
+		  sql_report.s_offset
 	    end;
 	    None
 

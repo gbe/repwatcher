@@ -57,7 +57,14 @@ let send mail =
 	  Printf.sprintf "%.02f%c" !progression_float '%'
       in
       
-      txt := Printf.sprintf "%s\nOpened: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s" (!txt) opening_date progression off_str filesize_str
+      txt :=
+	Printf.sprintf
+	"%s\nOpened: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
+	(!txt)
+	opening_date
+	progression
+	off_str
+	filesize_str
     end;
 
     !txt
