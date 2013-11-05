@@ -428,7 +428,7 @@ object(self)
 	| None ->
 	  let err =
 	    sprintf "%s has been closed (nowrite) \
-		      but I can't report it because I cannot find\
+		      but I can't report it because I cannot find \
 		      its wd info" name
 	  in
 	  Log.log (err, Error)
@@ -487,7 +487,8 @@ object(self)
 
 	Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
-	(* update filesize in database if written *)
+	(* update filesize in database if written 
+	 * as filesize equaled None if created/written == true *)
 	let filesize =
 	  match written with
 	    | false -> filesize
@@ -503,24 +504,26 @@ object(self)
 		None
 	in
 
-	(* update last known offset according to filesize
-	 * if written is true *)
+	(* update last known offset according to filesize and written *)
+	(* filesize == None if file could not be read or does not exist anymore *)
 	let offset_opt =
-	  match written with
-	    | false -> offset
-	    | true ->
-	      match offset with
-		| None -> None
-		| Some offset' ->
-		  match filesize with
-		    (* in this case, the offset is 
-		     * the best answer we have *)
-		    | None -> offset
-		    | Some filesize' ->
-		      if filesize' > offset' then
-			Some filesize'
-		      else
-			offset
+	  match offset with
+	    | None -> None (* unlikely to happen as data are read during the file_open event *)
+	    | Some offset' ->
+	      match filesize with
+		| None -> offset (* best answer we have *)
+		| Some filesize' ->
+
+		  (* fix the offset to be equal to filesize
+		   * when creating the file *)
+		  if filesize' > offset' && written then
+		    filesize
+
+		  (* Sometimes, it happens that the offset is bigger than the filesize *)
+		  else if filesize' < offset' && not written then
+		    filesize
+
+		  else offset
 	in
 
 	begin match Config.cfg#is_sql_activated with
