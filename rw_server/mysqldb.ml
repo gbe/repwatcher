@@ -304,7 +304,7 @@ object(self)
       in
       Log.log (err, Error)
 
-  method file_closed closing_date filesize offset =
+  method file_closed closing_date filesize offset created =
 
     try
       let pkey = self#_get_primary_key in
@@ -312,7 +312,7 @@ object(self)
       let update_query =
 	"UPDATE accesses \
          SET CLOSING_DATE = ?, FILESIZE = ?, \
-         LAST_KNOWN_OFFSET = ?, IN_PROGRESS = '0' \
+         LAST_KNOWN_OFFSET = ?, CREATED = ?, IN_PROGRESS = '0' \
          WHERE ID = ?"
       in
 
@@ -321,6 +321,10 @@ object(self)
 	  closing_date;
 	  self#_to_strsql filesize;
 	  self#_to_strsql offset;
+ 	  (match created with
+	    | true -> "1"
+	    | false -> "0"
+	  );
 	  Int64.to_string pkey
 	|]
       in
@@ -398,5 +402,8 @@ object(self)
 
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
+
+  method update_created =
+    ()
 
 end;;

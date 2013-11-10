@@ -156,6 +156,7 @@ object(self)
 	  | UpdateLastOffset -> create_statement
 	    stmt_update_last_offset
 	    "stmt_update_last_offset"
+	  | UpdateCreated -> create_statement stmt_update_created "stmt_update_created"
 	  | UpdateClose -> create_statement stmt_update_close "stmt_update_close"
 	  | UpdateResetProgress -> create_statement
 	    stmt_update_reset_progress
@@ -227,21 +228,25 @@ object(self)
       Log.log (err, Error)
 
 
-  method file_closed closing_date filesize offset =
+  method file_closed closing_date filesize offset created =
     try
       let pkey = self#_get_primary_key in
 
       let update_query =
 	"UPDATE accesses \
          SET CLOSING_DATE = $1, FILESIZE = $2, \
-         LAST_KNOWN_OFFSET = $3, IN_PROGRESS = '0' \
-         WHERE ID = $4"
+         LAST_KNOWN_OFFSET = $3, CREATED = $4, IN_PROGRESS = '0' \
+         WHERE ID = $5"
       in
       let update_query_args =
 	[|
 	  closing_date;
 	  (self#_to_strsql filesize);
 	  (self#_to_strsql offset);
+	  (match created with
+	    | true -> "1"
+	    | false -> "0"
+	  );
 	  pkey
 	|]
       in
@@ -386,5 +391,8 @@ object(self)
 
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
+
+  method update_created =
+    ()
 
 end;;

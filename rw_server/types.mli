@@ -34,6 +34,7 @@ type sql_type =
   | SQL_File_Closed
   | SQL_FK_Offset (* First Known *)
   | SQL_LK_Offset (* Last Known *)
+  | SQL_Update_Created
 
 
 

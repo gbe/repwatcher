@@ -44,7 +44,7 @@ object(self)
 	con#file_opened f s_created creation_date filesize
 
 
-  method file_closed closing_date filesize offset =
+  method file_closed closing_date filesize offset created =
 
     (* it happens that a file can be closed before the first offset check in
      * the offset_thread resulting with the LAST_KNOWN_OFFSET set in RDBMS
@@ -56,9 +56,9 @@ object(self)
 
     match connector with
       | Mysql con ->
-	con#file_closed closing_date filesize offset
+	con#file_closed closing_date filesize offset created
       | Postgresql con ->
-	con#file_closed closing_date filesize offset
+	con#file_closed closing_date filesize offset created
 
 
   (* the first known offset is necessarily
@@ -81,6 +81,13 @@ object(self)
 	con#last_known_offset offset
       | Postgresql con ->
 	con#last_known_offset offset
+
+  method update_created =
+    match connector with
+      | Mysql con ->
+	con#update_created
+      | Postgresql con ->
+	con#update_created
 
   method reset_in_progress =
     match connector with
