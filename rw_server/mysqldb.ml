@@ -20,7 +20,11 @@ object(self)
 
     if log then
       begin
-	let txt = self#_args_list_to_string ("Next SQL query to compute: "^q^" --- Args: ") (Array.to_list args) in
+	let txt =
+	  self#_args_list_to_string
+	    ("Next SQL query to compute: "^q^" --- Args: ")
+	    (Array.to_list args)
+	in
 	Log.log (txt, Normal_Extra);
       end;
 
@@ -56,6 +60,7 @@ object(self)
 	  | UpdateFirstOffset -> create_statement stmt_update_first_offset
 	  | UpdateLastOffset -> create_statement stmt_update_last_offset
 	  | UpdateClose -> create_statement stmt_update_close
+	  | UpdateCreated -> create_statement stmt_update_created
 	  | _ -> assert false (* other cases are postgresql's *)
       in
 
@@ -100,7 +105,7 @@ object(self)
 
     with
       | Mysql.Error error -> Log.log (error, Error)
-      | Sql_not_connected -> Log.log ("RW could not connect to MySQL to query", Error)
+      | Sql_not_connected -> Log.log ("MySQL error: object not connected, cannot query", Error)
 
 
   method private _connect ?(log=true) ?(nodb=false) () =
@@ -148,7 +153,7 @@ object(self)
       | Mysql.Error err ->
 	Log.log (err, Error)
       | Config.SQL_not_configured ->
-	let err = "Cannot connect to MySQL since it is not configured" in
+	let err = "MySQL error: cannot connect since it is not configured" in
 	Log.log (err, Error)
 
 
@@ -167,9 +172,9 @@ object(self)
 
     with
       | Sql_not_connected ->
-	Log.log ("Programming error: SQL not connected", Error)
+	Log.log ("MySQL error: object not connected, cannot disconnect", Error)
       | Mysql.Error error ->
-	Log.log ("RW could not disconnect from Mysql: "^error, Error)
+	Log.log ("MySQL error: RW could not disconnect: "^error, Error)
 
 
   method create_db dbname =
@@ -190,14 +195,14 @@ object(self)
 	| (ResultError errmsg') ->
 	  begin match errmsg' with
 	    | None ->
-	      Log.log ("Oops. Mysqldb.create_db had an error and the RDBMS \
-			doesn't know why", Error)
+	      Log.log ("MySQL error: create_db had an error and \
+			the RDBMS does not know why", Error)
 	    | Some err ->
 	      Log.log (err, Error)
 	  end ;
 	  exit 2
     with Sql_no_last_result ->
-      Log.log ("Something went wrong when resulting the last query", Error);
+      Log.log ("MySQL error: something went wrong when resulting the last query", Error);
       exit 2
 
 
@@ -239,15 +244,15 @@ object(self)
 	  begin
 	    match err with
 	      | None ->
-		Log.log ("Oops. Mysqldb.create_table_accesses had an error and the RDBMS \
-			     doesn't know why", Error)
+	      Log.log ("MySQL error: create_table_accesses had an error and \
+			the RDBMS does not know why", Error)
 		  
 	      | Some errmsg' ->
 		Log.log (errmsg', Error)
 	  end ;
 	  exit 2
     with Sql_no_last_result ->
-      Log.log ("Something went wrong when resulting the last query", Error);
+      Log.log ("MySQL error: something went wrong when resulting the last query", Error);
       exit 2
 
 
@@ -255,7 +260,6 @@ object(self)
     self#_query 
       ~disconnect:true
       (UpdateResetProgress, reset_accesses_query)
-
 
 
   method file_opened f s_created creation_date filesize =
@@ -269,7 +273,9 @@ object(self)
     let args =
       [|
         f.f_login;
-	(match Txt_operations.name f.f_login with | None -> "NULL" | Some username -> username);
+	(match Txt_operations.name f.f_login with
+	  | None -> "NULL"
+	  | Some username -> username);
 	f.f_program;
 	string_of_int (Fdinfo.int_of_pid f.f_program_pid);
 	f.f_path;
@@ -295,8 +301,8 @@ object(self)
 	| ResultError err ->
 	  match err with
 	    | None ->
-	      Log.log ("Oops. Mysql had an error when doing file_opened \
-                       and cannot tell which one", Error)
+	      Log.log ("MySQL error when doing file_opened \
+                       and the RDBMS cannot tell which one", Error)
 	    | Some errmsg' -> Log.log (errmsg', Error)
     with Sql_no_last_result ->
       let err = "RW could not get any result from MySQL \
@@ -346,9 +352,9 @@ object(self)
 	    | Some errmsg' -> Log.log (errmsg', Error)
     with
       | No_primary_key ->
-	Log.log ("SQL: cannot close file: no primary key", Error)
+	Log.log ("MySQL error: cannot close file, no primary key", Error)
       | Sql_no_last_result ->
-	Log.log ("Something went wrong when resulting the last query", Error)
+	Log.log ("MySQL error: something went wrong when resulting the last query", Error)
 
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
@@ -387,23 +393,57 @@ object(self)
 	| ResultError err ->
 	  match err with
 	    | None ->
-	      Log.log ("Oops. Mysql had an error when doing update_known_offset \
-			and cannot tell which one", Error)
+	      Log.log ("MySQL error when doing update_known_offset \
+			and the RDBMS cannot tell which one", Error)
 	    | Some errmsg' -> Log.log (errmsg', Error)
     with
       | No_primary_key ->
-	Log.log ("SQL: cannot update the offset: no primary key", Error)
+	Log.log ("MySQL error: cannot update the offset: no primary key", Error)
       | Sql_no_last_result ->
-	Log.log ("Something went wrong when resulting the last query", Error)
+	Log.log ("MySQL error: something went wrong when resulting the last query", Error)
 
 
   method first_known_offset offset =
     self#_update_known_offset ~first:true offset
 
+
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
 
-  method update_created =
-    ()
+
+  method switch_on_created =
+    try
+      let pkey = self#_get_primary_key in
+
+      let switch_on_created_query =
+	"UPDATE accesses \
+         SET CREATED = '1' \
+	 WHERE ID = ?"
+      in
+      let switch_on_created_query_arg =
+	[| Int64.to_string pkey |]
+      in
+
+      self#_query
+	~log:true
+	~args:switch_on_created_query_arg
+	(UpdateCreated, switch_on_created_query);
+
+      match self#_get_last_result with
+	| (ResultOK | ResultEmpty) ->
+	  let msg =
+	    "MySQL: Field Created successfully switched on \
+             for primary key: "^(Int64.to_string pkey)
+	  in
+	  Log.log (msg, Normal_Extra)	 
+
+	| ResultError err ->
+	  match err with
+	    | None ->
+	      Log.log ("MySQL error when switching 'on' the field Created \
+			and the RDBMS cannot tell which one", Error)
+	    | Some errmsg' -> Log.log (errmsg', Error)
+    with No_primary_key ->
+      Log.log ("MySQL error: cannot switch 'on' the field Created, no primary key", Error)
 
 end;;

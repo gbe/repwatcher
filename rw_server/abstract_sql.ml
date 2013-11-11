@@ -55,7 +55,7 @@ object(self)
   method virtual file_closed : string -> int64 option -> int64 option -> bool -> unit
   method virtual first_known_offset : int64 option -> unit
   method virtual last_known_offset : int64 option -> unit
-  method virtual update_created : unit
+  method virtual switch_on_created : unit
   method virtual reset_in_progress : unit
   method virtual create_db : string -> unit
   method virtual create_table_accesses : unit

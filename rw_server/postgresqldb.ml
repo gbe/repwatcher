@@ -89,7 +89,7 @@ object(self)
 
     with
       | Sql_not_connected ->
-	Log.log ("Object not connected to Postgresql, cannot disconnect", Error)
+	Log.log ("PgSQL error: object not connected, cannot disconnect", Error)
       | Postgresql.Error e -> Log.log ("erreur1: "^(string_of_error e), Error)
       | e -> Log.log (Printexc.to_string e, Error)
 
@@ -107,7 +107,7 @@ object(self)
       begin
 	let txt =
 	  self#_args_list_to_string
-	    ("Next SQL query to compute: "^q^" --- Args: ")
+	    ("PgSQL: next SQL query to compute: "^q^" --- Args: ")
 	    (Array.to_list args)
 	in
 	Log.log (txt, Normal_Extra);
@@ -178,7 +178,7 @@ object(self)
       Mutex.unlock self#_get_lock
     with 
       | Sql_not_connected ->
-	Log.log ("Object not connected to Postgresql, cannot query", Error)
+	Log.log ("PgSQL error: object not connected, cannot query", Error)
       | Postgresql.Error e -> Log.log (string_of_error e, Error)
       | e -> Log.log (Printexc.to_string e, Error)
 
@@ -187,15 +187,18 @@ object(self)
   method file_opened f s_created creation_date filesize =
     let insert_query =
       "INSERT INTO accesses \
-       (login, username, program, program_pid, path, filename, filesize, \
-        filedescriptor, opening_date, created, in_progress) \
+       (login, username, program, program_pid, path, filename, \
+        filesize, filedescriptor, opening_date, created, in_progress) \
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, '1') \
        RETURNING ID"
     in
     let insert_query_args =
       [|
 	f.f_login;
-	(match Txt_operations.name f.f_login with | None -> "NULL" | Some username -> username);
+	(match Txt_operations.name f.f_login with
+	  | None -> "NULL"
+	  | Some username -> username
+	);
 	f.f_program;
 	(string_of_int (Fdinfo.int_of_pid f.f_program_pid));
 	f.f_path;
@@ -222,7 +225,7 @@ object(self)
 	| _ -> assert false
     with Sql_no_last_result ->
       let err =
-	"RW could not get any result from PostgreSQL \
+	"PgSQL error: RW could not get any result \
         after the file_opened event on file "^f.f_name
       in
       Log.log (err, Error)
@@ -256,7 +259,7 @@ object(self)
 	~args:update_query_args
  	(UpdateClose, update_query)
     with No_primary_key ->
-      Log.log ("Could not query the file closing as there is no primary key", Error)
+      Log.log ("PgSQL error: could not query the file closing as there is no primary key", Error)
 
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
@@ -275,7 +278,7 @@ object(self)
          SET "^field^" = $1 \
          WHERE ID = $2"
       in
-      let update_off_query_args =
+      let update_offset_query_args =
 	[|
 	  (self#_to_strsql offset);
 	  pkey
@@ -283,18 +286,22 @@ object(self)
       in
       self#_query
 	~expect:Command_ok
-	~log:true
-	~args:update_off_query_args
+	~log:false
+	~args:update_offset_query_args
 	(tquery, update_offset_query)
     with No_primary_key ->
-      Log.log ("Could not update the offset as there is no primary key", Error)
+      Log.log ("PgSQL error: could not update the offset as there is no primary key", Error)
 
 
   method private _db_exists =
     let db = self#_get_dbname in
 
     let q = "SELECT COUNT(*) FROM pg_catalog.pg_database WHERE datname = $1" in
-    self#_query ~expect:Tuples_ok ~nodb:true ~args:[|db|] (SelectDbExists, q) ;
+    self#_query
+      ~expect:Tuples_ok
+      ~nodb:true
+      ~args:[|db|]
+      (SelectDbExists, q) ;
 
     try
       let result = self#_get_last_result in
@@ -310,7 +317,10 @@ object(self)
 
   method private _index_exists idx =
     let q = "SELECT COUNT(*) FROM pg_class WHERE relname = $1" in    
-    self#_query ~expect:Tuples_ok ~args:[|idx|] (SelectIndexExists, q);
+    self#_query
+      ~expect:Tuples_ok
+      ~args:[|idx|]
+      (SelectIndexExists, q);
 
     try
       let result = self#_get_last_result in
@@ -327,7 +337,7 @@ object(self)
   (* TO DO: get rid of dbname arg *)
   method create_db dbname' =
     match self#_db_exists with
-      | true -> Log.log (("Database '"^dbname'^"' already exists"), Normal_Extra);
+      | true -> Log.log (("PgSQL: database '"^dbname'^"' already exists"), Normal_Extra);
       | false ->
 	let q = "CREATE DATABASE "^dbname' in
 	self#_query
@@ -335,7 +345,7 @@ object(self)
 	  ~disconnect:true
 	  ~nodb:true
 	  (CreateDb, q);
-	Log.log (("Database '"^dbname'^"' created"), Normal_Extra)
+	Log.log (("PgSQL: database '"^dbname'^"' created"), Normal_Extra)
 
 
   method create_table_accesses =
@@ -375,7 +385,7 @@ object(self)
       end;
 
     with Sql_not_connected ->
-      Log.log ("Object not connected to Postgresql, cannot create table", Error)
+      Log.log ("PgSQL error: Object not connected, cannot create table", Error)
 
 
   method reset_in_progress =
@@ -392,7 +402,22 @@ object(self)
   method last_known_offset offset =
     self#_update_known_offset ~last:true offset
 
-  method update_created =
-    ()
+
+  method switch_on_created =
+    try
+      let pkey = self#_get_primary_key in
+
+      let switch_on_created_query =
+	"UPDATE accesses \
+         SET CREATED = '1' \
+         WHERE ID = $1"
+      in
+      let switch_on_created_query_arg = [|pkey|] in
+      self#_query
+	~expect:Command_ok
+	~args:switch_on_created_query_arg
+ 	(UpdateCreated, switch_on_created_query)
+    with No_primary_key ->
+      Log.log ("PgSQL error: could not switch on 'created' as there is no primary key", Error)
 
 end;;

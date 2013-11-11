@@ -82,13 +82,6 @@ object(self)
       | Postgresql con ->
 	con#last_known_offset offset
 
-  method update_created =
-    match connector with
-      | Mysql con ->
-	con#update_created
-      | Postgresql con ->
-	con#update_created
-
   method reset_in_progress =
     match connector with
       | Mysql con ->
@@ -116,5 +109,12 @@ object(self)
 	con#cleanup_prepare_stmts
       | Postgresql con ->
 	con#cleanup_prepare_stmts
+
+  method switch_on_created =
+    match connector with
+      | Mysql con ->
+	con#switch_on_created
+      | Postgresql con ->
+	con#switch_on_created
 
 end;;

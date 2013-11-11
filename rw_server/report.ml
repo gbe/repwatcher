@@ -187,11 +187,11 @@ object(self)
 	    end;
 	    None
 
-	  | SQL_Update_Created ->
+	  | SQL_Switch_On_Created ->
 	    begin match sql_report.s_sql_obj with
 	      | None -> assert false
 	      | Some sql ->
-		sql#update_created (*sql_report.s_offset*)
+		sql#switch_on_created
 	    end;
 	    None
 
