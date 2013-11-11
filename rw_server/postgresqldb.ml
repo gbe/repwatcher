@@ -409,7 +409,7 @@ object(self)
 
       let switch_on_created_query =
 	"UPDATE accesses \
-         SET CREATED = '1' \
+         SET CREATED = '1', FILESIZE = NULL \
          WHERE ID = $1"
       in
       let switch_on_created_query_arg = [|pkey|] in
