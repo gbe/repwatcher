@@ -406,7 +406,7 @@ object(self)
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
 		(date,
-		 filesize_opt,
+		 (filesize_opt, false),
 		 (isfirstoffsetknown, offset_opt, 0),
 		 sql_obj_opt,
 		 created)
@@ -475,7 +475,7 @@ object(self)
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), (opening_date, filesize, (_, offset, _), sql_obj_opt, _)) ->
+      fun ((wd2, f_file), (opening_date, (filesize, _), (_, offset, _), sql_obj_opt, _)) ->
 
 	Mutex.lock Files_progress.mutex_ht ;	  
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
