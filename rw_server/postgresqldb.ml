@@ -161,6 +161,7 @@ object(self)
 	  | UpdateResetProgress -> create_statement
 	    stmt_update_reset_progress
 	    "stmt_update_reset_progress"
+	  | (UpdateFirstOffset_Null | UpdateLastOffset_Null) -> assert false (* MySQL workarounds *)
       in
 
       last_result <- Some (cid'#exec_prepared ~expect:[expect] ~params:args statemt);

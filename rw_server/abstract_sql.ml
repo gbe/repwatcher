@@ -11,7 +11,9 @@ type sql_tquery =
   | CreateIndex
   | InsertOpen
   | UpdateFirstOffset
+  | UpdateFirstOffset_Null (* workaround MySQL prep statement bug *)
   | UpdateLastOffset
+  | UpdateLastOffset_Null (* workaround MySQL prep statement bug *)
   | UpdateCreated
   | UpdateClose
   | UpdateResetProgress
@@ -33,7 +35,9 @@ object(self)
   val mutable stmt_create_table = ref None
   val mutable stmt_insert_open = ref None
   val mutable stmt_update_first_offset = ref None
+  val mutable stmt_update_first_offset_null = ref None
   val mutable stmt_update_last_offset = ref None
+  val mutable stmt_update_last_offset_null = ref None
   val mutable stmt_update_created = ref None
   val mutable stmt_update_close = ref None
   val mutable stmt_update_reset_progress = ref None
@@ -81,8 +85,11 @@ object(self)
 
   method private _to_strsql int64opt =
     match int64opt with
-      | None -> "NULL"
       | Some var_int64 -> Int64.to_string var_int64
+      | None ->
+	match Config.cfg#get_sql_rdbms with
+	  | MySQL -> "NULL"
+	  | PostgreSQL -> Postgresql.null
 
 
   method private _args_list_to_string res arg_l =
@@ -103,8 +110,8 @@ object(self)
       | None -> false
       | Some _ -> true
 
-  method cleanup_prepare_stmts =
 
+  method cleanup_prepare_stmts =
     let cleanup_ctr = ref 0 in
     
     let cleanup statement_var =
@@ -122,13 +129,16 @@ object(self)
 	  cleanup statement_var
     )
       [stmt_db_exists;
-       stmt_create_db ;
-       stmt_create_table ;
        stmt_idx_exists ;
        stmt_create_idx ;
+       stmt_create_db ;
+       stmt_create_table ;
        stmt_insert_open ;
        stmt_update_first_offset ;
+       stmt_update_first_offset_null ;
        stmt_update_last_offset ;
+       stmt_update_last_offset_null ;
+       stmt_update_created ;
        stmt_update_close ;
        stmt_update_reset_progress
       ];

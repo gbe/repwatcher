@@ -58,10 +58,13 @@ object(self)
 	  | UpdateResetProgress -> create_statement stmt_update_reset_progress
 	  | InsertOpen -> create_statement stmt_insert_open
 	  | UpdateFirstOffset -> create_statement stmt_update_first_offset
+	  | UpdateFirstOffset_Null -> create_statement stmt_update_first_offset_null
 	  | UpdateLastOffset -> create_statement stmt_update_last_offset
-	  | UpdateClose -> create_statement stmt_update_close
+	  | UpdateLastOffset_Null -> create_statement stmt_update_last_offset_null
 	  | UpdateCreated -> create_statement stmt_update_created
-	  | _ -> assert false (* other cases are postgresql's *)
+	  | UpdateClose -> create_statement stmt_update_close
+	  | (SelectIndexExists|SelectDbExists|CreateIndex) ->
+	    assert false (* postgresql's cases *)
       in
 
       ignore (Prepared.execute statemt args);
@@ -263,15 +266,12 @@ object(self)
 
 
   method file_opened f s_created creation_date filesize =
-    let query =
+    let query = ref
       "INSERT INTO accesses \
-      (login, username, program, program_pid, path, filename, filesize, \
-       filedescriptor, opening_date, created, in_progress) \
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '1')"
+      (login, username, program, program_pid, path, filename, "
     in
-
-    let args =
-      [|
+    let args = 
+      ref [
         f.f_login;
 	(match Txt_operations.name f.f_login with
 	  | None -> "NULL"
@@ -279,20 +279,36 @@ object(self)
 	f.f_program;
 	string_of_int (Fdinfo.int_of_pid f.f_program_pid);
 	f.f_path;
-	f.f_name;
-	self#_to_strsql filesize;
-	string_of_int (Fdinfo.int_of_fd f.f_descriptor);
-	creation_date;
-	(match s_created with
-	  | true -> "1"
-	  | false -> "0"
-	)
-      |]
+	f.f_name]
     in
+
+    if not (filesize = None) then begin
+      query := !query^"filesize, ";
+      args := (!args) @ [self#_to_strsql filesize];
+    end;
+
+
+    query := !query^"filedescriptor, opening_date, created, in_progress) \
+       VALUES (?, ?, ?, ?, ?, ?,";
+
+    if not (filesize = None) then
+      query := !query^"?, ";
+
+    query := !query^"?, ?, ?, '1')";
+
+    args := 
+	!args @ [string_of_int (Fdinfo.int_of_fd f.f_descriptor);
+		 creation_date;
+		 (match s_created with
+		   | true -> "1"
+		   | false -> "0"
+		 )
+		];
+
     self#_query
       ~save_prim_key:true
-      ~args:args
-      (InsertOpen, query) ;
+      ~args:(Array.of_list !args)
+      (InsertOpen, !query) ;
 
     try
       match self#_get_last_result with
@@ -310,35 +326,43 @@ object(self)
       in
       Log.log (err, Error)
 
+
   method file_closed closing_date filesize offset created =
 
     try
       let pkey = self#_get_primary_key in
 
-      let update_query =
+      (* Workaround the bug about NULL parameter in MySQL prepared statements *)
+      let update_query = ref
 	"UPDATE accesses \
-         SET CLOSING_DATE = ?, FILESIZE = ?, \
-         LAST_KNOWN_OFFSET = ?, CREATED = ?, IN_PROGRESS = '0' \
-         WHERE ID = ?"
+         SET CLOSING_DATE = ?, "
       in
+      let args = ref [closing_date] in
 
-      let args =
-	[|
-	  closing_date;
-	  self#_to_strsql filesize;
-	  self#_to_strsql offset;
- 	  (match created with
-	    | true -> "1"
-	    | false -> "0"
-	  );
-	  Int64.to_string pkey
-	|]
-      in
+      if not (filesize = None) then begin
+	update_query := !update_query^"FILESIZE = ?, ";
+	args := (!args) @ [self#_to_strsql filesize];
+      end;
+	
+      if not (offset = None) then begin
+        update_query := !update_query^"LAST_KNOWN_OFFSET = ?, ";
+	  args := (!args) @ [self#_to_strsql offset]
+      end;
+
+      update_query := !update_query^"CREATED = ?, IN_PROGRESS = '0' WHERE ID = ?"; 
+
+      args :=
+	(!args) @
+	[(match created with
+	  | true -> "1"
+	  | false -> "0"
+	 );
+	 Int64.to_string pkey] ;      
 
       self#_query
 	~disconnect:true
-	~args:args
-	(UpdateClose, update_query) ;
+	~args:(Array.of_list !args)
+	(UpdateClose, !update_query) ;
 
       match self#_get_last_result with
 	| (ResultOK | ResultEmpty) ->
@@ -362,22 +386,32 @@ object(self)
       let pkey = self#_get_primary_key in
 
       let (tquery, field) =
-	match first, last with
-	  | false, true -> (UpdateLastOffset, "LAST_KNOWN_OFFSET")
-	  | true, false -> (UpdateFirstOffset, "FIRST_KNOWN_OFFSET")
+	match first, last, offset with
+	  | false, true, None -> (UpdateLastOffset_Null, "LAST_KNOWN_OFFSET")
+	  | false, true, Some _ -> (UpdateLastOffset, "LAST_KNOWN_OFFSET")
+	  | true, false, None -> (UpdateFirstOffset_Null, "FIRST_KNOWN_OFFSET")
+	  | true, false, Some _ -> (UpdateFirstOffset, "FIRST_KNOWN_OFFSET")
 	  | _ -> assert false
       in
 
       let update_offset_query =
 	"UPDATE accesses \
-         SET "^field^" = ? \
-	 WHERE ID = ?"
+         SET "^field^" = "^
+	  (match offset with
+	    | None -> "NULL"
+	    | Some _ -> "?"
+	  )^" WHERE ID = ?"
       in
+
+
       let args =
-	[|
-	  self#_to_strsql offset;
-	  Int64.to_string pkey
-	|]
+	if offset = None then
+	  [| Int64.to_string pkey |]
+	else
+	  [|
+	    self#_to_strsql offset;
+	    Int64.to_string pkey
+	  |]
       in
 
       self#_query
