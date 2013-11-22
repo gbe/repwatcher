@@ -80,6 +80,8 @@ object(self)
 
 
   method disconnect ?(log=true) () =
+    self#_cleanup_prepare_stmts;
+
     try
       (self#_get_cid)#finish ;
       cid <- None;
@@ -171,10 +173,8 @@ object(self)
        * - create database
        * - reset_progress
        * - the file_close *)
-      if disconnect then begin
-	self#cleanup_prepare_stmts;
-	self#disconnect ~log:log ()
-      end;
+      if disconnect then
+	self#disconnect ~log:log ();
 
       Mutex.unlock self#_get_lock
     with 

@@ -111,7 +111,7 @@ object(self)
       | Some _ -> true
 
 
-  method cleanup_prepare_stmts =
+  method private _cleanup_prepare_stmts =
     let cleanup_ctr = ref 0 in
     
     let cleanup statement_var =

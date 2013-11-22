@@ -27,7 +27,6 @@ let clean_exit () =
 	match sql_obj_opt with
 	  | None -> ()
 	  | Some sqlobj ->
-	    sqlobj#cleanup_prepare_stmts;
 	    sqlobj#disconnect ()
 
       ) Files_progress.ht;

@@ -99,10 +99,8 @@ object(self)
        * - create database
        * - reset_progress
        * - the file_close *)
-      if disconnect then begin
-	self#cleanup_prepare_stmts;
+      if disconnect then
 	self#disconnect ();
-      end;
 
       Mutex.unlock self#_get_lock
 
@@ -165,6 +163,8 @@ object(self)
 
 
   method disconnect ?(log=true) () =
+    self#_cleanup_prepare_stmts;
+
     try
       let cid' = self#_get_cid in
       Mysql.disconnect cid';
