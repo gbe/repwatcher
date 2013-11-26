@@ -6,11 +6,15 @@ gregory.bellier -- gmail -- com
 Dependencies for Debian/Ubuntu:
 ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev
 
-and also the ocaml-fdinfo library version 0.4.1 or above, downloadable here: gatekeeper.fr or there: https://github.com/gbe/ocaml-fdinfo
+and also the ocaml-fdinfo library version 0.4.1 or above, downloadable: https://github.com/gbe/ocaml-fdinfo
 
 * Please note that you need ocaml-ssl version 0.4.5 or +
 
-The MySQL database and its "accesses" table are automatically created if they don't already exist when MySQL is activated in the configuration file. The database name is the one set in the configuration file. However, for your information, this is the accesses table :
+The Repwatcher database and its "accesses" table are automatically created at Repwatcher server runtime if:
+- they don't already exists
+- sql_rdbms is activated in the configuration file.
+
+The database name is the one set in the configuration file. However, for your information, this is the accesses table in MySQL syntax:
 
 CREATE TABLE IF NOT EXISTS `accesses` (
   `ID` int(10) NOT NULL AUTO_INCREMENT,
