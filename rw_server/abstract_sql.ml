@@ -63,7 +63,6 @@ object(self)
   method virtual reset_in_progress : unit
   method virtual create_db : string -> unit
   method virtual create_table_accesses : unit
-  method virtual cleanup_prepare_stmts : unit
 
   method private _get_cid =
     match cid with

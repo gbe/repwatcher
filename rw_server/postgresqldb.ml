@@ -92,7 +92,7 @@ object(self)
     with
       | Sql_not_connected ->
 	Log.log ("PgSQL error: object not connected, cannot disconnect", Error)
-      | Postgresql.Error e -> Log.log ("erreur1: "^(string_of_error e), Error)
+      | Postgresql.Error e -> Log.log ("PgSQL error: "^(string_of_error e), Error)
       | e -> Log.log (Printexc.to_string e, Error)
 
 

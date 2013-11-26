@@ -13,8 +13,7 @@ let is_sql_activated_and_working = ref false ;;
 let clean_exit () =
   Unix.close Core.core#get_fd ;
 
-  (* No need to handle SQL because each connection is closed immediately
-   * However, we do need to set all the IN_PROGRESS accesses to zero.
+   (* we need to set all the IN_PROGRESS accesses to zero.
    * This has been proven to be useful for outside apps *)
   if !is_sql_activated_and_working then
     begin
@@ -214,7 +213,8 @@ This is free software under the MIT license.\n\n";
 
       Core.core#add_watch_children children;
 
-      let notif_txt = "Repwatcher is watching youuu ! :)" in
+      let notif_txt = "Repwatcher is watching for youuu ! :)" in
+      print_endline notif_txt;
       Report.report#notify (Local_notif notif_txt);
       Log.log (notif_txt, Normal) ;
 
