@@ -87,7 +87,7 @@ object(self)
       | Some var_int64 -> Int64.to_string var_int64
       | None ->
 	match Config.cfg#get_sql_rdbms with
-	  | MySQL -> "NULL"
+	  | MySQL -> assert false
 	  | PostgreSQL -> Postgresql.null
 
 

@@ -260,7 +260,10 @@ object(self)
 	~args:update_query_args
  	(UpdateClose, update_query)
     with No_primary_key ->
-      Log.log ("PgSQL error: could not query the file closing as there is no primary key", Error)
+      let err =
+	"PgSQL error: could not query the file closing as there is no primary key"
+      in
+      Log.log (err, Error)
 
 
   method private _update_known_offset ?(first=false) ?(last=false) offset =
@@ -291,7 +294,10 @@ object(self)
 	~args:update_offset_query_args
 	(tquery, update_offset_query)
     with No_primary_key ->
-      Log.log ("PgSQL error: could not update the offset as there is no primary key", Error)
+      let err =
+	"PgSQL error: could not update the offset as there is no primary key"
+      in 
+      Log.log (err, Error)
 
 
   method private _db_exists =
@@ -419,6 +425,9 @@ object(self)
 	~args:switch_on_created_query_arg
  	(UpdateCreated, switch_on_created_query)
     with No_primary_key ->
-      Log.log ("PgSQL error: could not switch on 'created' as there is no primary key", Error)
+      let err =
+	"PgSQL error: could not switch on 'created' as there is no primary key"
+      in 
+      Log.log (err, Error)
 
 end;;
