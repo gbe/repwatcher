@@ -106,7 +106,7 @@ This is free software under the MIT license.\n\n";
    * it must be informed of the real value: en/disabled, debug, ... *)
   let conf = Config.cfg#get in
 
-  (* This must be the first thing done after having parsed the file *)
+  (* This must be the first thing done after having parsed the config file *)
   Log.sysl#set_config Config.cfg#get_log_verbosity ;
 
   (* Check if the config file permission has read rights for the group others
@@ -118,7 +118,7 @@ This is free software under the MIT license.\n\n";
     match conf.c_notify.n_remotely with
     | true  ->
 
-      (* Checks it the new remote process identity and chroot exist
+      (* Checks if the new remote process identity and chroot exist
        * The actual operations are not done yet as those checks must be done before
        * forking with still the root rights *)
       Config.cfg#check_remote_process_identity;
@@ -159,7 +159,7 @@ This is free software under the MIT license.\n\n";
       (* First thing to do is to drop privileges *)
       change_main_process_identity ();
 
-      (* Not only used to update the last_known_offset in SQL,
+      (* Not only used to update the offsets in SQL,
        * it is also used to force the closing event *)
       ignore (Thread.create Offset_thread.loop_check ());
 
@@ -184,7 +184,6 @@ This is free software under the MIT license.\n\n";
 
 	(* Set to zero every files marked as 'in progress' in the RDBMS *)
 	sql#reset_in_progress ;
-
       end ;
 
       (* Check if a connection can be done with the SMTP server *)

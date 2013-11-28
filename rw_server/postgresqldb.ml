@@ -137,14 +137,21 @@ object(self)
 	match !stmt_var with
 	  | None ->
 	    let res = cid'#prepare stmt_str q in
-	    Log.log ("Prepared statement '"^stmt_str^"' computed", Normal_Extra);
-	    stmt_var := Some Postgresqlst;
-	    stmt_str
-	  | Some Postgresqlst -> stmt_str
+	    last_result <- Some res;
+	    begin match res#status with
+	      | Command_ok ->
+		Log.log ("Prepared statement '"^stmt_str^"' computed", Normal_Extra);
+		stmt_var := Some Postgresqlst;
+		(true, stmt_str);
+	      | _ ->
+		Log.log (("PgSQL error: "^res#error), Error);
+		(false, stmt_str);
+	    end
+	  | Some Postgresqlst -> (true, stmt_str)
 	  | Some Mysqlst _ -> assert false
       in
 
-      let statemt =
+      let (statemt_computed, statemt_str) =
 	match tquery with
 	  | SelectDbExists -> create_statement stmt_db_exists "stmt_select_db_exists"
 	  | CreateDb -> create_statement stmt_create_db "stmt_create_db"
@@ -166,7 +173,12 @@ object(self)
 	  | (UpdateFirstOffset_Null | UpdateLastOffset_Null) -> assert false (* MySQL workarounds *)
       in
 
-      last_result <- Some (cid'#exec_prepared ~expect:[expect] ~params:args statemt);
+      begin match statemt_computed with
+	| false -> (* Statement not correctly computed *)
+	  Log.log ("PgSQL error: statement not executed since the preparation failed", Error)
+	| true ->
+	  last_result <- Some (cid'#exec_prepared ~expect:[expect] ~params:args statemt_str);
+      end;
 
       (* The disconnection is performed on a by-object basis and
        * when occurs the events :
@@ -219,7 +231,7 @@ object(self)
       (InsertOpen, insert_query);
 
     try
-      let res = self#_get_last_result in     
+      let res = self#_get_last_result in
       match (List.length res#get_all_lst) with
 	| 1 ->
 	  primary_key <- Some (res#getvalue 0 0)
@@ -312,6 +324,15 @@ object(self)
 
     try
       let result = self#_get_last_result in
+      begin match result#status with
+	| Bad_response -> 
+	  Log.log ("PgSQL error: bad response when checking db_exists", Error);
+	  exit 2
+	| Fatal_error ->
+	  Log.log ("PgSQL error: fatal error when checking db_exists", Error);
+	  exit 2
+	| _ -> ()
+      end;
       match (List.length result#get_all_lst) with
 	| 1 ->
 	  if (result#getvalue 0 0) = "1" then
@@ -352,7 +373,16 @@ object(self)
 	  ~disconnect:true
 	  ~nodb:true
 	  (CreateDb, q);
-	Log.log (("PgSQL: database '"^dbname'^"' created"), Normal_Extra)
+	try
+	  match (self#_get_last_result)#status with
+	    | Bad_response -> 
+	      Log.log ("PgSQL error: bad response when creating the db "^dbname', Error);
+	      exit 2
+	    | Fatal_error ->
+	      Log.log ("PgSQL error: fatal error when creating the db "^dbname', Error);
+	      exit 2
+	    | _ -> Log.log (("PgSQL: database '"^dbname'^"' created"), Normal_Extra)
+	with Sql_no_last_result -> exit 2
 
 
   method create_table_accesses =
@@ -379,20 +409,41 @@ object(self)
       self#_query
 	~expect:Command_ok
 	(CreateTable, create_tbl);
-      
-      let idx = "in_progress_idx" in
 
-      let create_progress_idx_query =
-	"CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
-      in
+      try
+	let res = self#_get_last_result in
+	begin match res#status with
+	  | Bad_response ->
+	    Log.log (("PgSQL error: bad response when creating the table. "^(res#error)), Error);
+	    exit 2
+	  | Fatal_error ->
+	    Log.log (("PgSQL error: fatal error when creating the table. "^(res#error)), Error);
+	    exit 2
+	  | _ -> Log.log (("PgSQL: table created successfully"), Normal_Extra)
+	end;
 
-      if (self#_index_exists idx) = false then begin
-	self#_query ~expect:Command_ok (CreateIndex, create_progress_idx_query);
-	Log.log ("Index created", Normal_Extra)
-      end;
+	let idx = "in_progress_idx" in
+	let create_progress_idx_query =
+	  "CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
+	in
 
+	if (self#_index_exists idx) = false then begin
+	  self#_query ~expect:Command_ok (CreateIndex, create_progress_idx_query);
+	  match (self#_get_last_result)#status with
+	    | Bad_response ->
+	      Log.log
+		(("PgSQL error: bad response when creating the index "^idx^". "^(res#error)), Error);
+	      exit 2
+	    | Fatal_error ->
+	      Log.log
+		(("PgSQL error: fatal error when creating the index "^idx^". "^(res#error)), Error);
+	      exit 2
+	    | _ -> Log.log ("PgSQL: Index created successfully", Normal_Extra)
+	end;
+      with Sql_no_last_result -> exit 2
     with Sql_not_connected ->
-      Log.log ("PgSQL error: Object not connected, cannot create table", Error)
+      Log.log ("PgSQL error: Object not connected, cannot create table or index", Error);
+      exit 2
 
 
   method reset_in_progress =
