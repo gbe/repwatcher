@@ -4,14 +4,14 @@ To contact the author :
 gregory.bellier -- gmail -- com
 
 Dependencies for Debian/Ubuntu:
-ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev
+ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libpostgresql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev
 
 and also the ocaml-fdinfo library version 0.4.1 or above, downloadable: https://github.com/gbe/ocaml-fdinfo
 
 * Please note that you need ocaml-ssl version 0.4.5 or +
 
 The Repwatcher database and its "accesses" table are automatically created at Repwatcher server runtime if:
-- they don't already exists
+- they do not already exist
 - sql_rdbms is activated in the configuration file.
 
 The database name is the one set in the configuration file. However, for your information, this is the accesses table in MySQL syntax:
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS `accesses` (
 As usual, to clean the sources and build: make clean && make
 Before running the server, you need to configure the file repwatcher.conf.
 
-If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You can generate a first set with the script in the Certificate folder.
+If you want remote notifications, you need a CA, private keys and certificates for the server and its clients. You can generate a set with the script in the Certificate folder. The authorisations are not supported yet. It means that somebody will have an access granted if the certificate presented by the client has been signed by the same CA than the server.
 
 You can either run Repwatcher in a "screen" or with "nohup ./rw_server &".
 
