@@ -83,7 +83,7 @@ let check_sql_connection () =
 (* Main function *)
 let _ =  
 
-  Printf.printf "\nRepwatcher  Copyright (C) 2007-2013  Grégory Bellier
+  Printf.printf "\nRepwatcher  Copyright (C) 2007-2014  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
