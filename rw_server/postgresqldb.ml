@@ -34,6 +34,23 @@ object(self)
       | Some dbname' -> dbname'
 
 
+  method private _get_connected_dbname =
+    (* No need to test if it's connected as the exception 
+     * will take care of the "not connected" case anyway *)
+    try
+      (self#_get_cid)#db
+    with 
+      | Sql_not_connected ->
+	Log.log ("PgSQL error: object not connected, cannot get database name", Error);
+	""
+      | Postgresql.Error e ->
+	Log.log (string_of_error e, Error);
+	""
+      | e ->
+	Log.log (Printexc.to_string e, Error);
+	""
+
+
   method private _connect ?(log=true) ?(nodb=false) () =
 
     (* code copy/pasted from the lib postgresql-ocaml *)
@@ -365,7 +382,12 @@ object(self)
   (* TO DO: get rid of dbname arg *)
   method create_db dbname' =
     match self#_db_exists with
-      | true -> Log.log (("PgSQL: database '"^dbname'^"' already exists"), Normal_Extra);
+      | true ->
+	Log.log (("PgSQL: database '"^dbname'^"' already exists"), Normal_Extra);
+	(* Disconnection must be forced because if the database exists
+	 * but not the table, the table will be created at the wrong place as the disconnection
+	 * would not have been performed *)
+	self#disconnect ()
       | false ->
 	let q = "CREATE DATABASE "^dbname' in
 	self#_query
@@ -419,9 +441,13 @@ object(self)
 	  | Fatal_error ->
 	    Log.log (("PgSQL error: fatal error when creating the table. "^(res#error)), Error);
 	    exit 2
-	  | _ -> Log.log (("PgSQL: table created successfully"), Normal_Extra)
+	  | _ ->
+	    let created_success =
+	      "PgSQL: table created successfully into "^self#_get_connected_dbname
+	    in
+	    Log.log (created_success, Normal_Extra)
 	end;
-
+	
 	let idx = "in_progress_idx" in
 	let create_progress_idx_query =
 	  "CREATE INDEX "^idx^" ON accesses USING btree (IN_PROGRESS)"
@@ -441,10 +467,10 @@ object(self)
 	    | _ -> Log.log ("PgSQL: Index created successfully", Normal_Extra)
 	end;
       with Sql_no_last_result -> exit 2
+
     with Sql_not_connected ->
       Log.log ("PgSQL error: Object not connected, cannot create table or index", Error);
       exit 2
-
 
   method reset_in_progress =
     self#_query

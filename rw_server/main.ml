@@ -142,7 +142,7 @@ This is free software under the MIT license.\n\n";
   (* If the process has been forked *)
   match fd with
     | 0 ->
-      (* Stuff to do in the child process *)
+      (* Stuff to do in the child process with lesser privileges *)
       if conf.c_notify.n_remotely then begin
 
 	(* Start the remote notification server *)
