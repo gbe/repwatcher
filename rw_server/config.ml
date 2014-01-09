@@ -138,6 +138,13 @@ object(self)
       | None -> raise Process_identity_not_configured
       | Some main_process_id -> main_process_id
 
+
+  method is_process_identity_configured =
+    match (self#get).c_process_identity with
+      | None -> false
+      | Some _ -> true
+
+
   method get_log_verbosity =
     try
       (self#get).c_log

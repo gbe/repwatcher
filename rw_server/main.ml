@@ -157,7 +157,8 @@ This is free software under the MIT license.\n\n";
       (* Stuff to do in the father process *)
 
       (* First thing to do is to drop privileges *)
-      change_main_process_identity ();
+      if Config.cfg#is_process_identity_configured then
+	change_main_process_identity ();
 
       (* Not only used to update the offsets in SQL,
        * it is also used to force the closing event *)
