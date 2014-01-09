@@ -70,7 +70,7 @@ object(self)
       field "host" host;
       field "hostaddr" None;
       field "port" port;
-      field "dbname" (match nodb with false -> dbname | true -> None);
+      field "dbname" (match nodb with false -> dbname | true -> Some "template1");
       field "user" user;
       field "password" pwd;
       field "options" None;
