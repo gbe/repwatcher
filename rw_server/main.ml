@@ -46,7 +46,7 @@ let change_main_process_identity () =
       (* Check in the file /etc/passwd
        * if the user "new_identity" exists *)
       let passwd_entry = Unix.getpwnam Config.cfg#get_process_identity in
-      setgid passwd_entry.pw_gid;
+      initgroups Config.cfg#get_process_identity passwd_entry.pw_gid;
       setuid passwd_entry.pw_uid;
       
     with
