@@ -12,3 +12,5 @@ parser.ml
 parser.mli
 lexer.ml
 rw.log*
+rw_client
+rw_server
