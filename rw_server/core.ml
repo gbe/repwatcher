@@ -358,6 +358,7 @@ object(self)
 		    
 		  (* Irrevelevant since the mail will tell the date *)
 		  m_opening_date = None;
+		  m_closing_date = None;
 		}
 	      in
 	      begin match created with
@@ -550,6 +551,7 @@ object(self)
 	    m_offset = offset_opt;
 	    m_filesize = filesize;
 	    m_opening_date = Some opening_date;
+	    m_closing_date = Some (Date.date ());
 	  }
 	in
 

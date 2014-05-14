@@ -44,6 +44,7 @@ type mail_t = {
   m_offset: int64 option;
   m_filesize: int64 option;
   m_opening_date: string option;
+  m_closing_date: string option;
 }
 
 type com_net2main =

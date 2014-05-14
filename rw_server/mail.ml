@@ -22,20 +22,30 @@ let send mail =
       | File_Closed  -> "closed"
   in
 
+  let opening_date =
+    match mail.m_opening_date with
+    | None -> assert false
+    | Some date -> date
+  in
+
   let gentxt () =
 
     let txt =
-      ref (Printf.sprintf "%s %s %s\n\nPath: %s\nProgram: %s" file.f2_username filestate_str file.f2_name file.f2_path file.f2_program)
+      ref (Printf.sprintf "%s %s %s\n\nPath: %s\nProgram: %s\nOpened: %s"
+	     file.f2_username
+	     filestate_str
+	     file.f2_name
+	     file.f2_path
+	     file.f2_program
+	     opening_date)
     in
 
     if mail.m_filestate = File_Closed then begin
-
-      let opening_date =
-	match mail.m_opening_date with
-	  | None -> assert false
-	  | Some date -> date
+      let closing_date =
+	match mail.m_closing_date with
+	| None -> assert false
+	| Some date -> date
       in
-
       let progression_float = ref (-1.) in
 
       let (off_str, filesize_str) =
@@ -59,9 +69,9 @@ let send mail =
       
       txt :=
 	Printf.sprintf
-	"%s\nOpened: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
+	"%s\nClosed: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
 	(!txt)
-	opening_date
+	closing_date
 	progression
 	off_str
 	filesize_str
