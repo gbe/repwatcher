@@ -110,11 +110,4 @@ object(self)
       | Postgresql con ->
 	con#switch_on_created
 
-  method select_duration =
-    match connector with
-      | Mysql con ->
-	con#select_duration
-      | Postgresql con ->
-	con#select_duration
-
 end;;

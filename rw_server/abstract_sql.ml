@@ -19,7 +19,6 @@ type sql_tquery =
   | UpdateResetProgress
   | SelectDbExists
   | SelectIndexExists
-  | SelectDuration
 
 type a_statement = Mysqlst of Mysql.Prepared.stmt | Postgresqlst
 
@@ -42,7 +41,6 @@ object(self)
   val mutable stmt_update_created = ref None
   val mutable stmt_update_close = ref None
   val mutable stmt_update_reset_progress = ref None
-  val mutable stmt_select_duration = ref None
   val reset_accesses_query =
     "UPDATE accesses SET IN_PROGRESS = '0' WHERE IN_PROGRESS = '1'"
 
@@ -65,7 +63,6 @@ object(self)
   method virtual reset_in_progress : unit
   method virtual create_db : string -> unit
   method virtual create_table_accesses : unit
-  method virtual select_duration : unit
 
   method private _get_cid =
     match cid with
@@ -142,8 +139,7 @@ object(self)
        stmt_update_last_offset_null ;
        stmt_update_created ;
        stmt_update_close ;
-       stmt_update_reset_progress ;
-       stmt_select_duration
+       stmt_update_reset_progress
       ];
 
     Log.log

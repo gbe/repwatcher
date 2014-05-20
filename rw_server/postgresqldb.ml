@@ -147,6 +147,7 @@ object(self)
     end;
 	  
     try
+
       let cid' = self#_get_cid in
 
       let create_statement stmt_var stmt_str =
@@ -186,9 +187,6 @@ object(self)
 	  | UpdateResetProgress -> create_statement
 	    stmt_update_reset_progress
 	    "stmt_update_reset_progress"
-	  | SelectDuration -> create_statement
-	    stmt_select_duration
-	    "stmt_select_duration"
 	  | (UpdateFirstOffset_Null | UpdateLastOffset_Null) -> assert false (* MySQL workarounds *)
       in
 
@@ -506,41 +504,6 @@ object(self)
     with No_primary_key ->
       let err =
 	"PgSQL error: could not switch on 'created' as there is no primary key"
-      in 
-      Log.log (err, Error)
-
-
-  method select_duration =
-    try
-      let pkey = self#_get_primary_key in
-
-      let select_d_query =
-	"SELECT (CLOSING_DATE - OPENING_DATE), \
-         EXTRACT(EPOCH(CLOSING_DATE - OPENING_DATE)) \
-         FROM accesses \
-         WHERE ID = $1 AND CLOSING_DATE IS NOT NULL"
-      in
-      let select_d_query_arg = [|pkey|] in
-      self#_query
-	~expect:Tuples_ok
-	~args:select_d_query_arg
- 	(SelectDuration, select_d_query);
-
-	let result = self#_get_last_result in
-(*	match (List.length result#get_all_lst) with
-	| 1 ->
-	  if (result#getvalue 0 0) = "1" then
-	    true
-	  else
-	    false
-	| _ -> assert false
-*)
-	()
-    with
-    | Sql_no_last_result -> ()
-    | No_primary_key ->
-      let err =
-	"PgSQL error: could not compute the duration as there is no primary key"
       in 
       Log.log (err, Error)
 

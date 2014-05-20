@@ -62,7 +62,6 @@ object(self)
 	  | UpdateLastOffset -> create_statement stmt_update_last_offset
 	  | UpdateLastOffset_Null -> create_statement stmt_update_last_offset_null
 	  | UpdateCreated -> create_statement stmt_update_created
-	  | SelectDuration -> create_statement stmt_select_duration
 	  | UpdateClose -> create_statement stmt_update_close
 	  | (SelectIndexExists|SelectDbExists|CreateIndex) ->
 	    assert false (* postgresql's cases *)
@@ -480,8 +479,5 @@ object(self)
 	    | Some errmsg' -> Log.log (errmsg', Error)
     with No_primary_key ->
       Log.log ("MySQL error: cannot switch 'on' the field Created, no primary key", Error)
-
-
-  method select_duration = ()
 
 end;;
