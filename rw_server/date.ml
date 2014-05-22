@@ -1,10 +1,29 @@
-open Unix
+open CalendarLib
+open Calendar
 
 let date () =
-  let date = (localtime(time())) in
-    (* Starts in 1900 *)
-    (* month = 0..11 *)
-    
-    (* 2008-01-19 16:21:00 *)
-    Printf.sprintf "%02d-%02d-%02d %02d:%02d:%02d" (1900 + date.tm_year) (1 + date.tm_mon) date.tm_mday date.tm_hour date.tm_min date.tm_sec
+  let string_of_month = function
+    | Jan -> "01"
+    | Feb -> "02"
+    | Mar -> "03"
+    | Apr -> "04"
+    | May -> "05"
+    | Jun -> "06"
+    | Jul -> "07"
+    | Aug -> "08"
+    | Sep -> "09"
+    | Oct -> "10"
+    | Nov -> "11"
+    | Dec -> "12"
+  in
+
+  let d = Calendar.now () in
+  Printf.sprintf
+    "%d-%s-%d %d:%d:%d"
+    (Calendar.year d)
+    (string_of_month (Calendar.month d))
+    (Calendar.day_of_month d)
+    (Calendar.hour d)
+    (Calendar.minute d)
+    (Calendar.second d)
 ;;
