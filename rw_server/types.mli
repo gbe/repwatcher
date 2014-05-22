@@ -25,7 +25,7 @@ type file2clients = {
 
 type notification =
   | New_notif of file2clients * file_state
-  | Old_notif of (file2clients * string) list
+  | Old_notif of (file2clients * CalendarLib.Calendar.t) list
   | Local_notif of string
 
 

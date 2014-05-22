@@ -11,7 +11,7 @@ let loop_check () =
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
 
-    Hashtbl.iter (fun (wd, file) (date, (filesize, filesize_checked_again), (isfirstoffsetknown, _, error_counter), sql_obj_opt, created) ->
+    Hashtbl.iter (fun (wd, file) (opening_date, (filesize, filesize_checked_again), (isfirstoffsetknown, _, error_counter), sql_obj_opt, created) ->
       let offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
@@ -30,7 +30,7 @@ let loop_check () =
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (date, (filesize, filesize_checked_again), (isfirstoffsetknown, None, error_counter'), sql_obj_opt, created);
+	      (opening_date, (filesize, filesize_checked_again), (isfirstoffsetknown, None, error_counter'), sql_obj_opt, created);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
 	    let event =
@@ -86,7 +86,7 @@ let loop_check () =
 	   *)
 	  Hashtbl.replace Files_progress.ht
 	    (wd, file)
-	    (date, (filesize, true), (true, offset_opt, 0), sql_obj_opt, created') ;
+	    (opening_date, (filesize, true), (true, offset_opt, 0), sql_obj_opt, created') ;
 
 	  match (Config.cfg)#is_sql_activated with
 	    | false -> ()
@@ -104,7 +104,7 @@ let loop_check () =
 		      | false -> SQL_FK_Offset
 		    end;
 		  s_size = filesize ;
-		  s_date = date ;
+		  s_date = Date.string_of_date opening_date ;
 		  s_offset = offset_opt ;
 		  s_sql_obj = sql_obj_opt ;
 		  s_created = created ;
@@ -120,7 +120,7 @@ let loop_check () =
 		    s_file = file ;
 		    s_state = SQL_Switch_On_Created ;
 		    s_size = filesize ;
-		    s_date = date ;
+		    s_date = Date.string_of_date opening_date ;
 		    s_offset = offset_opt ;
 		    s_sql_obj = sql_obj_opt ;
 		    s_created = true ;

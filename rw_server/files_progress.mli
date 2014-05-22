@@ -3,7 +3,7 @@ open Sql_report ;;
 val mutex_ht : Mutex.t
 
 (*
- * string = date
+ * CalendarLib.Calendar.t = opening date
  *
  * int64 option = filesize
  * bool = filesize_checked_again
@@ -16,7 +16,7 @@ val mutex_ht : Mutex.t
  * bool = created (true) or not (false)
 *)
 val ht : (Inotify.wd * Types.f_file, 
-	  (string 
+	  (CalendarLib.Calendar.t
 	   * (int64 option * bool)
 	   * (bool * int64 option * int) 
 	   * Sqldb.sqldb option

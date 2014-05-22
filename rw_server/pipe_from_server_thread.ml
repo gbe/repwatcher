@@ -18,13 +18,13 @@ let wait_pipe_from_child_process () =
 	  Mutex.lock Files_progress.mutex_ht ;
 
 	  let l_current =
-	    Hashtbl.fold (fun (_,file) (date,_,_,_,_) ret ->
+	    Hashtbl.fold (fun (_,file) (opening_date,_,_,_,_) ret ->
 	      let file_prepared = Report.report#prepare_data file in
 
 	      ret@[ (
 		{ file_prepared with
 		  f2_name = (Txt_operations.escape_for_notify file_prepared.f2_name)
-		}, date)
+		}, opening_date)
 		  ]
 	    ) Files_progress.ht []
 	  in

@@ -1,7 +1,7 @@
 open CalendarLib
 open Calendar
 
-let date () =
+let string_of_date d =
   let string_of_month = function
     | Jan -> "01"
     | Feb -> "02"
@@ -17,9 +17,9 @@ let date () =
     | Dec -> "12"
   in
 
-  let d = Calendar.now () in
+(* 2014-05-22 12:49:00 *)
   Printf.sprintf
-    "%d-%s-%d %d:%d:%d"
+    "%d-%s-%02d %02d:%02d:%02d"
     (Calendar.year d)
     (string_of_month (Calendar.month d))
     (Calendar.day_of_month d)
@@ -27,3 +27,6 @@ let date () =
     (Calendar.minute d)
     (Calendar.second d)
 ;;
+
+let date_now () =
+  Calendar.now ();;

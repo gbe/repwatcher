@@ -311,7 +311,8 @@ object(self)
 	      if debug_event then
 		self#_print_file file;
 
-	      let date = Date.date () in
+	      let date = Date.date_now () in
+	      let str_date = Date.string_of_date date in
 	      
 	      let has_what =
 		match created with
@@ -320,7 +321,7 @@ object(self)
 	      in
 
 	      print_endline
-	      (date^" - "^file.f_login^has_what^file.f_name);
+	      (str_date^" - "^file.f_login^has_what^file.f_name);
 
 	      Log.log (file.f_login^has_what^file.f_name, Normal);
 
@@ -378,7 +379,7 @@ object(self)
 		    s_file = file ;
 		    s_state = SQL_File_Opened ;
 		    s_size = filesize_opt ;
-		    s_date = date ;
+		    s_date = str_date ;
 		    (* Desactivate the first offset when opening_file,
 		     * useful when re-opening the file
 		     * s_offset = offset_opt ;
@@ -482,9 +483,10 @@ object(self)
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
 	Mutex.unlock Files_progress.mutex_ht ;
 
-	let current_date = Date.date () in
+	let date = Date.date_now () in
+	let str_date = Date.string_of_date date in
 	print_endline
-	  (current_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+	  (str_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
 	Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
@@ -505,8 +507,8 @@ object(self)
 		None
 	in
 
-	(* update last known offset according to filesize and written *)
-	(* filesize == None if file could not be read or does not exist anymore *)
+	(* update last_known_offset according to filesize and written *)
+	(* if file could not be read or does not exist anymore then filesize = None *)
 	let offset_opt =
 	  match offset with
 	    | None -> None (* unlikely to happen as data are read during the file_open event *)
@@ -534,7 +536,7 @@ object(self)
 	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
 	      s_size = filesize ;
-	      s_date = current_date ;
+	      s_date = str_date ;
 	      s_offset = offset_opt ;
 	      s_sql_obj = sql_obj_opt ;
 	      s_created = written ; (* better to use the written than created *)
@@ -550,8 +552,8 @@ object(self)
 	    m_file = file_prepared;
 	    m_offset = offset_opt;
 	    m_filesize = filesize;
-	    m_opening_date = Some opening_date;
-	    m_closing_date = Some (Date.date ());
+	    m_opening_date = Some (Date.string_of_date opening_date);
+	    m_closing_date = Some str_date;
 	  }
 	in
 
@@ -562,19 +564,21 @@ object(self)
 (* eo file_closed, false *)
 
 
-
   method directory_created wd name =
     match self#_get_value wd with
       | None ->
 	let err =
 	  sprintf "%s has been created but I \
-			    can't start watching it because I \
-			    can't find its father" name
+		   can't start watching it because I \
+		   can't find its father" name
 	in
 	Log.log (err, Error)
 	
       | Some father ->
-	self#add_watch (father.path^"/"^name) ~wd_father_opt:(Some wd) ~is_config_file:false
+	self#add_watch
+	  (father.path^"/"^name)
+	  ~wd_father_opt:(Some wd)
+	  ~is_config_file:false
 
 
   method directory_moved_from wd name =
