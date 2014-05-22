@@ -4,7 +4,7 @@ To contact the author :
 gregory.bellier -- gmail -- com
 
 Dependencies for Debian/Ubuntu:
-ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libpostgresql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev
+ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-ocaml-dev libpostgresql-ocaml-dev libinotify-ocaml-dev libdbus-ocaml-dev libdbus-1-dev libocamlnet-ocaml-dev libsyslog-ocaml-dev libcalendar-ocaml-dev
 
 and also the ocaml-fdinfo library version 0.4.1 or above, downloadable: https://github.com/gbe/ocaml-fdinfo
 
