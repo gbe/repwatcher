@@ -1,7 +1,7 @@
 open Netsendmail ;;
 open Types ;;
 open Types_conf ;;
-
+open Types_date ;;
 
 let send mail =
 
@@ -66,12 +66,35 @@ let send mail =
 	else
 	  Printf.sprintf "%.02f%c" !progression_float '%'
       in
+
+
+      let duration = closing_date#get_diff opening_date in
+      let duration_txt = ref "" in
+      if duration.years > 0 then
+	duration_txt := Printf.sprintf "%d years" duration.years;
+
+      if duration.months > 0 then
+	duration_txt := Printf.sprintf "%s %d months" !duration_txt duration.months;
+
+      if duration.days > 0 then
+	duration_txt := Printf.sprintf "%s %d days" !duration_txt duration.days;
+
+      if duration.hours > 0 then
+	duration_txt := Printf.sprintf "%s %d hours" !duration_txt duration.hours;
+
+      duration_txt :=
+	Printf.sprintf "%s %d minutes %d seconds"
+	!duration_txt
+	duration.minutes
+	duration.seconds;
       
       txt :=
 	Printf.sprintf
-	"%s\nClosed: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
+	"%s\nOpened on: %s\nClosed on: %s\nDuration: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
 	(!txt)
+	opening_date#get_str_locale
 	closing_date#get_str_locale
+	(!duration_txt)
 	progression
 	off_str
 	filesize_str
