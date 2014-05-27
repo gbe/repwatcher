@@ -104,7 +104,7 @@ let loop_check () =
 		      | false -> SQL_FK_Offset
 		    end;
 		  s_size = filesize ;
-		  s_date = Date.string_of_date opening_date ;
+		  s_date = opening_date#get_str_locale ;
 		  s_offset = offset_opt ;
 		  s_sql_obj = sql_obj_opt ;
 		  s_created = created ;
@@ -120,7 +120,7 @@ let loop_check () =
 		    s_file = file ;
 		    s_state = SQL_Switch_On_Created ;
 		    s_size = filesize ;
-		    s_date = Date.string_of_date opening_date ;
+		    s_date = opening_date#get_str_locale ;
 		    s_offset = offset_opt ;
 		    s_sql_obj = sql_obj_opt ;
 		    s_created = true ;

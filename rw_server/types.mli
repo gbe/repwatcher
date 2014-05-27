@@ -25,7 +25,7 @@ type file2clients = {
 
 type notification =
   | New_notif of file2clients * file_state
-  | Old_notif of (file2clients * CalendarLib.Calendar.t) list
+  | Old_notif of (file2clients * Date.date) list
   | Local_notif of string
 
 
@@ -43,8 +43,8 @@ type mail_t = {
   m_file: file2clients;
   m_offset: int64 option;
   m_filesize: int64 option;
-  m_opening_date: string option;
-  m_closing_date: string option;
+  m_opening_date: Date.date option;
+  m_closing_date: Date.date option;
 }
 
 type com_net2main =
@@ -56,5 +56,3 @@ type com_server2clients =
   | Notification of notification
   | RW_server_exited
   | RW_server_con_ok of int option (* int is the notify_parent_folders value from the config file *)
-
-

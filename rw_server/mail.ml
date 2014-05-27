@@ -37,7 +37,7 @@ let send mail =
 	     file.f2_name
 	     file.f2_path
 	     file.f2_program
-	     opening_date)
+	     opening_date#get_str_locale)
     in
 
     if mail.m_filestate = File_Closed then begin
@@ -71,7 +71,7 @@ let send mail =
 	Printf.sprintf
 	"%s\nClosed: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
 	(!txt)
-	closing_date
+	closing_date#get_str_locale
 	progression
 	off_str
 	filesize_str

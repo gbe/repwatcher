@@ -311,8 +311,7 @@ object(self)
 	      if debug_event then
 		self#_print_file file;
 
-	      let date = Date.date_now () in
-	      let str_date = Date.string_of_date date in
+	      let opening_date = new Date.date in
 	      
 	      let has_what =
 		match created with
@@ -321,7 +320,7 @@ object(self)
 	      in
 
 	      print_endline
-	      (str_date^" - "^file.f_login^has_what^file.f_name);
+	      (opening_date#get_str_locale^" - "^file.f_login^has_what^file.f_name);
 
 	      Log.log (file.f_login^has_what^file.f_name, Normal);
 
@@ -356,9 +355,7 @@ object(self)
 		  m_file = file_prepared;
 		  m_offset = offset_opt;
 		  m_filesize = filesize_opt;
-		    
-		  (* Irrevelevant since the mail will tell the date *)
-		  m_opening_date = None;
+		  m_opening_date = Some opening_date;
 		  m_closing_date = None;
 		}
 	      in
@@ -379,7 +376,7 @@ object(self)
 		    s_file = file ;
 		    s_state = SQL_File_Opened ;
 		    s_size = filesize_opt ;
-		    s_date = str_date ;
+		    s_date = opening_date#get_str_locale ;
 		    (* Desactivate the first offset when opening_file,
 		     * useful when re-opening the file
 		     * s_offset = offset_opt ;
@@ -407,7 +404,7 @@ object(self)
 
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
-		(date,
+		(opening_date,
 		 (filesize_opt, false),
 		 (isfirstoffsetknown, offset_opt, 0),
 		 sql_obj_opt,
@@ -483,10 +480,9 @@ object(self)
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
 	Mutex.unlock Files_progress.mutex_ht ;
 
-	let date = Date.date_now () in
-	let str_date = Date.string_of_date date in
+	let closing_date = new Date.date in
 	print_endline
-	  (str_date^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+	  (closing_date#get_str_locale^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
 	Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
 
@@ -536,7 +532,7 @@ object(self)
 	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
 	      s_size = filesize ;
-	      s_date = str_date ;
+	      s_date = closing_date#get_str_locale ;
 	      s_offset = offset_opt ;
 	      s_sql_obj = sql_obj_opt ;
 	      s_created = written ; (* better to use the written than created *)
@@ -552,8 +548,8 @@ object(self)
 	    m_file = file_prepared;
 	    m_offset = offset_opt;
 	    m_filesize = filesize;
-	    m_opening_date = Some (Date.string_of_date opening_date);
-	    m_closing_date = Some str_date;
+	    m_opening_date = Some opening_date;
+	    m_closing_date = Some closing_date;
 	  }
 	in
 
