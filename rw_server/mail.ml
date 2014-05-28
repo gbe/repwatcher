@@ -114,12 +114,10 @@ let send mail =
       (* Bandwidth computation added to string *)
       match (mail.m_first_offset, mail.m_last_offset) with
       | Some first, Some last ->
-	Printf.printf "first: %Ld\tlast: %Ld\n" first last;
 	let bandwidth =
 	  ((Int64.to_float last) -. (Int64.to_float first)) /.
 	    (closing_date#get_diff_sec opening_date) /. 1024.
 	in
-	Printf.printf "bandwidth: %.02f\n" bandwidth;
 	txt := Printf.sprintf "%s\nBandwidth rate: %.02f KB/s" (!txt) bandwidth;
       | _ -> ()
     end;
