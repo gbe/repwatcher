@@ -32,7 +32,7 @@ let send mail =
   let gentxt () =
 
     let txt =
-      ref (Printf.sprintf "%s %s %s\n\nPath: %s\nProgram: %s\nOpened on: %s"
+      ref (Printf.sprintf "%s %s %s\n\nPath:\t%s\nProgram:\t%s\nOpened at:\t%s"
 	     file.f2_username
 	     filestate_str
 	     file.f2_name
@@ -102,7 +102,7 @@ let send mail =
 
       txt :=
 	Printf.sprintf
-	"%s\tFirst known offset: %s\nClosed on: %s\tLast known offset: %s\nDuration: %s\tProgression: %s\nSize: %s"
+	"%s\tFirst known offset:\t%s\nClosed at:\t%s\t\tLast known offset:\t%s\nDuration:\t%s\t\tProgression:\t%s\nSize: %s"
 	(!txt)
 	first_off_str
 	closing_date#get_str_locale
@@ -121,7 +121,7 @@ let send mail =
 	  data_transfered /. (closing_date#get_diff_sec opening_date) /. 1024.
 	in	
 	txt := Printf.sprintf
-	  "%s\n%f MB transfered (%.02f%c of the file) @ %.02f KB/s"
+	  "%s\n%.02f MB transfered (%.02f%c of the file) @ %.02f KB/s"
 	  (!txt)
 	  data_transfered_MB
 	  percentage_transfered

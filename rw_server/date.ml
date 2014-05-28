@@ -101,28 +101,3 @@ object(self)
     Time.Second.to_float (Time.Period.to_seconds time_diff)
 
 end;;
-
-(*
-let _ =
-  let date = new date in
-  sleep 3 ;
-  let date2 = new date in
-
-  date#print_utc;
-  date#print_locale;
-
-  print_endline "";
-
-  date2#print_utc;
-  date2#print_locale;
-
-
-  let d = date2#get_diff date in
-  Printf.printf ("%dy %dm %dd %dh %dm %ds\n") d.years d.months d.days d.hours d.minutes d.seconds;
-
-  let total_sec = date2#get_diff_sec date in 
-  Printf.printf ("Num total sec: %d\n") total_sec;
-
-  Pervasives.flush Pervasives.stdout
-;;
-*)
