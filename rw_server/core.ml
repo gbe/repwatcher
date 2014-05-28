@@ -376,9 +376,9 @@ object(self)
 		    s_date = opening_date#get_str_locale ;
 		    (* Desactivate the first offset when opening_file,
 		     * useful when re-opening the file
-		     * s_offset = offset_opt ;
 		     *)
-		    s_offset = None ;
+		    s_first_offset = None ;
+		    s_last_offset = None ;
 		    s_sql_obj = None ;
 		    s_created = created ;
 		  }
@@ -518,7 +518,8 @@ object(self)
 	      s_state = SQL_File_Closed ;
 	      s_size = filesize ;
 	      s_date = closing_date#get_str_locale ;
-	      s_offset = overriden_last_offset_opt ;
+	      s_first_offset = first_offset_opt ;
+	      s_last_offset = overriden_last_offset_opt ;
 	      s_sql_obj = sql_obj_opt ;
 	      s_created = written ; (* better to use the written than created *)
 	    }

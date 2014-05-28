@@ -115,7 +115,8 @@ let loop_check () =
 		    s_state = SQL_Switch_On_Created ;
 		    s_size = filesize ;
 		    s_date = opening_date#get_str_locale ;
-		    s_offset = new_offset_opt ;
+		    s_first_offset = None ; (* Not used thus None *)
+		    s_last_offset = None ; (* Not used thus None *)
 		    s_sql_obj = sql_obj_opt ;
 		    s_created = true ;
 		  }
@@ -137,7 +138,13 @@ let loop_check () =
 		    end;
 		  s_size = filesize ;
 		  s_date = opening_date#get_str_locale ;
-		  s_offset = new_offset_opt ;
+		  s_first_offset =
+		    (* First offset not modified if already existing *)
+		    begin match first_offset_opt with
+		    | None -> new_offset_opt ;
+		    | Some _ -> first_offset_opt ;
+		    end;
+		  s_last_offset = new_offset_opt ;
 		  s_sql_obj = sql_obj_opt ;
 		  s_created = created ;
 		}

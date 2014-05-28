@@ -166,7 +166,7 @@ object(self)
 		sql#file_closed
 		  sql_report.s_date
 		  sql_report.s_size
-		  sql_report.s_offset
+		  sql_report.s_last_offset
 		  sql_report.s_created
 	    end;
 	    None
@@ -175,7 +175,7 @@ object(self)
 	    begin match sql_report.s_sql_obj with
 	      | None -> assert false
 	      | Some sql ->
-		sql#first_known_offset sql_report.s_offset
+		sql#first_known_offset sql_report.s_first_offset
 	    end;
 	    None
 
@@ -183,7 +183,7 @@ object(self)
 	    begin match sql_report.s_sql_obj with
 	      | None -> assert false
 	      | Some sql ->
-		sql#last_known_offset sql_report.s_offset
+		sql#last_known_offset sql_report.s_last_offset
 	    end;
 	    None
 
