@@ -324,10 +324,6 @@ object(self)
 
 	      Log.log (file.f_login^has_what^file.f_name, Normal);
 
-	      let offset_opt =
-		Files.get_offset file.f_program_pid file.f_descriptor
-	      in
-
 	      let file_prepared = Report.report#prepare_data file in
 
 	      (* *** Notifications *** *)
@@ -353,7 +349,7 @@ object(self)
 		{
 		  m_filestate = File_Opened;
 		  m_file = file_prepared;
-		  m_offset = offset_opt;
+		  m_offset = None;
 		  m_filesize = filesize_opt;
 		  m_opening_date = Some opening_date;
 		  m_closing_date = None;
@@ -390,23 +386,11 @@ object(self)
 	      in
 	      (* *********** *)
 	      
-	      let isfirstoffsetknown =
-		match offset_opt with
-		  | None -> false
-		  | Some _ ->
-		    (* Desactivate the first offset when opening_file,
-		     * useful when re-opening the file *)
-		    if Config.cfg#is_sql_activated then
-		      false
-		    else
-		      true
-	      in
-
 	      Hashtbl.add Files_progress.ht
 		(wd, file)
 		(opening_date,
 		 (filesize_opt, false),
-		 (isfirstoffsetknown, offset_opt, 0),
+		 (None, None, 0),
 		 sql_obj_opt,
 		 created)
 
@@ -474,7 +458,7 @@ object(self)
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), (opening_date, (filesize, _), (_, offset, _), sql_obj_opt, _)) ->
+      fun ((wd2, f_file), (opening_date, (filesize, _), (first_offset_opt, last_offset_opt, _), sql_obj_opt, _)) ->
 
 	Mutex.lock Files_progress.mutex_ht ;	  
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -505,24 +489,24 @@ object(self)
 
 	(* update last_known_offset according to filesize and written *)
 	(* if file could not be read or does not exist anymore then filesize = None *)
-	let offset_opt =
-	  match offset with
+	let overriden_last_offset_opt =
+	  match last_offset_opt with
 	    | None -> None (* unlikely to happen as data are read during the file_open event *)
-	    | Some offset' ->
+	    | Some last_offset' ->
 	      match filesize with
-		| None -> offset (* best answer we have *)
+		| None -> last_offset_opt (* best answer we have *)
 		| Some filesize' ->
 
 		  (* fix the offset to be equal to filesize
 		   * when creating the file *)
-		  if filesize' > offset' && written then
+		  if filesize' > last_offset' && written then
 		    filesize
 
 		  (* Sometimes, it happens that the offset is bigger than the filesize *)
-		  else if filesize' < offset' && not written then
+		  else if filesize' < last_offset' && not written then
 		    filesize
 
-		  else offset
+		  else last_offset_opt
 	in
 
 	begin match Config.cfg#is_sql_activated with
@@ -533,7 +517,7 @@ object(self)
 	      s_state = SQL_File_Closed ;
 	      s_size = filesize ;
 	      s_date = closing_date#get_str_locale ;
-	      s_offset = offset_opt ;
+	      s_offset = overriden_last_offset_opt ;
 	      s_sql_obj = sql_obj_opt ;
 	      s_created = written ; (* better to use the written than created *)
 	    }
@@ -546,7 +530,7 @@ object(self)
 	  {
 	    m_filestate = File_Closed;
 	    m_file = file_prepared;
-	    m_offset = offset_opt;
+	    m_offset = overriden_last_offset_opt;
 	    m_filesize = filesize;
 	    m_opening_date = Some opening_date;
 	    m_closing_date = Some closing_date;

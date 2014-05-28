@@ -11,26 +11,26 @@ let loop_check () =
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
 
-    Hashtbl.iter (fun (wd, file) (opening_date, (filesize, filesize_checked_again), (isfirstoffsetknown, _, error_counter), sql_obj_opt, created) ->
-      let offset_opt =
+    Hashtbl.iter (fun (wd, file) (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter), sql_obj_opt, created) ->
+      let new_offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
 
       (* if at None then no Hashtbl update *)
-      match offset_opt with
+      match new_offset_opt with
 	| None ->
 	  let error_counter' = error_counter + 1 in
 
 	  (* if an offset couldn't be retrieved, then this key must
 	   * be removed from the files in progress hashtable
-	   * Removable is done at the second time so that time is given to a close event
+	   * Removal is done at the second time so that time is given to a close event
 	   * to be processed by core (concurrency between offset and core)
 	   * The removal is actually done through the file_closed event which is forced here
 	   *)
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (opening_date, (filesize, filesize_checked_again), (isfirstoffsetknown, None, error_counter'), sql_obj_opt, created);
+	      (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter'), sql_obj_opt, created);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
 	    let event =
@@ -80,36 +80,28 @@ let loop_check () =
 	  in
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core
+	   * update the first_known_offset if it is None
+	   * update the last_known_offset if first_known_offset is a Some
+
 	   * Also reset the error_counter and set to true the offset_check_again as it
 	   * is necessary to be true at this point since if it used to be at false,
 	   * the check has been performed above
 	   *)
-	  Hashtbl.replace Files_progress.ht
-	    (wd, file)
-	    (opening_date, (filesize, true), (true, offset_opt, 0), sql_obj_opt, created') ;
+	  
+	  begin match first_offset_opt with
+	  | None ->
+	    Hashtbl.replace Files_progress.ht
+	      (wd, file)
+	      (opening_date, (filesize, true), (new_offset_opt, last_offset_opt, 0), sql_obj_opt, created')
+	  | Some _ ->
+	    Hashtbl.replace Files_progress.ht
+	      (wd, file)
+	      (opening_date, (filesize, true), (first_offset_opt, new_offset_opt, 0), sql_obj_opt, created')
+	  end;
 
 	  match (Config.cfg)#is_sql_activated with
 	    | false -> ()
 	    | true ->
-	      let sql_report_offset =
-		{
-		  s_file = file ;
-		  s_state =
-
-		    (* Because the First_Known value in the RDBMS is NULL,
-		       instead of updating the Last Known value, this update
-		       the First Known field *)
-		    begin match isfirstoffsetknown with
-		      | true -> SQL_LK_Offset
-		      | false -> SQL_FK_Offset
-		    end;
-		  s_size = filesize ;
-		  s_date = opening_date#get_str_locale ;
-		  s_offset = offset_opt ;
-		  s_sql_obj = sql_obj_opt ;
-		  s_created = created ;
-		}
-	      in
 
 	      (* If the file in progress was flagged as not created while it
 	       * is actually being written, then the 'created' flag in the RDBMS
@@ -121,7 +113,7 @@ let loop_check () =
 		    s_state = SQL_Switch_On_Created ;
 		    s_size = filesize ;
 		    s_date = opening_date#get_str_locale ;
-		    s_offset = offset_opt ;
+		    s_offset = new_offset_opt ;
 		    s_sql_obj = sql_obj_opt ;
 		    s_created = true ;
 		  }
@@ -129,6 +121,25 @@ let loop_check () =
 		ignore (Report.report#sql sql_report_created)
 	      end;
 
+	      let sql_report_offset =
+		{
+		  s_file = file ;
+		  s_state =
+
+		    (* Because the First_Known value in the RDBMS is NULL,
+		       instead of updating the Last Known value, this updates
+		       the SQL First Known field *)
+		    begin match first_offset_opt with
+		      | None -> SQL_FK_Offset
+		      | Some _ -> SQL_LK_Offset
+		    end;
+		  s_size = filesize ;
+		  s_date = opening_date#get_str_locale ;
+		  s_offset = new_offset_opt ;
+		  s_sql_obj = sql_obj_opt ;
+		  s_created = created ;
+		}
+	      in
 	      ignore (Report.report#sql sql_report_offset)
 
     ) Files_progress.ht ;
