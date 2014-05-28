@@ -41,7 +41,8 @@ type sql_type =
 type mail_t = {
   m_filestate: file_state;
   m_file: file2clients;
-  m_offset: int64 option;
+  m_first_offset: int64 option;
+  m_last_offset: int64 option;
   m_filesize: int64 option;
   m_opening_date: Date.date option;
   m_closing_date: Date.date option;

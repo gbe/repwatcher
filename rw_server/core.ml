@@ -349,7 +349,8 @@ object(self)
 		{
 		  m_filestate = File_Opened;
 		  m_file = file_prepared;
-		  m_offset = None;
+		  m_first_offset = None;
+		  m_last_offset = None;
 		  m_filesize = filesize_opt;
 		  m_opening_date = Some opening_date;
 		  m_closing_date = None;
@@ -530,7 +531,8 @@ object(self)
 	  {
 	    m_filestate = File_Closed;
 	    m_file = file_prepared;
-	    m_offset = overriden_last_offset_opt;
+	    m_first_offset = first_offset_opt;
+	    m_last_offset = overriden_last_offset_opt;
 	    m_filesize = filesize;
 	    m_opening_date = Some opening_date;
 	    m_closing_date = Some closing_date;
