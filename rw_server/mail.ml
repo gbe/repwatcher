@@ -116,7 +116,7 @@ let send mail =
       | Some first, Some last ->
 	Printf.printf "first: %Ld\tlast: %Ld\n" first last;
 	let bandwidth =
-	  (Int64.to_float last) -. (Int64.to_float first) /.
+	  ((Int64.to_float last) -. (Int64.to_float first)) /.
 	    (closing_date#get_diff_sec opening_date) /. 1024.
 	in
 	Printf.printf "bandwidth: %.02f\n" bandwidth;
