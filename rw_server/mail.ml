@@ -32,7 +32,7 @@ let send mail =
   let gentxt () =
 
     let txt =
-      ref (Printf.sprintf "%s %s %s\n\nPath: %s\nProgram: %s\nOpened: %s"
+      ref (Printf.sprintf "%s %s %s\n\nPath: %s\nProgram: %s\nOpened on: %s"
 	     file.f2_username
 	     filestate_str
 	     file.f2_name
@@ -102,9 +102,8 @@ let send mail =
 
       txt :=
 	Printf.sprintf
-	"%s\nOpened on: %s\tFirst known offset: %s\nClosed on: %s\tLast known offset: %s\nDuration: %s\tProgression: %s\nSize: %s"
+	"%s\tFirst known offset: %s\nClosed on: %s\tLast known offset: %s\nDuration: %s\tProgression: %s\nSize: %s"
 	(!txt)
-	opening_date#get_str_locale
 	first_off_str
 	closing_date#get_str_locale
 	last_off_str
@@ -115,10 +114,12 @@ let send mail =
       (* Bandwidth computation added to string *)
       match (mail.m_first_offset, mail.m_last_offset) with
       | Some first, Some last ->
+	Printf.printf "first: %Ld\tlast: %Ld\n" first last;
 	let bandwidth =
 	  (Int64.to_float last) -. (Int64.to_float first) /.
-	    (closing_date#get_diff_sec opening_date) *. 1024.
+	    (closing_date#get_diff_sec opening_date) /. 1024.
 	in
+	Printf.printf "bandwidth: %.02f\n" bandwidth;
 	txt := Printf.sprintf "%s\nBandwidth rate: %.02f KB/s" (!txt) bandwidth;
       | _ -> ()
     end;
