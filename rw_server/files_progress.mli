@@ -1,5 +1,3 @@
-open Sql_report ;;
-
 val mutex_ht : Mutex.t
 
 (*
