@@ -32,7 +32,7 @@ let send mail =
   let gentxt () =
 
     let txt =
-      ref (Printf.sprintf "%s %s %s\n\nPath:\t%s\nProgram:\t%s\nOpened at:\t%s"
+      ref (Printf.sprintf "%s %s %s\n\nPath:\t\t%s\nProgram:\t%s\nOpened at:\t%s"
 	     file.f2_username
 	     filestate_str
 	     file.f2_name
@@ -102,7 +102,7 @@ let send mail =
 
       txt :=
 	Printf.sprintf
-	"%s\tFirst known offset:\t%s\nClosed at:\t%s\t\tLast known offset:\t%s\nDuration:\t%s\t\tProgression:\t%s\nSize: %s"
+	"%s\t\tFirst known offset:\t%s\nClosed at:\t%s\t\tLast known offset:\t%s\nDuration:\t%s\t\tProgression:\t%s\nSize: %s"
 	(!txt)
 	first_off_str
 	closing_date#get_str_locale
@@ -114,17 +114,17 @@ let send mail =
       (* Bandwidth computation added to string *)
       match (mail.m_first_offset, mail.m_last_offset) with
       | Some first, Some last ->
-	let data_transfered = Int64.to_float (Int64.sub last first) in
-	let data_transfered_MB = data_transfered /. (1024. *. 1024.) in
-	let percentage_transfered = data_transfered /. (float_of_string filesize_str) *. 100. in
+	let data_transferred = Int64.to_float (Int64.sub last first) in
+	let data_transferred_MB = data_transferred /. (1024. *. 1024.) in
+	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
 	let bandwidth =
-	  data_transfered /. (closing_date#get_diff_sec opening_date) /. 1024.
+	  data_transferred /. (closing_date#get_diff_sec opening_date) /. 1024.
 	in	
 	txt := Printf.sprintf
-	  "%s\n%.02f MB transfered (%.02f%c of the file) @ %.02f KB/s"
+	  "%s\n%.02f MB transferred (%.02f%c of the file) @ %.02f KB/s"
 	  (!txt)
-	  data_transfered_MB
-	  percentage_transfered
+	  data_transferred_MB
+	  percentage_transferred
 	  '%'
 	  bandwidth;
       | _ -> ()
