@@ -3,6 +3,7 @@ open Types ;;
 open Types_conf ;;
 open Types_date ;;
 
+
 let send mail =
 
   let file = mail.m_file in
@@ -48,8 +49,7 @@ let send mail =
       in
       let progression_float = ref (-1.) in
 
-      (* first_off_str not used for the moment *)
-      let (_, last_off_str, filesize_str) =
+      let (first_off_str, last_off_str, filesize_str) =
 	match (mail.m_first_offset, mail.m_last_offset, mail.m_filesize) with
 
 	(* If first_offset is known, last_offset is a None as well.
@@ -66,7 +66,8 @@ let send mail =
 	| (Some first_offset, Some last_offset, Some filesize) ->
 	  let last_offset_float = Int64.to_float last_offset in
 	  let filesize_float = Int64.to_float filesize in
-	  progression_float := last_offset_float /. filesize_float *. 100.;
+	  progression_float := last_offset_float /. filesize_float *. 100. ;
+
 	  (Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
       in
 
@@ -97,19 +98,29 @@ let send mail =
 	!duration_txt
 	duration.minutes
 	duration.seconds;
-      
+
+
       txt :=
-(*	Printf.sprintf
-	"%s\nOpened on: %s\nClosed on: %s\nDuration: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s\nBandwith rate: %.02f KB/s" *)
 	Printf.sprintf
-	"%s\nOpened on: %s\nClosed on: %s\nDuration: %s\nProgression: %s\tLast Known Offset: %s\tSize: %s"
+	"%s\nOpened on: %s\tFirst known offset: %s\nClosed on: %s\tLast known offset: %s\nDuration: %s\tProgression: %s\nSize: %s"
 	(!txt)
 	opening_date#get_str_locale
+	first_off_str
 	closing_date#get_str_locale
+	last_off_str
 	(!duration_txt)
 	progression
-	last_off_str
-	filesize_str
+	filesize_str ;
+
+      (* Bandwidth computation added to string *)
+      match (mail.m_first_offset, mail.m_last_offset) with
+      | Some first, Some last ->
+	let bandwidth =
+	  (Int64.to_float last) -. (Int64.to_float first) /.
+	    (closing_date#get_diff_sec opening_date) *. 1024.
+	in
+	txt := Printf.sprintf "%s\nBandwidth rate: %.02f KB/s" (!txt) bandwidth;
+      | _ -> ()
     end;
 
     !txt

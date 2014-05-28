@@ -98,7 +98,7 @@ object(self)
   method get_diff_sec (d : date) =
     let diff = Calendar.sub self#get_utc d#get_utc in
     let time_diff = Calendar.Period.safe_to_time diff in
-    Time.Period.to_seconds time_diff
+    Time.Second.to_float (Time.Period.to_seconds time_diff)
 
 end;;
 
