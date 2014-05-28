@@ -114,11 +114,19 @@ let send mail =
       (* Bandwidth computation added to string *)
       match (mail.m_first_offset, mail.m_last_offset) with
       | Some first, Some last ->
+	let data_transfered = Int64.to_float (Int64.sub last first) in
+	let data_transfered_MB = data_transfered /. (1024. *. 1024.) in
+	let percentage_transfered = data_transfered /. (float_of_string filesize_str) *. 100. in
 	let bandwidth =
-	  ((Int64.to_float last) -. (Int64.to_float first)) /.
-	    (closing_date#get_diff_sec opening_date) /. 1024.
-	in
-	txt := Printf.sprintf "%s\nBandwidth rate: %.02f KB/s" (!txt) bandwidth;
+	  data_transfered /. (closing_date#get_diff_sec opening_date) /. 1024.
+	in	
+	txt := Printf.sprintf
+	  "%s\n%f MB transfered (%.02f%c of the file) @ %.02f KB/s"
+	  (!txt)
+	  data_transfered_MB
+	  percentage_transfered
+	  '%'
+	  bandwidth;
       | _ -> ()
     end;
 
