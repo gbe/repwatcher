@@ -90,10 +90,12 @@ let loop_check () =
 	  
 	  begin match first_offset_opt with
 	  | None ->
+	    (* The last_known_offset is necessarily equal to the first_known_offset *)
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (opening_date, (filesize, true), (new_offset_opt, last_offset_opt, 0), sql_obj_opt, created')
+	      (opening_date, (filesize, true), (new_offset_opt, new_offset_opt, 0), sql_obj_opt, created')
 	  | Some _ ->
+	    (* Only the last_known_offset must be updated *)
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
 	      (opening_date, (filesize, true), (first_offset_opt, new_offset_opt, 0), sql_obj_opt, created')

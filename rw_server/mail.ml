@@ -48,22 +48,25 @@ let send mail =
       in
       let progression_float = ref (-1.) in
 
-      let (first_off_str, last_off_str, filesize_str) =
+      (* first_off_str not used for the moment *)
+      let (_, last_off_str, filesize_str) =
 	match (mail.m_first_offset, mail.m_last_offset, mail.m_filesize) with
 
 	(* If first_offset is known, last_offset is a None as well.
 	 * To avoid writing the unnecessary cases, I put a _ *)
 	| (None, _, None) -> ("Unknown", "Unknown", "Unknown")
 	| (None, _, Some filesize) -> ("Unknown", "Unknown", Int64.to_string filesize)
-	| (Some first_offset, None, None) -> (Int64.to_string first_offset, "Unknown", "Unknown")
-	| (Some first_offset, None, Some filesize) ->
-	  let first_offset_float = Int64.to_float first_offset in
-	  let filesize_float = Int64.to_float filesize in
-	  progression_float := first_offset_float/.filesize_float*.100.;
-	  (Int64.to_string first_offset, "Unknown", Int64.to_string filesize)
 
-	| (Some first_offset, Some last_offset, None) -> (Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
+	  (* Last_known_offset cannot be a None if First_known_offset is not*)
+	| (Some first_offset, None, _) -> assert false
+
+	| (Some first_offset, Some last_offset, None) -> 
+	  (Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
+
 	| (Some first_offset, Some last_offset, Some filesize) ->
+	  let last_offset_float = Int64.to_float last_offset in
+	  let filesize_float = Int64.to_float filesize in
+	  progression_float := last_offset_float /. filesize_float *. 100.;
 	  (Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
       in
 
