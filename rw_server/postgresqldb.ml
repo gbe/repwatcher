@@ -28,6 +28,7 @@ object(self)
       | None -> None
       | Some p -> Some (string_of_int p))
 
+
   method private _get_dbname =
     match dbname with
       | None -> assert false
@@ -96,6 +97,12 @@ object(self)
     self#_connect ~nodb:true ()
 
 
+  (* The disconnection is performed on a by-object basis and
+   * when occurs the events :
+   * - create database
+   * - reset_progress
+   * - the file_close
+   *)
   method disconnect ?(log=true) () =
     self#_cleanup_prepare_stmts;
 
@@ -197,11 +204,6 @@ object(self)
 	  last_result <- Some (cid'#exec_prepared ~expect:[expect] ~params:args statemt_str);
       end;
 
-      (* The disconnection is performed on a by-object basis and
-       * when occurs the events :
-       * - create database
-       * - reset_progress
-       * - the file_close *)
       if disconnect then
 	self#disconnect ~log:log ();
 
