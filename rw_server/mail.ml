@@ -1,148 +1,220 @@
-open Netsendmail ;;
-open Types ;;
-open Types_conf ;;
-open Types_date ;;
+open Netsendmail
+open Types
+open Types_conf
+open Types_date
+
+class email m =
+object(self)
+
+  val file = m.m_file
+  val filestate = Txt_operations.string_of_filestate m.m_filestate
+  val mutable subject = ""
+  val mutable body = ""
+  val mutable first_off_str = ""
+  val mutable last_off_str = ""
+  val mutable filesize_str = ""
+  val mutable progression = -1.
+
+  initializer
+    match (m.m_first_offset, m.m_last_offset, m.m_filesize) with
+
+      (* If first_offset is known, last_offset is a None as well.
+       * To avoid writing the unnecessary cases, I put a _ *)
+      | (None, _, None) ->
+	first_off_str <- "Unknown";
+	last_off_str <- "Unknown";
+	filesize_str <- "Unknown";
+
+      | (None, _, Some filesize) ->
+	first_off_str <- "Unknown";
+	last_off_str <- "Unknown";
+	filesize_str <- Int64.to_string filesize;
+
+      (* Last_known_offset cannot be a None if First_known_offset is not*)
+      | (Some first_offset, None, _) -> assert false
+
+      | (Some first_offset, Some last_offset, None) ->
+	first_off_str <- Int64.to_string first_offset;
+	last_off_str <- Int64.to_string last_offset;
+	filesize_str <- "Unknown";
+
+      | (Some first_offset, Some last_offset, Some filesize) ->
+	let last_offset_float = Int64.to_float last_offset in
+	let filesize_float = Int64.to_float filesize in
+
+	progression <- last_offset_float /. filesize_float *. 100. ;
+	first_off_str <- Int64.to_string first_offset;
+	last_off_str <- Int64.to_string last_offset;
+	filesize_str <- Int64.to_string filesize
+
+
+  method private _strip_date_option date_opt =
+    match date_opt with
+      | None -> assert false
+      | Some date -> date
+
+  method set_subject =
+    subject <- file.f2_username^" "^filestate^" "^file.f2_name
+
+  (* append to body *)
+  method private _app v = body <- body^v
+
+  method private _tab = self#_app "\t"
+  method private _LF = self#_app "\n"
+
+  method private _username_val = self#_app file.f2_username
+
+  method private _filestate_val = self#_app filestate
+
+  method private _path = self#_app "Path:"
+  method private _path_val = self#_app file.f2_path
+
+  method private _filename_val = self#_app file.f2_name
+
+  method private _program = self#_app "Program:"
+  method private _program_val = self#_app file.f2_program
+
+  method private _opening_date = self#_app "Opened at:"
+  method private _opening_date_val =
+    let opening_date = self#_strip_date_option m.m_opening_date in
+    self#_app (opening_date#get_str_locale)
+
+  method private _closing_date = self#_app "Closed at:"
+  method private _closing_date_val =
+    let closing_date = self#_strip_date_option m.m_closing_date in
+    self#_app (closing_date#get_str_locale)
+
+  method private _first_known_offset = self#_app "First known offset:"
+  method private _last_known_offset = self#_app "Last known offset:"
+  method private _offset_val offset_str = self#_app offset_str
+
+  method private _duration = self#_app "Duration:"
+  method private _duration_val =
+    let opening_date = self#_strip_date_option m.m_opening_date in
+    let closing_date = self#_strip_date_option m.m_closing_date in
+    let duration = closing_date#get_diff opening_date in
+
+    if duration.years > 0 then
+      self#_app (Printf.sprintf "%d years" duration.years);
+
+    if duration.months > 0 then
+      self#_app (Printf.sprintf " %d months" duration.months);
+
+    if duration.days > 0 then
+      self#_app (Printf.sprintf " %d days" duration.days);
+
+    if duration.hours > 0 then
+      self#_app (Printf.sprintf " %d hours" duration.hours);
+
+    self#_app (Printf.sprintf " %d minutes %d seconds"
+		duration.minutes
+		duration.seconds)
+
+
+  method private _progression = self#_app "Progression:"
+  method private _progression_val =
+    if progression <= 0. then
+      self#_app "N/A"
+    else
+      self#_app (Printf.sprintf "%.02f%c" progression '%')
+
+
+  method private _size = self#_app "Size:"
+  method private _size_val = self#_app filesize_str
+
+  method private _transfer_val =
+
+    (* Bandwidth computation added to string *)
+    match (m.m_first_offset, m.m_last_offset) with
+      | Some first, Some last ->
+	let opening_date = self#_strip_date_option m.m_opening_date in
+	let closing_date = self#_strip_date_option m.m_closing_date in
+
+	let data_transferred = Int64.to_float (Int64.sub last first) in
+	(* 1MB = 1048576 = 1024 * 1024 *)
+	let data_transferred_MB = data_transferred /. 1048576. in
+	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
+	let bandwidth =
+	  data_transferred /. (closing_date#get_diff_sec opening_date) /. 1024.
+	in	
+
+	let txt =
+	  Printf.sprintf
+	    "%.02f MB transferred (%.02f%c of the file) @ %.02f KB/s"
+	    data_transferred_MB
+	    percentage_transferred
+	    '%'
+	    bandwidth
+	in
+	self#_app txt
+
+      | _ -> ()
+
+
+  method set_body =
+    self#_path; self#_tab; self#_tab; self#_path_val;
+    self#_LF;
+
+    self#_program; self#_tab; self#_program_val;
+    self#_opening_date; self#_tab; self#_opening_date_val;
+
+    if m.m_filestate = File_Closed then begin
+
+      self#_tab; self#_tab;
+      self#_first_known_offset; self#_tab; self#_offset_val first_off_str;
+      self#_LF;
+
+      self#_closing_date; self#_tab; self#_closing_date_val;
+      self#_tab;
+      self#_tab;
+      self#_last_known_offset; self#_tab; self#_offset_val last_off_str;
+      self#_duration; self#_tab; self#_duration_val;
+      self#_tab;
+      self#_tab;
+      self#_progression; self#_tab; self#_progression_val;
+      self#_LF;
+
+      self#_size;
+      self#_tab;
+      self#_size_val;
+
+      self#_LF;
+      self#_transfer_val
+    end
+
+  method get_body = body
+  method get_subject = subject
+  method get_filestate = filestate
+
+end;;
 
 
 let send mail =
 
   let file = mail.m_file in
-  let conf_e_opt = ((Config.cfg)#get).c_email in
 
-  let e =
-    match conf_e_opt with
-    (* Cannot happen as it is filtered in report.ml *)
-      | None -> assert false
-      | Some e -> e
-  in
+  try
+    let e_conf = (Config.cfg)#get_email in
 
-  let filestate_str =
-    match mail.m_filestate with
-      | File_Created -> "has created"
-      | File_Opened  -> "has opened"
-      | File_Closed  -> "closed"
-  in
-
-  let opening_date =
-    match mail.m_opening_date with
-    | None -> assert false
-    | Some date -> date
-  in
-
-  let gentxt () =
-
-    let txt =
-      ref (Printf.sprintf "%s %s %s\n\nPath:\t\t%s\nProgram:\t%s\nOpened at:\t%s"
-	     file.f2_username
-	     filestate_str
-	     file.f2_name
-	     file.f2_path
-	     file.f2_program
-	     opening_date#get_str_locale)
-    in
-
-    if mail.m_filestate = File_Closed then begin
-      let closing_date =
-	match mail.m_closing_date with
-	| None -> assert false
-	| Some date -> date
-      in
-      let progression_float = ref (-1.) in
-
-      let (first_off_str, last_off_str, filesize_str) =
-	match (mail.m_first_offset, mail.m_last_offset, mail.m_filesize) with
-
-	(* If first_offset is known, last_offset is a None as well.
-	 * To avoid writing the unnecessary cases, I put a _ *)
-	| (None, _, None) -> ("Unknown", "Unknown", "Unknown")
-	| (None, _, Some filesize) -> ("Unknown", "Unknown", Int64.to_string filesize)
-
-	  (* Last_known_offset cannot be a None if First_known_offset is not*)
-	| (Some first_offset, None, _) -> assert false
-
-	| (Some first_offset, Some last_offset, None) -> 
-	  (Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
-
-	| (Some first_offset, Some last_offset, Some filesize) ->
-	  let last_offset_float = Int64.to_float last_offset in
-	  let filesize_float = Int64.to_float filesize in
-	  progression_float := last_offset_float /. filesize_float *. 100. ;
-
-	  (Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
-      in
-
-      let progression =
-	if !progression_float <= 0. then
-	  "N/A"
-	else
-	  Printf.sprintf "%.02f%c" !progression_float '%'
-      in
-
-
-      let duration = closing_date#get_diff opening_date in
-      let duration_txt = ref "" in
-      if duration.years > 0 then
-	duration_txt := Printf.sprintf "%d years" duration.years;
-
-      if duration.months > 0 then
-	duration_txt := Printf.sprintf "%s %d months" !duration_txt duration.months;
-
-      if duration.days > 0 then
-	duration_txt := Printf.sprintf "%s %d days" !duration_txt duration.days;
-
-      if duration.hours > 0 then
-	duration_txt := Printf.sprintf "%s %d hours" !duration_txt duration.hours;
-
-      duration_txt :=
-	Printf.sprintf "%s %d minutes %d seconds"
-	!duration_txt
-	duration.minutes
-	duration.seconds;
-
-
-      txt :=
-	Printf.sprintf
-	"%s\t\tFirst known offset:\t%s\nClosed at:\t%s\t\tLast known offset:\t%s\nDuration:\t%s\t\tProgression:\t%s\nSize: %s"
-	(!txt)
-	first_off_str
-	closing_date#get_str_locale
-	last_off_str
-	(!duration_txt)
-	progression
-	filesize_str ;
-
-      (* Bandwidth computation added to string *)
-      match (mail.m_first_offset, mail.m_last_offset) with
-      | Some first, Some last ->
-	let data_transferred = Int64.to_float (Int64.sub last first) in
-	let data_transferred_MB = data_transferred /. (1024. *. 1024.) in
-	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
-	let bandwidth =
-	  data_transferred /. (closing_date#get_diff_sec opening_date) /. 1024.
-	in	
-	txt := Printf.sprintf
-	  "%s\n%.02f MB transferred (%.02f%c of the file) @ %.02f KB/s"
-	  (!txt)
-	  data_transferred_MB
-	  percentage_transferred
-	  '%'
-	  bandwidth;
-      | _ -> ()
-    end;
-
-    !txt
-  in
-
-
-  let subject = file.f2_username^" "^filestate_str^" "^file.f2_name in
+    let email = new email mail in
+    email#set_subject;
+    email#set_body;
   
-  (***** Let's log it *****)
-  List.iter (fun recipient ->
-    let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^filestate_str^" "^file.f2_name in
+    (***** Let's log it *****)
+    List.iter (fun recipient ->
+      let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^email#get_filestate^" "^file.f2_name in
 
-    Log.log (txt2log, Normal)
-  ) e.e_recipients;
+      Log.log (txt2log, Normal)
+    ) e_conf.e_recipients;
   (************************)
 
-  Sendmail.sendmail e subject (gentxt ()) ()
+
+    Sendmail.sendmail e_conf email#get_subject email#get_body ()
+
+  (* Should not happen as it is filtered in report.ml *)
+  with Config.Email_not_configured ->
+    Log.log
+      ("Tried to prepare an email while the emails are disabled",
+       Error);
+    assert false
 ;;

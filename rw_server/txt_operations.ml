@@ -1,4 +1,5 @@
-open Unix;;
+open Unix
+open Types
 
 let l_encoded_chars =
 (* &amp; needs to be the first one in the list.
@@ -29,4 +30,11 @@ let name login =
   match Str.string_match r gecos 0 with
     | false -> None
     | true -> Some (Str.matched_string gecos)
+;;
+
+let string_of_filestate filestate =
+  match filestate with
+    | File_Created -> "has created"
+    | File_Opened  -> "has opened"
+    | File_Closed  -> "closed"
 ;;

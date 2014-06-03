@@ -44,10 +44,7 @@ object(self)
 	  
     if conf.c_notify.n_locally then begin
       let msg_state =
-	match filestate with
-	  | File_Created -> "has created"
-	  | File_Opened -> "has opened"
-	  | File_Closed -> "closed"
+	Txt_operations.string_of_filestate filestate
       in
 
       (* Return the n last folders *)
