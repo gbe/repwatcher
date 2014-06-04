@@ -9,10 +9,11 @@ ocaml ocaml-findlib ocaml-nox ocaml-native-compilers libssl-ocaml-dev libmysql-o
 and also the ocaml-fdinfo library version 0.4.1 or above, downloadable: https://github.com/gbe/ocaml-fdinfo
 
 * Please note that you need ocaml-ssl version 0.4.5 or +
+* Please note that you need ocaml-mysql version 1.1.1 or +
 
 The Repwatcher database and its "accesses" table are automatically created at Repwatcher server runtime if:
-- they do not already exist
-- sql_rdbms is activated in the configuration file.
+- sql_rdbms is activated in the configuration file
+- they do not already exist.
 
 The database name is the one set in the configuration file. However, for your information, this is the accesses table in MySQL syntax:
 
