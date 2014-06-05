@@ -16,36 +16,31 @@ object(self)
   val mutable progression = -1.
 
   initializer
+  let (first, last, fsize) =
     match (m.m_first_offset, m.m_last_offset, m.m_filesize) with
 
       (* If first_offset is known, last_offset is a None as well.
        * To avoid writing the unnecessary cases, I put a _ *)
-      | (None, _, None) ->
-	first_off_str <- "Unknown";
-	last_off_str <- "Unknown";
-	filesize_str <- "Unknown";
+      | (None, _, None) -> ("Unknown", "Unknown", "Unknown")
 
-      | (None, _, Some filesize) ->
-	first_off_str <- "Unknown";
-	last_off_str <- "Unknown";
-	filesize_str <- Int64.to_string filesize;
+      | (None, _, Some filesize) -> ("Unknown", "Unknown", Int64.to_string filesize)
 
       (* Last_known_offset cannot be a None if First_known_offset is not*)
       | (Some first_offset, None, _) -> assert false
 
       | (Some first_offset, Some last_offset, None) ->
-	first_off_str <- Int64.to_string first_offset;
-	last_off_str <- Int64.to_string last_offset;
-	filesize_str <- "Unknown";
+	(Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
 
       | (Some first_offset, Some last_offset, Some filesize) ->
 	let last_offset_float = Int64.to_float last_offset in
 	let filesize_float = Int64.to_float filesize in
 
 	progression <- last_offset_float /. filesize_float *. 100. ;
-	first_off_str <- Int64.to_string first_offset;
-	last_off_str <- Int64.to_string last_offset;
-	filesize_str <- Int64.to_string filesize
+	(Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
+  in
+  first_off_str <- first;
+  last_off_str <- last;
+  filesize_str <- fsize;
 
 
   method private _strip_date_option date_opt =
