@@ -48,9 +48,6 @@ object(self)
       | None -> assert false
       | Some date -> date
 
-  method set_subject =
-    subject <- file.f2_username^" "^filestate^" "^file.f2_name
-
   (* append to body *)
   method private _app v = body <- body^v
 
@@ -89,21 +86,34 @@ object(self)
     let closing_date = self#_strip_date_option m.m_closing_date in
     let duration = closing_date#get_diff opening_date in
 
-    if duration.years > 0 then
-      self#_app (Printf.sprintf "%d years" duration.years);
 
-    if duration.months > 0 then
-      self#_app (Printf.sprintf " %d months" duration.months);
+    (* Add the plural to txt and return the result 
+     *
+     * Do not return anything if value is 0
+     * unless print_anyway is true *)
+    let plural ?(print_anyway=false) txt value =
+      let singular = Printf.sprintf "%d %s" value txt in
+      if value == 1 then
+	singular^" "
+      else if value >= 2 then
+	singular^"s "
+      else
+	begin
+	  if print_anyway then
+	    singular
+	  else ""
+	end
+    in
 
-    if duration.days > 0 then
-      self#_app (Printf.sprintf " %d days" duration.days);
+    (* Not appended if equal to 0 *)
+    self#_app (plural "year" duration.years);
+    self#_app (plural "month" duration.months);
+    self#_app (plural "day" duration.days);
+    self#_app (plural "hour" duration.hours);
+    (* ************************** *)
 
-    if duration.hours > 0 then
-      self#_app (Printf.sprintf " %d hours" duration.hours);
-
-    self#_app (Printf.sprintf " %d minutes %d seconds"
-		duration.minutes
-		duration.seconds)
+    self#_app (plural ~print_anyway:true "minute" duration.minutes);
+    self#_app (plural ~print_anyway:true "second" duration.seconds);
 
 
   method private _progression = self#_app "Progression:"
@@ -144,6 +154,10 @@ object(self)
 	self#_app txt
 
       | _ -> ()
+
+
+  method set_subject =
+    subject <- file.f2_username^" "^filestate^" "^file.f2_name
 
 
   method set_body =
