@@ -27,7 +27,7 @@ $(BIN):$(CMX)
 	ocamlyacc -v $<
 
 clean:
-	rm -f *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED) parser.output parser_conf.output .depend
+	rm -f *.cm[ix] *.annot *.o *~ $(BIN) $(GENERATED) parser.output .depend
 
 .depend depend:$(GENERATED)
 	rm -f .depend
