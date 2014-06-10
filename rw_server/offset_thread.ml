@@ -11,7 +11,7 @@ let loop_check () =
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
 
-    Hashtbl.iter (fun (wd, file) (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter), sql_obj_opt, created) ->
+    Hashtbl.iter (fun (wd, file) (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter), sql_obj_opt, written) ->
       let new_offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
@@ -30,11 +30,11 @@ let loop_check () =
 	  if error_counter' < 2 then begin
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter'), sql_obj_opt, created);
+	      (opening_date, (filesize, filesize_checked_again), (first_offset_opt, last_offset_opt, error_counter'), sql_obj_opt, written);
 	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
 	  end else begin
 	    let event =
-	      match created with
+	      match written with
 		| true ->
 		  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
 		| false ->
@@ -51,8 +51,8 @@ let loop_check () =
 	  (* Overwrite the created value given by an event 
 	   * during the opening by a new value based on
 	   * filesize comparison *)
-	  let created' = 
-	    if created = false && filesize_checked_again = false then begin
+	  let written' = 
+	    if written = false && filesize_checked_again = false then begin
 	      match filesize with
 		| None -> assert false (* case when created = true *)
 		| Some ofilesize ->
@@ -73,10 +73,10 @@ let loop_check () =
 		    (* Must be created and not false as the nfilesize could be 0
 		     * because it could not be read in the above test
 		     * therefore the created value could be true *)
-		    created
+		    written
 	    end
 	    else
-	      created
+	      written
 	  in
 
 	  (* Add the offset_opt in the Hashtbl because of Open events in Core
@@ -93,12 +93,12 @@ let loop_check () =
 	    (* The last_known_offset is necessarily equal to the first_known_offset *)
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (opening_date, (filesize, true), (new_offset_opt, new_offset_opt, 0), sql_obj_opt, created')
+	      (opening_date, (filesize, true), (new_offset_opt, new_offset_opt, 0), sql_obj_opt, written')
 	  | Some _ ->
 	    (* Only the last_known_offset must be updated *)
 	    Hashtbl.replace Files_progress.ht
 	      (wd, file)
-	      (opening_date, (filesize, true), (first_offset_opt, new_offset_opt, 0), sql_obj_opt, created')
+	      (opening_date, (filesize, true), (first_offset_opt, new_offset_opt, 0), sql_obj_opt, written')
 	  end;
 
 	  match (Config.cfg)#is_sql_activated with
@@ -108,17 +108,17 @@ let loop_check () =
 	      (* If the file in progress was flagged as not created while it
 	       * is actually being written, then the 'created' flag in the RDBMS
 	       * must be turned on *)
-	      if created = false && created' = true then begin
+	      if written = false && written' = true then begin
 		let sql_report_created =
 		  {
 		    s_file = file ;
 		    s_state = SQL_Switch_On_Created ;
-		    s_size = filesize ;
+		    s_filesize = filesize ;
 		    s_date = opening_date#get_str_locale ;
 		    s_first_offset = None ; (* Not used thus None *)
 		    s_last_offset = None ; (* Not used thus None *)
 		    s_sql_obj = sql_obj_opt ;
-		    s_created = true ;
+		    s_written = true ;
 		  }
 		in
 		ignore (Report.report#sql sql_report_created)
@@ -136,7 +136,7 @@ let loop_check () =
 		      | None -> SQL_FK_Offset
 		      | Some _ -> SQL_LK_Offset
 		    end;
-		  s_size = filesize ;
+		  s_filesize = filesize ;
 		  s_date = opening_date#get_str_locale ;
 		  s_first_offset =
 		    (* First offset not modified if already existing *)
@@ -146,7 +146,7 @@ let loop_check () =
 		    end;
 		  s_last_offset = new_offset_opt ;
 		  s_sql_obj = sql_obj_opt ;
-		  s_created = created ;
+		  s_written = written ;
 		}
 	      in
 	      ignore (Report.report#sql sql_report_offset)

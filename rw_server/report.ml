@@ -151,9 +151,9 @@ object(self)
 	    let sql = new Sqldb.sqldb in
 	    sql#file_opened
 	      sql_report.s_file
-	      sql_report.s_created
+	      sql_report.s_written
 	      sql_report.s_date
-	      sql_report.s_size;
+	      sql_report.s_filesize;
 	    Some sql
 	  
 	  | SQL_File_Closed ->
@@ -162,9 +162,9 @@ object(self)
 	      | Some sql ->
 		sql#file_closed
 		  sql_report.s_date
-		  sql_report.s_size
+		  sql_report.s_filesize
 		  sql_report.s_last_offset
-		  sql_report.s_created
+		  sql_report.s_written
 	    end;
 	    None
 

@@ -286,7 +286,7 @@ object(self)
     r_add_watch_children l_children
 
 
-  method file_opened ?(created=false) wd name =
+  method file_opened ?(written=false) wd name =
     match self#_get_value wd with
       | None ->
 	let err =
@@ -314,7 +314,7 @@ object(self)
 	      let opening_date = new Date.date in
 	      
 	      let has_what =
-		match created with
+		match written with
 		  | false -> " has opened: "
 		  | true  -> " has created: "
 	      in
@@ -327,7 +327,7 @@ object(self)
 	      let file_prepared = Report.report#prepare_data file in
 
 	      (* *** Notifications *** *)
-	      begin match created with
+	      begin match written with
 		| false ->
 		  Report.report#notify (New_notif (file_prepared, File_Opened))
 		| true ->
@@ -336,9 +336,9 @@ object(self)
 	      (* ********************* *)
 
 
-	      (* The filesize must be overriden as unknown if the file is being created *)
+	      (* The filesize must be overriden as unknown if the file is being created (written) *)
 	      let filesize_opt =
-		match created with
+		match written with
 		  | true -> None
 		  | false -> Some filesize
 	      in
@@ -356,7 +356,7 @@ object(self)
 		  m_closing_date = None;
 		}
 	      in
-	      begin match created with
+	      begin match written with
 		| false ->
 		  Report.report#mail tobemailed
 		| true ->
@@ -372,7 +372,7 @@ object(self)
 		  {
 		    s_file = file ;
 		    s_state = SQL_File_Opened ;
-		    s_size = filesize_opt ;
+		    s_filesize = filesize_opt ;
 		    s_date = opening_date#get_str_locale ;
 		    (* Desactivate the first offset when opening_file,
 		     * useful when re-opening the file
@@ -380,7 +380,7 @@ object(self)
 		    s_first_offset = None ;
 		    s_last_offset = None ;
 		    s_sql_obj = None ;
-		    s_created = created ;
+		    s_written = written ;
 		  }
 		in
 		Report.report#sql sql_report
@@ -393,7 +393,7 @@ object(self)
 		 (filesize_opt, false),
 		 (None, None, 0),
 		 sql_obj_opt,
-		 created)
+		 written)
 
 	) files ;
       
@@ -403,7 +403,7 @@ object(self)
 
 
   method file_created wd name =
-    self#file_opened ~created:true wd name
+    self#file_opened ~written:true wd name
 
   method file_closed ?(written=false) wd name =
 
@@ -516,12 +516,12 @@ object(self)
 	    let sql_report = {
 	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
-	      s_size = filesize ;
+	      s_filesize = filesize ;
 	      s_date = closing_date#get_str_locale ;
 	      s_first_offset = first_offset_opt ;
 	      s_last_offset = overriden_last_offset_opt ;
 	      s_sql_obj = sql_obj_opt ;
-	      s_created = written ; (* better to use the written than created *)
+	      s_written = written ; (* better to use the written than created *)
 	    }
 	    in
 	    ignore (Report.report#sql sql_report)
