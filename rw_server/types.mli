@@ -1,10 +1,12 @@
+(* The f_file type must be static as it is
+ * used as a hashtbl key *)
 type f_file = {
   f_name            : string ;
   f_path            : string ;
   f_unix_login : string ;
 
-  (* f_username could be the same than f_unix_login
-   * if not set in /etc/passwd *)
+  (* f_username is the same than f_unix_login
+   * if the real name is not set in /etc/passwd *)
   f_username        : string ; 
   f_program         : string ;
   f_program_pid     : Fdinfo.pid;
