@@ -227,10 +227,7 @@ object(self)
     let insert_query_args =
       [|
 	f.f_unix_login;
-	(match Txt_operations.name f.f_unix_login with
-	  | None -> "NULL"
-	  | Some username -> username
-	);
+	f.f_username;
 	f.f_program;
 	(string_of_int (Fdinfo.int_of_pid f.f_program_pid));
 	f.f_path;
@@ -415,7 +412,7 @@ object(self)
 	 "CREATE TABLE IF NOT EXISTS accesses (\
           ID SERIAL PRIMARY KEY,\
           LOGIN varchar(20) NOT NULL,\
-          USERNAME varchar(256) DEFAULT NULL,\
+          USERNAME varchar(256) NOT NULL,\
           PROGRAM varchar(26) NOT NULL,\
           PROGRAM_PID int NOT NULL,\
           PATH varchar(512) NOT NULL,\
