@@ -54,17 +54,17 @@ object(self)
   method private _tab = self#_app "\t"
   method private _LF = self#_app "\n"
 
-  method private _username_val = self#_app file.f2_username
+  method private _username_val = self#_app file.f_username
 
   method private _filestate_val = self#_app filestate
 
   method private _path = self#_app "Path:"
-  method private _path_val = self#_app file.f2_path
+  method private _path_val = self#_app file.f_path
 
-  method private _filename_val = self#_app file.f2_name
+  method private _filename_val = self#_app file.f_name
 
   method private _program = self#_app "Program:"
-  method private _program_val = self#_app file.f2_program
+  method private _program_val = self#_app file.f_program
 
   method private _opening_date = self#_app "Opened at:"
   method private _opening_date_val =
@@ -157,7 +157,7 @@ object(self)
 
 
   method set_subject =
-    subject <- file.f2_username^" "^filestate^" "^file.f2_name
+    subject <- file.f_username^" "^filestate^" "^file.f_name
 
 
   method set_body =
@@ -211,7 +211,7 @@ let send mail =
   
     (***** Let's log it *****)
     List.iter (fun recipient ->
-      let txt2log = "Sending email to "^recipient^" about "^file.f2_username^" who "^email#get_filestate^" "^file.f2_name in
+      let txt2log = "Sending email to "^recipient^" about "^file.f_username^" who "^email#get_filestate^" "^file.f_name in
 
       Log.log (txt2log, Normal)
     ) e_conf.e_recipients;

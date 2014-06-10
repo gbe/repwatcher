@@ -272,8 +272,8 @@ object(self)
     in
     let args = 
       ref [
-        f.f_login;
-	(match Txt_operations.name f.f_login with
+        f.f_unix_login;
+	(match Txt_operations.name f.f_unix_login with
 	  | None -> "NULL"
 	  | Some username -> username);
 	f.f_program;

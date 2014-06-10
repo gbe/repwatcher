@@ -19,11 +19,10 @@ let wait_pipe_from_child_process () =
 
 	  let l_current =
 	    Hashtbl.fold (fun (_,file) (opening_date,_,_,_,_) ret ->
-	      let file_prepared = Report.report#prepare_data file in
 
 	      ret@[ (
-		{ file_prepared with
-		  f2_name = (Txt_operations.escape_for_notify file_prepared.f2_name)
+		{ file with
+		  f_name = (Txt_operations.escape_for_notify file.f_name)
 		}, opening_date)
 		  ]
 	    ) Files_progress.ht []

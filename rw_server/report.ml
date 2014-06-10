@@ -39,7 +39,7 @@ object(self)
 
 
   method private _new_notification file filestate =
-    let filename_escaped = Txt_operations.escape_for_notify file.f2_name in
+    let filename_escaped = Txt_operations.escape_for_notify file.f_name in
     let conf = (Config.cfg)#get in
 	  
     if conf.c_notify.n_locally then begin
@@ -60,16 +60,16 @@ object(self)
       in
 
       let r = Str.regexp "/" in
-      let l_folders = Str.split r file.f2_path in
+      let l_folders = Str.split r file.f_path in
 
       let dbus_notif =
 	match conf.c_notify.n_parent_folders with
 	  | None ->
-	    sprintf "<b>%s</b> %s\n%s" file.f2_username msg_state filename_escaped 
+	    sprintf "<b>%s</b> %s\n%s" file.f_username msg_state filename_escaped 
 
 	  | Some parent_folders ->
 	    sprintf "<b>%s</b> %s\n%s%s"
-	      file.f2_username
+	      file.f_username
 	      msg_state
 	      (n_last_elements l_folders parent_folders)
 	      filename_escaped
@@ -83,7 +83,7 @@ object(self)
       try
 	let str_notif =
 	  Marshal.to_string
-	    (New_notif ({file with f2_name = filename_escaped}, filestate) )
+	    (New_notif ({file with f_name = filename_escaped}, filestate) )
 	    [Marshal.No_sharing]
 	in
 	    
@@ -117,17 +117,6 @@ object(self)
 	      (String.length str_current))
 
 
-  method prepare_data file =
-    {
-      f2_name = file.f_name ;
-      f2_path = file.f_path ;
-      f2_username =
-	(match Txt_operations.name (file.f_login) with
-	  | None -> file.f_login
-	  | Some username -> username);
-      f2_program = file.f_program ;
-    }
-    
   method notify notification =
     match notification with
       | New_notif (file, filestate) ->

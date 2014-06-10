@@ -1,31 +1,30 @@
 type f_file = {
-  f_name        : string ;
-  f_path        : string ;
-  f_login       : string ;
-  f_program     : string ;
-  f_program_pid : Fdinfo.pid;
-  f_descriptor  : Fdinfo.fd ;
+  f_name            : string ;
+  f_path            : string ;
+  f_unix_login : string ;
+
+  (* f_username could be the same than f_unix_login
+   * if not set in /etc/passwd *)
+  f_username        : string ; 
+  f_program         : string ;
+  f_program_pid     : Fdinfo.pid;
+  f_descriptor      : Fdinfo.fd ;
 }
+
 
 type file_state = | File_Created
 		  | File_Opened
 		  | File_Closed
 
+
 type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
-(* file to send to clients, this way we don't send useless infos *)
-type file2clients = {
-  f2_name        : string ;
-  f2_path        : string ;
-  f2_username    : string ;
-  f2_program     : string ;
-}
 
 type notification =
-  | New_notif of file2clients * file_state
-  | Old_notif of (file2clients * Date.date) list
+  | New_notif of f_file * file_state
+  | Old_notif of (f_file * Date.date) list
   | Local_notif of string
 
 
@@ -37,10 +36,9 @@ type sql_type =
   | SQL_Switch_On_Created
 
 
-
 type mail_t = {
   m_filestate: file_state;
-  m_file: file2clients;
+  m_file: f_file;
   m_first_offset: int64 option;
   m_last_offset: int64 option;
   m_filesize: int64 option;

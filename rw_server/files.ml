@@ -113,7 +113,13 @@ let get path name =
 			({
 			  f_name = name ;
 			  f_path = path^"/" ;
-			  f_login = login ;
+			  f_unix_login = login ;
+			  f_username =
+			    (match
+				Txt_operations.name login
+			     with
+			      | None -> login
+			      | Some username -> username);
 			  f_program = prog ;
 			  f_program_pid = pid ;
 			  f_descriptor = file_fd ;
@@ -130,7 +136,13 @@ let get path name =
 			({
 			  f_name = name ;
 			  f_path = path^"/" ;
-			  f_login = login ;
+			  f_unix_login = login ;
+			  f_username =
+			    (match
+				Txt_operations.name login
+			     with
+			       | None -> login
+			       | Some username -> username);
 			  f_program = prog ;
 			  f_program_pid = pid ;
 			  f_descriptor = file_fd ;

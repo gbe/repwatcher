@@ -144,11 +144,13 @@ object(self)
     "Name: %s\n\
      Path: %s\n\
      Login: %s\n\
+     Username: %s\n\
      Program: %s (pid: %d)\n\
      Descr: %d\n\n"
       file.f_name
       file.f_path
-      file.f_login
+      file.f_unix_login
+      file.f_username
       file.f_program
       (Fdinfo.int_of_pid file.f_program_pid)
       (Fdinfo.int_of_fd file.f_descriptor)
@@ -320,18 +322,16 @@ object(self)
 	      in
 
 	      print_endline
-	      (opening_date#get_str_locale^" - "^file.f_login^has_what^file.f_name);
+	      (opening_date#get_str_locale^" - "^file.f_unix_login^has_what^file.f_name);
 
-	      Log.log (file.f_login^has_what^file.f_name, Normal);
-
-	      let file_prepared = Report.report#prepare_data file in
+	      Log.log (file.f_unix_login^has_what^file.f_name, Normal);
 
 	      (* *** Notifications *** *)
 	      begin match written with
 		| false ->
-		  Report.report#notify (New_notif (file_prepared, File_Opened))
+		  Report.report#notify (New_notif (file, File_Opened))
 		| true ->
-		  Report.report#notify (New_notif (file_prepared, File_Created))
+		  Report.report#notify (New_notif (file, File_Created))
 	      end;
 	      (* ********************* *)
 
@@ -348,7 +348,7 @@ object(self)
 	      let tobemailed =
 		{
 		  m_filestate = File_Opened;
-		  m_file = file_prepared;
+		  m_file = file;
 		  m_first_offset = None;
 		  m_last_offset = None;
 		  m_filesize = filesize_opt;
@@ -467,9 +467,9 @@ object(self)
 
 	let closing_date = new Date.date in
 	print_endline
-	  (closing_date#get_str_locale^" - "^f_file.f_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+	  (closing_date#get_str_locale^" - "^f_file.f_unix_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
 
-	Log.log (f_file.f_login^" closed: "^f_file.f_name, Normal) ;
+	Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
 
 	(* update filesize in database if written 
 	 * as filesize equaled None if created/written == true *)
@@ -527,11 +527,10 @@ object(self)
 	    ignore (Report.report#sql sql_report)
 	end;
 
-	let file_prepared = Report.report#prepare_data f_file in
 	let tobemailed =
 	  {
 	    m_filestate = File_Closed;
-	    m_file = file_prepared;
+	    m_file = f_file;
 	    m_first_offset = first_offset_opt;
 	    m_last_offset = overriden_last_offset_opt;
 	    m_filesize = filesize;
@@ -540,7 +539,7 @@ object(self)
 	  }
 	in
 
-	Report.report#notify (New_notif (file_prepared, File_Closed));
+	Report.report#notify (New_notif (f_file, File_Closed));
 	Report.report#mail tobemailed
     ) l_stop
 
