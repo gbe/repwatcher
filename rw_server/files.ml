@@ -14,6 +14,17 @@ let extract line =
       "?"
 ;;
 
+
+let get_real_name_from_passwd login =
+  let gecos = (getpwnam login).pw_gecos in
+
+  let r = Str.regexp "[^',']+" in
+  match Str.string_match r gecos 0 with
+    | false -> None
+    | true -> Some (Str.matched_string gecos)
+;;
+
+
 let get path name =
 
   let conf = (Config.cfg)#get in
@@ -116,7 +127,7 @@ let get path name =
 			  f_unix_login = login ;
 			  f_username =
 			    (match
-				Txt_operations.name login
+				get_real_name_from_passwd login
 			     with
 			      | None -> login
 			      | Some username -> username);
@@ -139,7 +150,7 @@ let get path name =
 			  f_unix_login = login ;
 			  f_username =
 			    (match
-				Txt_operations.name login
+				get_real_name_from_passwd login
 			     with
 			       | None -> login
 			       | Some username -> username);
