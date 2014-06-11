@@ -105,7 +105,7 @@ let get path name =
 	    match (List.length file_fds) with
 	      | 0 -> acc
 	      | _ ->
-		let size = (Unix.stat fullpath).st_size in
+		let filesize = (Unix.stat fullpath).st_size in
 		  
 		let prog_c =
 		  try
@@ -134,7 +134,7 @@ let get path name =
 			  f_program = prog ;
 			  f_program_pid = pid ;
 			  f_descriptor = file_fd ;
-			}, (Int64.of_int size)) :: acc'
+			}, (Int64.of_int filesize)) :: acc'
 		      ) acc file_fds
 		    else
 		      acc
@@ -157,7 +157,7 @@ let get path name =
 			  f_program = prog ;
 			  f_program_pid = pid ;
 			  f_descriptor = file_fd ;
-			}, (Int64.of_int size)) :: acc'
+			}, (Int64.of_int filesize)) :: acc'
 		      ) acc file_fds
 	  end
     with
