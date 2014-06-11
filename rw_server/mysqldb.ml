@@ -214,7 +214,7 @@ object(self)
     let q =
   "CREATE TABLE IF NOT EXISTS `accesses` (\
   `ID` int(10) NOT NULL AUTO_INCREMENT,\
-  `LOGIN` varchar(20) NOT NULL,\
+  `LOGIN` varchar(32) NOT NULL,\
   `USERNAME` varchar(256) NOT NULL,\
   `PROGRAM` varchar(26) NOT NULL,\
   `PROGRAM_PID` int(8) NOT NULL,\

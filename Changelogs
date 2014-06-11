@@ -1,3 +1,4 @@
 Changes between 2.5 and 2.6:
 - Instead of being NULL by default, the USERNAME field in MySQL and Postgresql is now NOT NULL
 - In version 2.5, when the username was not known, the USERNAME field was NULL. In that same situation, the USERNAME field now has the same value than LOGIN
+- Increased the LOGIN field length from 20 to 32. The latter is the limit according to "man useradd"
