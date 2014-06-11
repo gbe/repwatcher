@@ -48,13 +48,13 @@ let loop_check () =
 
 	| Some _ ->
 
-	  (* Overwrite the created value given by an event 
+	  (* Overwrite the written value given by an event 
 	   * during the opening by a new value based on
-	   * filesize comparison *)
+	   * filesizes comparison *)
 	  let written' = 
 	    if written = false && filesize_checked_again = false then begin
 	      match filesize with
-		| None -> assert false (* case when created = true *)
+		| None -> assert false (* case when written = true *)
 		| Some ofilesize ->
 		  let nfilesize =
 		    try
@@ -65,14 +65,14 @@ let loop_check () =
 		  in
 
 		  (* the file in progress is being written,
-		   * the created value must be overridden *)
+		   * the written value must be overridden *)
 		  if nfilesize > ofilesize then begin
-		    Log.log (file.f_name^" is actually being written, overriding the 'created' value to true", Normal_Extra);
+		    Log.log (file.f_name^" is actually being written, overriding the 'written' value to true", Normal_Extra);
 		    true
 		  end else
-		    (* Must be created and not false as the nfilesize could be 0
+		    (* Must be 'written' and not false as the nfilesize could be 0
 		     * because it could not be read in the above test
-		     * therefore the created value could be true *)
+		     * therefore the written value could be true *)
 		    written
 	    end
 	    else
