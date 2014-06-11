@@ -16,7 +16,6 @@ let loop_check () =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
 
-      (* if at None then no Hashtbl update *)
       match new_offset_opt with
 	| None ->
 	  let error_counter' = error_counter + 1 in
