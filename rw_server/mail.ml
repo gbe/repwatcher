@@ -136,7 +136,7 @@ object(self)
 	(* 1MB = 1048576 = 1024 * 1024 *)
 	let data_transferred_MB = data_transferred /. 1048576. in
 	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
-	let bandwidth =
+	let transfer_rate =
 	  data_transferred /. (closing_date#get_diff_sec m.m_opening_date) /. 1024.
 	in	
 
@@ -146,7 +146,7 @@ object(self)
 	    data_transferred_MB
 	    percentage_transferred
 	    '%'
-	    bandwidth
+	    transfer_rate
 	in
 	self#_app txt
 
