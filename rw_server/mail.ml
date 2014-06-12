@@ -68,8 +68,7 @@ object(self)
 
   method private _opening_date = self#_app "Opened at:"
   method private _opening_date_val =
-    let opening_date = self#_strip_date_option m.m_opening_date in
-    self#_app (opening_date#get_str_locale)
+    self#_app (m.m_opening_date#get_str_locale)
 
   method private _closing_date = self#_app "Closed at:"
   method private _closing_date_val =
@@ -82,9 +81,8 @@ object(self)
 
   method private _duration = self#_app "Duration:"
   method private _duration_val =
-    let opening_date = self#_strip_date_option m.m_opening_date in
     let closing_date = self#_strip_date_option m.m_closing_date in
-    let duration = closing_date#get_diff opening_date in
+    let duration = closing_date#get_diff m.m_opening_date in
 
 
     (* Add the plural to txt and return the result 
@@ -132,7 +130,6 @@ object(self)
     (* Bandwidth computation added to string *)
     match (m.m_first_offset, m.m_last_offset) with
       | Some first, Some last ->
-	let opening_date = self#_strip_date_option m.m_opening_date in
 	let closing_date = self#_strip_date_option m.m_closing_date in
 
 	let data_transferred = Int64.to_float (Int64.sub last first) in
@@ -140,7 +137,7 @@ object(self)
 	let data_transferred_MB = data_transferred /. 1048576. in
 	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
 	let bandwidth =
-	  data_transferred /. (closing_date#get_diff_sec opening_date) /. 1024.
+	  data_transferred /. (closing_date#get_diff_sec m.m_opening_date) /. 1024.
 	in	
 
 	let txt =

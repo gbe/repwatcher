@@ -352,7 +352,7 @@ object(self)
 		  m_first_offset = None;
 		  m_last_offset = None;
 		  m_filesize = filesize_opt;
-		  m_opening_date = Some opening_date;
+		  m_opening_date = opening_date;
 		  m_closing_date = None;
 		}
 	      in
@@ -534,7 +534,7 @@ object(self)
 	    m_first_offset = first_offset_opt;
 	    m_last_offset = overriden_last_offset_opt;
 	    m_filesize = filesize;
-	    m_opening_date = Some opening_date;
+	    m_opening_date = opening_date;
 	    m_closing_date = Some closing_date;
 	  }
 	in
