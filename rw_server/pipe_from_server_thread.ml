@@ -1,6 +1,6 @@
 open Types;;
 open Report;;
-
+open Files_progress;;
 
 let wait_pipe_from_child_process () =
   let bufsize = 1024 in
@@ -18,12 +18,12 @@ let wait_pipe_from_child_process () =
 	  Mutex.lock Files_progress.mutex_ht ;
 
 	  let l_current =
-	    Hashtbl.fold (fun (_,file) (opening_date,_,_,_,_) ret ->
+	    Hashtbl.fold (fun (_,file) in_progress ret ->
 
 	      ret@[ (
 		{ file with
 		  f_name = (Txt_operations.escape_for_notify file.f_name)
-		}, opening_date)
+		}, in_progress.ip_common.c_opening_date)
 		  ]
 	    ) Files_progress.ht []
 	  in

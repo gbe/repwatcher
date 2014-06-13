@@ -5,6 +5,7 @@ open Types
 open Types_conf
 open Report
 open Sql_report
+open Files_progress
 
 type w_info = {
   conf         : bool;
@@ -387,13 +388,25 @@ object(self)
 	      in
 	      (* *********** *)
 	      
+	      let common = {
+		c_file = file ;
+		c_filesize = filesize_opt ;
+		c_first_known_offset = None ;
+		c_last_known_offset = None ;
+		c_opening_date = opening_date ;
+		c_closing_date = None ;
+		c_written = written ;
+	      } in
+	      let in_progress = {
+		ip_common = common ;
+		ip_filesize_checked_again = false ;
+		ip_offset_retrieval_errors = 0 ;
+		ip_sql_connection = sql_obj_opt ;
+	      }
+	      in
+	
 	      Hashtbl.add Files_progress.ht
-		(wd, file)
-		(opening_date,
-		 (filesize_opt, false),
-		 (None, None, 0),
-		 sql_obj_opt,
-		 written)
+		(wd, file) in_progress
 
 	) files ;
       
@@ -459,7 +472,7 @@ object(self)
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), (opening_date, (filesize, _), (first_offset_opt, last_offset_opt, _), sql_obj_opt, _)) ->
+      fun ((wd2, f_file), in_progress) -> 
 
 	Mutex.lock Files_progress.mutex_ht ;	  
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
@@ -473,9 +486,9 @@ object(self)
 
 	(* update filesize in database if written 
 	 * as filesize equaled None if created/written == true *)
-	let filesize =
+	let nfilesize =
 	  match written with
-	    | false -> filesize
+	    | false -> in_progress.ip_common.c_filesize
 	    | true ->
 	      try
 		let size =
@@ -491,23 +504,26 @@ object(self)
 	(* update last_known_offset according to filesize and written *)
 	(* if file could not be read or does not exist anymore then filesize = None *)
 	let overriden_last_offset_opt =
-	  match last_offset_opt with
+	  match in_progress.ip_common.c_last_known_offset with
 	    | None -> None (* unlikely to happen as data are read during the file_open event *)
 	    | Some last_offset' ->
-	      match filesize with
-		| None -> last_offset_opt (* best answer we have *)
-		| Some filesize' ->
+	      match nfilesize with
+		| None ->
+		  (* best answer we have *)
+		  in_progress.ip_common.c_last_known_offset
+
+		| Some nfilesize' ->
 
 		  (* fix the offset to be equal to filesize
 		   * when creating the file *)
-		  if filesize' > last_offset' && written then
-		    filesize
+		  if nfilesize' > last_offset' && written then
+		    nfilesize
 
 		  (* Sometimes, it happens that the offset is bigger than the filesize *)
-		  else if filesize' < last_offset' && not written then
-		    filesize
+		  else if nfilesize' < last_offset' && not written then
+		    nfilesize
 
-		  else last_offset_opt
+		  else in_progress.ip_common.c_last_known_offset
 	in
 
 	begin match Config.cfg#is_sql_activated with
@@ -516,11 +532,11 @@ object(self)
 	    let sql_report = {
 	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
-	      s_filesize = filesize ;
+	      s_filesize = nfilesize ;
 	      s_date = closing_date#get_str_locale ;
-	      s_first_offset = first_offset_opt ;
+	      s_first_offset = in_progress.ip_common.c_first_known_offset ;
 	      s_last_offset = overriden_last_offset_opt ;
-	      s_sql_obj = sql_obj_opt ;
+	      s_sql_obj = in_progress.ip_sql_connection ;
 	      s_written = written ; (* better to use the written than created *)
 	    }
 	    in
@@ -531,10 +547,10 @@ object(self)
 	  {
 	    m_filestate = File_Closed;
 	    m_file = f_file;
-	    m_first_offset = first_offset_opt;
+	    m_first_offset = in_progress.ip_common.c_first_known_offset;
 	    m_last_offset = overriden_last_offset_opt;
-	    m_filesize = filesize;
-	    m_opening_date = opening_date;
+	    m_filesize = nfilesize;
+	    m_opening_date = in_progress.ip_common.c_opening_date;
 	    m_closing_date = Some closing_date;
 	  }
 	in

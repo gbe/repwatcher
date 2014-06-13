@@ -3,6 +3,7 @@ open Printf
 open Types
 open Types_conf
 open Config
+open Files_progress
 
 let usage = "usage: rw_server [-f Configuration file path]" ;;
 
@@ -22,8 +23,8 @@ let clean_exit () =
 
       (* Cleanup every ongoing prepared stmts
        * for every files in progress and disconnect from RDBMS *)
-      Hashtbl.iter (fun (_) (_, _, (_), (sql_obj_opt : Sqldb.sqldb option), _) ->
-	match sql_obj_opt with
+      Hashtbl.iter (fun (_) in_progress  ->
+	match in_progress.ip_sql_connection with
 	  | None -> ()
 	  | Some sqlobj ->
 	    sqlobj#disconnect ()

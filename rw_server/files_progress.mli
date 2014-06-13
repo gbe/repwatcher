@@ -1,22 +1,9 @@
-val mutex_ht : Mutex.t
+type in_progress_t = {
+  ip_common : Types.common_t ;
+  ip_filesize_checked_again : bool ;
+  ip_offset_retrieval_errors : int ;
+  ip_sql_connection : Sqldb.sqldb option ;
+}
 
-(*
- * Date.date = opening date
- *
- * int64 option = filesize
- * bool = filesize_checked_again
- *
- * int64 option = first known offset
- * int64 option = last known offset
- * int = times the offset couldn't be retrieved (error_counter)
- *
- * Sqldb.sqldb is an SQL object (could be either Mysql or Postgresql)
- * bool = created (true) or not (false)
-*)
-val ht : (Inotify.wd * Types.f_file, 
-	  (Date.date
-	   * (int64 option * bool)
-	   * (int64 option * int64 option * int) 
-	   * Sqldb.sqldb option
-	   * bool)
-) Hashtbl.t
+val mutex_ht : Mutex.t
+val ht : (Inotify.wd * Types.f_file, in_progress_t) Hashtbl.t

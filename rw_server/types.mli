@@ -13,6 +13,15 @@ type f_file = {
   f_descriptor      : Fdinfo.fd ;
 }
 
+type common_t = {
+  c_file : f_file;
+  c_filesize : int64 option;
+  c_first_known_offset : int64 option;
+  c_last_known_offset : int64 option;
+  c_opening_date : Date.date;
+  c_closing_date : Date.date option;
+  c_written : bool;
+}
 
 type file_state = | File_Created
 		  | File_Opened
