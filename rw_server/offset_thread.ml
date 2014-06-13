@@ -6,8 +6,126 @@ open Printf
 open Unix
 open Files_progress
 
+
+(* Update the count errors or remove the entry in the ht
+ * if too many errors *)
+let update_ht_offset_retrieval_errors (wd, file) in_progress =
+  let error_counter' =
+    in_progress.ip_offset_retrieval_errors + 1
+  in
+
+  (* if an offset couldn't be retrieved, then this key must
+   * be removed from the files in progress hashtable
+   * Removal is done at the second time so that time is given to a close event
+   * to be processed by core (concurrency between offset and core)
+   * The removal is actually done through the file_closed event which is forced here
+   *)
+  if error_counter' < 2 then begin
+    Hashtbl.replace Files_progress.ht
+      (wd, file)
+      { in_progress with
+	ip_offset_retrieval_errors = error_counter' };
+    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
+  end else begin
+    let event =
+      match in_progress.ip_common.c_written with
+	| true ->
+	  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
+	| false ->
+	  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
+    in
+    Log.log (
+      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
+    Events.what_to_do event
+  end
+;;
+
+
+(* Overwrite the written value given by an opening event
+ * by a new value based on filesizes comparison *)
+let is_file_being_written file in_progress =
+  if in_progress.ip_common.c_written = true &&
+    in_progress.ip_filesize_checked_again = true then
+    true
+
+  else
+    match in_progress.ip_common.c_filesize with
+      | None -> assert false (* case when written = true *)
+      | Some ofilesize ->
+	let nfilesize =
+	  try
+	    Int64.of_int (Unix.stat (file.f_path^"/"^file.f_name)).st_size
+	  with Unix_error (err, "stat", _) ->
+	    Log.log ("Offset_thread: Error could not stat the file "^file.f_name, Error) ;
+	    Int64.of_int 0
+	in
+
+	(* Actual test to know if the written bool must be overridden *)
+	if nfilesize > ofilesize then begin
+	  Log.log (file.f_name^" is actually being written, overriding the 'written' value to true", Normal_Extra);
+	  true
+	end else
+	  (* Must be 'written' and not false as the nfilesize could be 0
+	   * because it could not be read in the above test
+	   * therefore the written value could be true *)
+	  in_progress.ip_common.c_written
+;;
+
+
+
+(* Add the offset_opt in the Hashtbl because of Open events in Core
+ * update the first_known_offset if it is None
+ * update the last_known_offset if first_known_offset is a Some
+ *
+ * Also reset the error_counter and set to true the offset_check_again as it
+ * is necessary to be true at this point since if it used to be at false,
+ * the check has been performed above
+ *)
+let update_offsets_in_ht new_offset_opt key in_progress =
+  match in_progress.ip_common.c_first_known_offset with
+    | None ->
+      (* The last_known_offset is necessarily equal to the first_known_offset *)
+      Hashtbl.replace Files_progress.ht
+	key
+	{ in_progress with
+	  ip_common = {
+	    in_progress.ip_common with
+	      c_first_known_offset = new_offset_opt ;
+	      c_last_known_offset = new_offset_opt ;
+	     (* c_written = being_written ; *)
+	  };
+	  ip_filesize_checked_again = true ;
+	  ip_offset_retrieval_errors = 0 ;
+	}
+    | Some _ ->
+      (* Only the last_known_offset must be updated *)
+      Hashtbl.replace Files_progress.ht
+	key
+	{ in_progress with
+	  ip_common = {
+	    in_progress.ip_common with
+	      c_last_known_offset = new_offset_opt
+	  }
+	}
+;;
+
+(* Written flag updated only if first_offset is unknown *)
+let update_written being_written key in_progress =
+  match in_progress.ip_common.c_first_known_offset with
+    | None ->
+      Hashtbl.replace Files_progress.ht
+	key
+	{ in_progress with
+	  ip_common = {
+	    in_progress.ip_common with
+	      c_written = being_written ;
+	  }
+	}
+    | Some _ -> ()
+;;
+
 let loop_check () =
-  
+
   while true do
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
@@ -20,105 +138,16 @@ let loop_check () =
 
       match new_offset_opt with
 	| None ->
-	  let error_counter' =
-	    in_progress.ip_offset_retrieval_errors + 1
-	  in
-
-	  (* if an offset couldn't be retrieved, then this key must
-	   * be removed from the files in progress hashtable
-	   * Removal is done at the second time so that time is given to a close event
-	   * to be processed by core (concurrency between offset and core)
-	   * The removal is actually done through the file_closed event which is forced here
-	   *)
-	  if error_counter' < 2 then begin
-	    Hashtbl.replace Files_progress.ht
-	      (wd, file)
-	      { in_progress with
-		ip_offset_retrieval_errors = error_counter' };
-	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
-	  end else begin
-	    let event =
-	      match in_progress.ip_common.c_written with
-		| true ->
-		  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
-		| false ->
-		  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
-	    in
-	    Log.log (
-	      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
-	    Events.what_to_do event
-	  end
-
+	  (* Update the count errors or remove the entry in the ht
+	  * if too many errors *)
+	  update_ht_offset_retrieval_errors
+	    (wd, file)
+	    in_progress
 
 	| Some _ ->
-
-	  (* Overwrite the written value given by an event 
-	   * during the opening by a new value based on
-	   * filesizes comparison *)
-	  let written' = 
-	    if in_progress.ip_common.c_written = false &&
-	      in_progress.ip_filesize_checked_again = false then begin
-	      match in_progress.ip_common.c_filesize with
-		| None -> assert false (* case when written = true *)
-		| Some ofilesize ->
-		  let nfilesize =
-		    try
-		      Int64.of_int (Unix.stat (file.f_path^"/"^file.f_name)).st_size
-		    with Unix_error (err, "stat", _) ->
-		      Log.log ("Offset_thread: Error could not stat the file "^file.f_name, Error) ;
-		      Int64.of_int 0
-		  in
-
-		  (* the file in progress is being written,
-		   * the written value must be overridden *)
-		  if nfilesize > ofilesize then begin
-		    Log.log (file.f_name^" is actually being written, overriding the 'written' value to true", Normal_Extra);
-		    true
-		  end else
-		    (* Must be 'written' and not false as the nfilesize could be 0
-		     * because it could not be read in the above test
-		     * therefore the written value could be true *)
-		    in_progress.ip_common.c_written
-	    end
-	    else
-	      in_progress.ip_common.c_written
-	  in
-
-	  (* Add the offset_opt in the Hashtbl because of Open events in Core
-	   * update the first_known_offset if it is None
-	   * update the last_known_offset if first_known_offset is a Some
-
-	   * Also reset the error_counter and set to true the offset_check_again as it
-	   * is necessary to be true at this point since if it used to be at false,
-	   * the check has been performed above
-	   *)
-	  
-	  begin match in_progress.ip_common.c_first_known_offset with
-	  | None ->
-	    (* The last_known_offset is necessarily equal to the first_known_offset *)
-	    Hashtbl.replace Files_progress.ht
-	      (wd, file)
-	      { in_progress with
-		ip_common = {
-		  in_progress.ip_common with
-		    c_first_known_offset = new_offset_opt ;
-		    c_last_known_offset = new_offset_opt ;
-		    c_written = written' ;
-		};
-		ip_filesize_checked_again = true ;
-		ip_offset_retrieval_errors = 0 ;
-	      }
-	  | Some _ ->
-	    (* Only the last_known_offset must be updated *)
-	    Hashtbl.replace Files_progress.ht
-	      (wd, file)
-	      { in_progress with
-		ip_common = {
-		  in_progress.ip_common with
-		    c_last_known_offset = new_offset_opt
-		}
-	      }
-	  end;
+	  let being_written = is_file_being_written file in_progress in
+	  update_written being_written (wd, file) in_progress;
+	  update_offsets_in_ht new_offset_opt (wd, file) in_progress;
 
 	  match (Config.cfg)#is_sql_activated with
 	    | false -> ()
@@ -128,7 +157,7 @@ let loop_check () =
 	       * is actually being written, then the 'created' flag in the RDBMS
 	       * must be turned on *)
 	      if in_progress.ip_common.c_written = false &&
-		written' = true then begin
+		being_written = true then begin
 		let sql_report_created =
 		  {
 		    s_file = file ;
@@ -176,7 +205,7 @@ let loop_check () =
     ) Files_progress.ht ;
 
 (*    Mutex.unlock Files_progress.mutex_ht ;*)
-    
+
     Thread.delay 3.0 ;
   done
 ;;
