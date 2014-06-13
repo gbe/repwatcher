@@ -137,11 +137,12 @@ let loop_check () =
 		    s_date = in_progress.ip_common.c_opening_date#get_str_locale ;
 		    s_first_offset = None ; (* Not used thus None *)
 		    s_last_offset = None ; (* Not used thus None *)
-		    s_sql_obj = in_progress.ip_sql_connection ;
 		    s_written = true ;
 		  }
 		in
-		ignore (Report.report#sql sql_report_created)
+		ignore (Report.report#sql
+			  ~sql_obj_opt:in_progress.ip_sql_connection
+			  sql_report_created)
 	      end;
 
 	      let sql_report_offset =
@@ -165,11 +166,12 @@ let loop_check () =
 		    | Some _ -> in_progress.ip_common.c_first_known_offset ;
 		    end;
 		  s_last_offset = new_offset_opt ;
-		  s_sql_obj = in_progress.ip_sql_connection ;
 		  s_written = in_progress.ip_common.c_written ;
 		}
 	      in
-	      ignore (Report.report#sql sql_report_offset)
+	      ignore (Report.report#sql
+			~sql_obj_opt:in_progress.ip_sql_connection
+			sql_report_offset)
 
     ) Files_progress.ht ;
 

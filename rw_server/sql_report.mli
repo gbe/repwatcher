@@ -7,6 +7,5 @@ type sql_report = {
   s_date : string ;
   s_first_offset : int64 option ;
   s_last_offset : int64 option ;
-  s_sql_obj : Sqldb.sqldb option ;
   s_written : bool ;
 }

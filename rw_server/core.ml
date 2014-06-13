@@ -384,7 +384,6 @@ object(self)
 		     *)
 		    s_first_offset = None ;
 		    s_last_offset = None ;
-		    s_sql_obj = None ;
 		    s_written = written ;
 		  }
 		in
@@ -531,11 +530,12 @@ object(self)
 	      s_date = closing_date#get_str_locale ;
 	      s_first_offset = in_progress.ip_common.c_first_known_offset ;
 	      s_last_offset = overriden_last_offset_opt ;
-	      s_sql_obj = in_progress.ip_sql_connection ;
 	      s_written = written ; (* better to use the written than created *)
 	    }
 	    in
-	    ignore (Report.report#sql sql_report)
+	    ignore (Report.report#sql
+		      ~sql_obj_opt:in_progress.ip_sql_connection
+		      sql_report)
 	end;
 
 	let tobemailed =

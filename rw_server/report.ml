@@ -129,7 +129,9 @@ object(self)
 	self#_send_notification2ssl_process l_current
 
 
-  method sql sql_report =
+  method sql
+    ?(sql_obj_opt : Sqldb.sqldb option = None)
+    sql_report =
 
     match Config.cfg#is_sql_activated with
       | false -> None
@@ -146,7 +148,7 @@ object(self)
 	    Some sql
 	  
 	  | SQL_File_Closed ->
-	    begin match sql_report.s_sql_obj with
+	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
 		sql#file_closed
@@ -158,7 +160,7 @@ object(self)
 	    None
 
 	  | SQL_FK_Offset ->
-	    begin match sql_report.s_sql_obj with
+	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
 		sql#first_known_offset sql_report.s_first_offset
@@ -166,7 +168,7 @@ object(self)
 	    None
 
 	  | SQL_LK_Offset ->
-	    begin match sql_report.s_sql_obj with
+	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
 		sql#last_known_offset sql_report.s_last_offset
@@ -174,7 +176,7 @@ object(self)
 	    None
 
 	  | SQL_Switch_On_Created ->
-	    begin match sql_report.s_sql_obj with
+	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
 		sql#switch_on_created
