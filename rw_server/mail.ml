@@ -6,7 +6,7 @@ open Types_date
 class email m =
 object(self)
 
-  val file = m.m_file
+  val file = m.m_common.c_file
   val filestate = Txt_operations.string_of_filestate m.m_filestate
   val mutable subject = ""
   val mutable body = ""
@@ -17,7 +17,7 @@ object(self)
 
   initializer
   let (first, last, fsize) =
-    match (m.m_first_offset, m.m_last_offset, m.m_filesize) with
+    match (m.m_common.c_first_known_offset, m.m_common.c_last_known_offset, m.m_common.c_filesize) with
 
       (* If first_offset is known, last_offset is a None as well.
        * To avoid writing the unnecessary cases, I put a _ *)
@@ -68,11 +68,11 @@ object(self)
 
   method private _opening_date = self#_app "Opened at:"
   method private _opening_date_val =
-    self#_app (m.m_opening_date#get_str_locale)
+    self#_app (m.m_common.c_opening_date#get_str_locale)
 
   method private _closing_date = self#_app "Closed at:"
   method private _closing_date_val =
-    let closing_date = self#_strip_date_option m.m_closing_date in
+    let closing_date = self#_strip_date_option m.m_common.c_closing_date in
     self#_app (closing_date#get_str_locale)
 
   method private _first_known_offset = self#_app "First known offset:"
@@ -81,8 +81,8 @@ object(self)
 
   method private _duration = self#_app "Duration:"
   method private _duration_val =
-    let closing_date = self#_strip_date_option m.m_closing_date in
-    let duration = closing_date#get_diff m.m_opening_date in
+    let closing_date = self#_strip_date_option m.m_common.c_closing_date in
+    let duration = closing_date#get_diff m.m_common.c_opening_date in
 
 
     (* Add the plural to txt and return the result 
@@ -128,16 +128,16 @@ object(self)
   method private _transfer_val =
 
     (* Bandwidth computation added to string *)
-    match (m.m_first_offset, m.m_last_offset) with
+    match (m.m_common.c_first_known_offset, m.m_common.c_last_known_offset) with
       | Some first, Some last ->
-	let closing_date = self#_strip_date_option m.m_closing_date in
+	let closing_date = self#_strip_date_option m.m_common.c_closing_date in
 
 	let data_transferred = Int64.to_float (Int64.sub last first) in
 	(* 1MB = 1048576 = 1024 * 1024 *)
 	let data_transferred_MB = data_transferred /. 1048576. in
 	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
 	let transfer_rate =
-	  data_transferred /. (closing_date#get_diff_sec m.m_opening_date) /. 1024.
+	  data_transferred /. (closing_date#get_diff_sec m.m_common.c_opening_date) /. 1024.
 	in	
 
 	let txt =
@@ -197,7 +197,7 @@ end;;
 
 let send mail =
 
-  let file = mail.m_file in
+  let file = mail.m_common.c_file in
 
   try
     let e_conf = (Config.cfg)#get_email in

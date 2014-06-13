@@ -48,13 +48,8 @@ type sql_type =
 
 
 type mail_t = {
+  m_common : common_t;
   m_filestate: file_state;
-  m_file: f_file;
-  m_first_offset: int64 option;
-  m_last_offset: int64 option;
-  m_filesize: int64 option;
-  m_opening_date: Date.date;
-  m_closing_date: Date.date option;
 }
 
 type com_net2main =

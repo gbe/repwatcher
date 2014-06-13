@@ -344,17 +344,21 @@ object(self)
 		  | false -> Some filesize
 	      in
 
+	      let common = {
+		c_file = file ;
+		c_filesize = filesize_opt ;
+		c_first_known_offset = None ;
+		c_last_known_offset = None ;
+		c_opening_date = opening_date ;
+		c_closing_date = None ;
+		c_written = written ;
+	      } in
 
 	      (* *** Emails *** *)
 	      let tobemailed =
 		{
+		  m_common = common;
 		  m_filestate = File_Opened;
-		  m_file = file;
-		  m_first_offset = None;
-		  m_last_offset = None;
-		  m_filesize = filesize_opt;
-		  m_opening_date = opening_date;
-		  m_closing_date = None;
 		}
 	      in
 	      begin match written with
@@ -388,15 +392,6 @@ object(self)
 	      in
 	      (* *********** *)
 	      
-	      let common = {
-		c_file = file ;
-		c_filesize = filesize_opt ;
-		c_first_known_offset = None ;
-		c_last_known_offset = None ;
-		c_opening_date = opening_date ;
-		c_closing_date = None ;
-		c_written = written ;
-	      } in
 	      let in_progress = {
 		ip_common = common ;
 		ip_filesize_checked_again = false ;
@@ -545,13 +540,8 @@ object(self)
 
 	let tobemailed =
 	  {
+	    m_common = in_progress.ip_common;
 	    m_filestate = File_Closed;
-	    m_file = f_file;
-	    m_first_offset = in_progress.ip_common.c_first_known_offset;
-	    m_last_offset = overriden_last_offset_opt;
-	    m_filesize = nfilesize;
-	    m_opening_date = in_progress.ip_common.c_opening_date;
-	    m_closing_date = Some closing_date;
 	  }
 	in
 
