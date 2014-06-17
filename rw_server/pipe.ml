@@ -3,7 +3,7 @@ open Types_conf
 
 exception Pipe_error
 
-class pipe () =
+class pipe =
 object(self)
 
   val mutable toread = None
@@ -44,7 +44,7 @@ end ;;
 
 
 (* This pipe is used when the father process communicates with its child *)
-let father2child = new pipe () ;;
+let father2child = new pipe ;;
 
 (* This pipe is used when the child process communicates with its father *)
-let child2father = new pipe () ;;
+let child2father = new pipe ;;
