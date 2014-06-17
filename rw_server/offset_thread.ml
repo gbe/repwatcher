@@ -11,7 +11,7 @@ open Files_progress
  * if too many errors *)
 let update_ht_offset_retrieval_errors (wd, file) in_progress =
   let error_counter' =
-    in_progress.ip_offset_retrieval_errors + 1
+    !in_progress.ip_offset_retrieval_errors + 1
   in
 
   (* if an offset couldn't be retrieved, then this key must
@@ -23,12 +23,12 @@ let update_ht_offset_retrieval_errors (wd, file) in_progress =
   if error_counter' < 2 then begin
     Hashtbl.replace Files_progress.ht
       (wd, file)
-      { in_progress with
+      { !in_progress with
 	ip_offset_retrieval_errors = error_counter' };
     Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
   end else begin
     let event =
-      match in_progress.ip_common.c_written with
+      match !in_progress.ip_common.c_written with
 	| true ->
 	  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
 	| false ->
@@ -44,12 +44,12 @@ let update_ht_offset_retrieval_errors (wd, file) in_progress =
 (* Overwrite the written value given by an opening event
  * by a new value based on filesizes comparison *)
 let is_file_being_written file in_progress =
-  if in_progress.ip_common.c_written = true &&
-    in_progress.ip_filesize_checked_again = true then
+  if !in_progress.ip_common.c_written = true &&
+    !in_progress.ip_filesize_checked_again = true then
     true
 
   else
-    match in_progress.ip_common.c_filesize with
+    match !in_progress.ip_common.c_filesize with
       | None -> assert false (* case when written = true *)
       | Some ofilesize ->
 	let nfilesize =
@@ -68,7 +68,7 @@ let is_file_being_written file in_progress =
 	  (* Must be 'written' and not false as the nfilesize could be 0
 	   * because it could not be read in the above test
 	   * therefore the written value could be true *)
-	  in_progress.ip_common.c_written
+	  !in_progress.ip_common.c_written
 ;;
 
 
@@ -82,14 +82,14 @@ let is_file_being_written file in_progress =
  * the check has been performed above
  *)
 let update_offsets_in_ht new_offset_opt key in_progress =
-  match in_progress.ip_common.c_first_known_offset with
+  match !in_progress.ip_common.c_first_known_offset with
     | None ->
       (* The last_known_offset is necessarily equal to the first_known_offset *)
       Hashtbl.replace Files_progress.ht
 	key
-	{ in_progress with
+	{ !in_progress with
 	  ip_common = {
-	    in_progress.ip_common with
+	    !in_progress.ip_common with
 	      c_first_known_offset = new_offset_opt ;
 	      c_last_known_offset = new_offset_opt ;
 	     (* c_written = being_written ; *)
@@ -101,9 +101,9 @@ let update_offsets_in_ht new_offset_opt key in_progress =
       (* Only the last_known_offset must be updated *)
       Hashtbl.replace Files_progress.ht
 	key
-	{ in_progress with
+	{ !in_progress with
 	  ip_common = {
-	    in_progress.ip_common with
+	    !in_progress.ip_common with
 	      c_last_known_offset = new_offset_opt
 	  }
 	}
@@ -111,13 +111,13 @@ let update_offsets_in_ht new_offset_opt key in_progress =
 
 (* Written flag updated only if first_offset is unknown *)
 let update_written being_written key in_progress =
-  match in_progress.ip_common.c_first_known_offset with
+  match !in_progress.ip_common.c_first_known_offset with
     | None ->
       Hashtbl.replace Files_progress.ht
 	key
-	{ in_progress with
+	{ !in_progress with
 	  ip_common = {
-	    in_progress.ip_common with
+	    !in_progress.ip_common with
 	      c_written = being_written ;
 	  }
 	}
@@ -130,7 +130,9 @@ let loop_check () =
 
 (*    Mutex.lock Files_progress.mutex_ht ;*)
 
-    Hashtbl.iter (fun (wd, file) in_progress ->
+    Hashtbl.iter (fun (wd, file) in_progress' ->
+
+      let inprogress_ref = ref in_progress' in
 
       let new_offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
@@ -142,12 +144,12 @@ let loop_check () =
 	  * if too many errors *)
 	  update_ht_offset_retrieval_errors
 	    (wd, file)
-	    in_progress
+	    inprogress_ref
 
 	| Some _ ->
-	  let being_written = is_file_being_written file in_progress in
-	  update_written being_written (wd, file) in_progress;
-	  update_offsets_in_ht new_offset_opt (wd, file) in_progress;
+	  let being_written = is_file_being_written file inprogress_ref in
+	  update_written being_written (wd, file) inprogress_ref;
+	  update_offsets_in_ht new_offset_opt (wd, file) inprogress_ref;
 
 	  match (Config.cfg)#is_sql_activated with
 	    | false -> ()
@@ -156,21 +158,21 @@ let loop_check () =
 	      (* If the file in progress was flagged as not created while it
 	       * is actually being written, then the 'created' flag in the RDBMS
 	       * must be turned on *)
-	      if in_progress.ip_common.c_written = false &&
+	      if !inprogress_ref.ip_common.c_written = false &&
 		being_written = true then begin
 		let sql_report_created =
 		  {
 		    s_file = file ;
 		    s_state = SQL_Switch_On_Created ;
-		    s_filesize = in_progress.ip_common.c_filesize ;
-		    s_date = in_progress.ip_common.c_opening_date#get_str_locale ;
+		    s_filesize = !inprogress_ref.ip_common.c_filesize ;
+		    s_date = !inprogress_ref.ip_common.c_opening_date#get_str_locale ;
 		    s_first_offset = None ; (* Not used thus None *)
 		    s_last_offset = None ; (* Not used thus None *)
 		    s_written = true ;
 		  }
 		in
 		ignore (Report.report#sql
-			  ~sql_obj_opt:in_progress.ip_sql_connection
+			  ~sql_obj_opt:!inprogress_ref.ip_sql_connection
 			  sql_report_created)
 	      end;
 
@@ -182,24 +184,24 @@ let loop_check () =
 		    (* Because the First_Known value in the RDBMS is NULL,
 		       instead of updating the Last Known value, this updates
 		       the SQL First Known field *)
-		    begin match in_progress.ip_common.c_first_known_offset with
+		    begin match !inprogress_ref.ip_common.c_first_known_offset with
 		      | None -> SQL_FK_Offset
 		      | Some _ -> SQL_LK_Offset
 		    end;
-		  s_filesize = in_progress.ip_common.c_filesize ;
-		  s_date = in_progress.ip_common.c_opening_date#get_str_locale ;
+		  s_filesize = !inprogress_ref.ip_common.c_filesize ;
+		  s_date = !inprogress_ref.ip_common.c_opening_date#get_str_locale ;
 		  s_first_offset =
 		    (* First offset not modified if already existing *)
-		    begin match in_progress.ip_common.c_first_known_offset with
+		    begin match !inprogress_ref.ip_common.c_first_known_offset with
 		    | None -> new_offset_opt ;
-		    | Some _ -> in_progress.ip_common.c_first_known_offset ;
+		    | Some _ -> !inprogress_ref.ip_common.c_first_known_offset ;
 		    end;
 		  s_last_offset = new_offset_opt ;
-		  s_written = in_progress.ip_common.c_written ;
+		  s_written = !inprogress_ref.ip_common.c_written ;
 		}
 	      in
 	      ignore (Report.report#sql
-			~sql_obj_opt:in_progress.ip_sql_connection
+			~sql_obj_opt:!inprogress_ref.ip_sql_connection
 			sql_report_offset)
 
     ) Files_progress.ht ;
