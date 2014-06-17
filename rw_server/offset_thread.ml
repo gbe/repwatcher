@@ -21,11 +21,17 @@ let update_ht_offset_retrieval_errors (wd, file) in_progress =
    * The removal is actually done through the file_closed event which is forced here
    *)
   if error_counter' < 2 then begin
-    Hashtbl.replace Files_progress.ht
-      (wd, file)
+    in_progress :=
       { !in_progress with
 	ip_offset_retrieval_errors = error_counter' };
+
+    Hashtbl.replace
+      Files_progress.ht
+      (wd, file)
+      !in_progress;
+
     Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
+
   end else begin
     let event =
       match !in_progress.ip_common.c_written with
@@ -83,44 +89,55 @@ let is_file_being_written file in_progress =
  *)
 let update_offsets_in_ht new_offset_opt key in_progress =
   match !in_progress.ip_common.c_first_known_offset with
-    | None ->
-      (* The last_known_offset is necessarily equal to the first_known_offset *)
-      Hashtbl.replace Files_progress.ht
-	key
-	{ !in_progress with
-	  ip_common = {
-	    !in_progress.ip_common with
-	      c_first_known_offset = new_offset_opt ;
-	      c_last_known_offset = new_offset_opt ;
-	     (* c_written = being_written ; *)
-	  };
-	  ip_filesize_checked_again = true ;
-	  ip_offset_retrieval_errors = 0 ;
+  | None ->
+    (* The last_known_offset is necessarily equal to the first_known_offset *)
+    in_progress :=
+      { !in_progress with
+	ip_common = {
+	  !in_progress.ip_common with
+	    c_first_known_offset = new_offset_opt ;
+	    c_last_known_offset = new_offset_opt ;
+	(* c_written = being_written ; *)
+	};
+	ip_filesize_checked_again = true ;
+	ip_offset_retrieval_errors = 0 ;
+      };
+    Hashtbl.replace
+      Files_progress.ht
+      key
+      !in_progress
+
+  | Some _ ->
+    (* Only the last_known_offset must be updated *)
+    in_progress :=
+      { !in_progress with
+	ip_common = {
+	  !in_progress.ip_common with
+	    c_last_known_offset = new_offset_opt
 	}
-    | Some _ ->
-      (* Only the last_known_offset must be updated *)
-      Hashtbl.replace Files_progress.ht
-	key
-	{ !in_progress with
-	  ip_common = {
-	    !in_progress.ip_common with
-	      c_last_known_offset = new_offset_opt
-	  }
-	}
+      };
+    Hashtbl.replace
+      Files_progress.ht
+      key
+      !in_progress
 ;;
 
 (* Written flag updated only if first_offset is unknown *)
 let update_written being_written key in_progress =
   match !in_progress.ip_common.c_first_known_offset with
     | None ->
-      Hashtbl.replace Files_progress.ht
-	key
-	{ !in_progress with
+      in_progress :=
+ 	{ !in_progress with
 	  ip_common = {
 	    !in_progress.ip_common with
 	      c_written = being_written ;
 	  }
-	}
+	};
+      Hashtbl.replace
+	Files_progress.ht
+	key
+	!in_progress
+
     | Some _ -> ()
 ;;
 
