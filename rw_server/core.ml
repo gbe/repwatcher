@@ -394,7 +394,7 @@ object(self)
 	      let in_progress = {
 		ip_common = common ;
 		ip_filesize_checked_again = false ;
-		ip_offset_retrieval_errors = 0 ;
+		ip_offset_retrieval_errors = ref 0 ;
 		ip_sql_connection = sql_obj_opt ;
 	      }
 	      in

@@ -10,9 +10,8 @@ open Files_progress
 (* Update the count errors or remove the entry in the ht
  * if too many errors *)
 let update_ht_offset_retrieval_errors (wd, file) in_progress =
-  let error_counter' =
-    !in_progress.ip_offset_retrieval_errors + 1
-  in
+  (* dereference ip_offset_retrieval_errors *)
+  incr !in_progress.ip_offset_retrieval_errors;
 
   (* if an offset couldn't be retrieved, then this key must
    * be removed from the files in progress hashtable
@@ -20,11 +19,7 @@ let update_ht_offset_retrieval_errors (wd, file) in_progress =
    * to be processed by core (concurrency between offset and core)
    * The removal is actually done through the file_closed event which is forced here
    *)
-  if error_counter' < 2 then begin
-    in_progress :=
-      { !in_progress with
-	ip_offset_retrieval_errors = error_counter' };
-
+  if !(!in_progress.ip_offset_retrieval_errors) < 2 then begin
     Hashtbl.replace
       Files_progress.ht
       (wd, file)
@@ -100,7 +95,7 @@ let update_offsets_in_ht new_offset_opt key in_progress =
 	(* c_written = being_written ; *)
 	};
 	ip_filesize_checked_again = true ;
-	ip_offset_retrieval_errors = 0 ;
+	ip_offset_retrieval_errors = ref 0 ;
       };
     Hashtbl.replace
       Files_progress.ht
