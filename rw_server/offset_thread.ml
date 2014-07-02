@@ -83,7 +83,8 @@ let is_file_being_written file in_progress =
  * the check has been performed above
  *)
 let update_offsets_in_ht new_offset_opt key in_progress =
-  match !in_progress.ip_common.c_first_known_offset with
+  begin
+    match !in_progress.ip_common.c_first_known_offset with
   | None ->
     (* The last_known_offset is necessarily equal to the first_known_offset *)
     in_progress :=
@@ -96,11 +97,7 @@ let update_offsets_in_ht new_offset_opt key in_progress =
 	};
 	ip_filesize_checked_again = true ;
 	ip_offset_retrieval_errors = ref 0 ;
-      };
-    Hashtbl.replace
-      Files_progress.ht
-      key
-      !in_progress
+      }
 
   | Some _ ->
     (* Only the last_known_offset must be updated *)
@@ -111,10 +108,12 @@ let update_offsets_in_ht new_offset_opt key in_progress =
 	    c_last_known_offset = new_offset_opt
 	}
       };
-    Hashtbl.replace
-      Files_progress.ht
-      key
-      !in_progress
+  end;
+
+  Hashtbl.replace
+    Files_progress.ht
+    key
+    !in_progress
 ;;
 
 (* Written flag updated only if first_offset is unknown *)
