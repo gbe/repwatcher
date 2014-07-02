@@ -48,7 +48,7 @@ object(self)
 
   (* Check if the watch is for a config file *)
   method private _is_config_file wd =
-  
+
     (* in this case, if the config file's wd can not be found,
        we just return false. It should not be a big deal
     *)
@@ -67,24 +67,24 @@ object(self)
     (* Check if the wd is still in the hashtable *)
     if Hashtbl.mem ht_iwatched wd then
       try
-	(* Get wd's father so we can delete wd 
+	(* Get wd's father so we can delete wd
 	 * from its father's children list *)
 	match self#_get_value wd with
 	  | None ->
 	  (* Due to Hashtbl.mem, this error shouldn't happened *)
 	    Log.log ("Error: del_watch. Couldn't find the folder's value in the Hashtbl", Error)
 	  | Some folder ->
-	    let wd_father_opt = folder.wd_father in	 
-	  
+	    let wd_father_opt = folder.wd_father in
+
 	    Hashtbl.remove ht_iwatched wd;
-	  
+
 	    (* Match on wd_father_opt to know if this wd has a father *)
 	    (* Delete wd from its father's children list *)
 	    begin
 	      match wd_father_opt with
 	    | None -> ()
 	    | Some wd_father ->
-		
+
 	      (* Delete one child from the father's list *)
 	      let del_child wd_father wd_child =
 		match self#_get_value wd_father with
@@ -92,7 +92,7 @@ object(self)
 		    Log.log ("Error: del_watch. \
 				 Could not find the folder's father to delete", Error)
 
-		  | Some f_father_info -> 
+		  | Some f_father_info ->
 		    let l_new_children =
 		      List.filter (
 			fun wd_c ->
@@ -120,17 +120,17 @@ object(self)
 		folder.path (int_of_wd wd)
 	    in
 	    Log.log (report, Normal_Extra)
-      with 
+      with
 	  Failure err ->
 	    let error =
 	      sprintf "Error in function '%s', does the target still exist ?" err
 	    in
 	    Log.log (error, Error)
 
-   
+
 
   method private _print_ht =
-    Hashtbl.iter (fun key value -> 
+    Hashtbl.iter (fun key value ->
 
       printf "\n--------------\n'%s'(%d) is the father of :\n"
 	value.path (int_of_wd key);
@@ -158,16 +158,16 @@ object(self)
 
 
   method add_watch path2watch ~wd_father_opt ~is_config_file =
-  
-    (* Check if the folder is not already watched *)  
+
+    (* Check if the folder is not already watched *)
     if self#_is_value path2watch then
       let error = "Error: "^path2watch^" is already watched" in
       Log.log (error, Error) ;
-      
+
     (* the folder is not already watched therefore we can start watching it *)
     else if Sys.file_exists path2watch then begin
       try
-	(* Start watching the wd in 2 different ways 
+	(* Start watching the wd in 2 different ways
 	 * in case it's a configuration file or not *)
 	let wd =
 	  if is_config_file then
@@ -183,7 +183,7 @@ object(self)
 	       S_Moved_from ;
 	       S_Moved_to]
 	in
-	
+
 	(* If this inode is not already watched but with a different path.
 	 *  It can occur if mount --bind is used and both folders are set to be watched
 	 *)
@@ -207,7 +207,7 @@ object(self)
 		    wd_father = None ;
 		    wd_children = []
 		  }
-		    
+
 	    | Some wd_father ->
 	      Hashtbl.add ht_iwatched wd
 		{
@@ -221,7 +221,7 @@ object(self)
 		match self#_get_value wd_father with
 		  | None ->
 		    Log.log ("Exception triggered in add_watch. Unknown wd", Error)
-		    
+
 		  | Some f_father_info ->
 		    Hashtbl.replace ht_iwatched wd_father
 		      {
@@ -238,7 +238,7 @@ object(self)
 	  Log.log (txt, Normal_Extra)
 	end
 
-      with 
+      with
 	| Failure err ->
 	  let error =
 	    "Error in function '"^err^"', is the name \
@@ -257,7 +257,7 @@ object(self)
 
   method add_watch_children l_children =
     let rec r_add_watch_children l_children =
-  
+
       match l_children with
 	| [] -> ()
 	| folder :: q ->
@@ -296,18 +296,18 @@ object(self)
 	  sprintf "%s was opened but its wd could not be found\n" name
 	in
 	Log.log (err, Error)
-	
+
       | Some father ->
-      
+
 	if debug_event then
 	  Printf.printf "[II] Folder: %s\n" father.path;
 
 	let files = Files.get father.path name in
 
 	Mutex.lock Files_progress.mutex_ht ;
-      
+
 	List.iter (fun (file, filesize) ->
-	
+
 	  match Hashtbl.mem Files_progress.ht (wd, file) with
 	    | true -> ()
 	    | false ->
@@ -315,7 +315,7 @@ object(self)
 		self#_print_file file;
 
 	      let opening_date = new Date.date in
-	      
+
 	      let has_what =
 		match written with
 		  | false -> " has opened: "
@@ -375,7 +375,10 @@ object(self)
 	      let sql_obj_opt =
 		let sql_report =
 		  {
-		    s_file = file ;
+		    sr_common = common;
+		    sr_type = SQL_File_Opened;
+
+(*		    s_file = file ;
 		    s_state = SQL_File_Opened ;
 		    s_filesize = filesize_opt ;
 		    s_date = opening_date#get_str_locale ;
@@ -385,12 +388,12 @@ object(self)
 		    s_first_offset = None ;
 		    s_last_offset = None ;
 		    s_written = written ;
-		  }
+*)		  }
 		in
 		Report.report#sql sql_report
 	      in
 	      (* *********** *)
-	      
+
 	      let in_progress = {
 		ip_common = common ;
 		ip_filesize_checked_again = false ;
@@ -398,14 +401,14 @@ object(self)
 		ip_sql_connection = sql_obj_opt ;
 	      }
 	      in
-	
+
 	      Hashtbl.add Files_progress.ht
 		(wd, file) in_progress
 
 	) files ;
-      
+
 	Mutex.unlock Files_progress.mutex_ht ;
-		
+
 (* eo Open, false *)
 
 
@@ -423,14 +426,14 @@ object(self)
 		      its wd info" name
 	  in
 	  Log.log (err, Error)
-	
+
 	| Some folder ->
-	  let path_quoted = Filename.quote folder.path in       
+	  let path_quoted = Filename.quote folder.path in
 	  Printf.printf "[II] Folder: %s\n" path_quoted ;
     end;
-    
+
     Mutex.lock Files_progress.mutex_ht ;
-      
+
     (* Return the list of the files which stopped being accessed *)
     let l_stop =
       Hashtbl.fold (
@@ -462,27 +465,33 @@ object(self)
 		| _ -> ((wd2, f_file), values) :: l_stop'
       ) Files_progress.ht []
     in
-					      
+
     Mutex.unlock Files_progress.mutex_ht ;
 
     List.iter (
-      fun ((wd2, f_file), in_progress) -> 
+      fun ((wd2, f_file), in_progress_old) ->
 
-	Mutex.lock Files_progress.mutex_ht ;	  
+	Mutex.lock Files_progress.mutex_ht ;
 	Hashtbl.remove Files_progress.ht (wd2, f_file);
 	Mutex.unlock Files_progress.mutex_ht ;
 
+	let n_in_prog = ref in_progress_old in
+
 	let closing_date = new Date.date in
-	print_endline
-	  (closing_date#get_str_locale^" - "^f_file.f_unix_login^" closed: "^f_file.f_name^" ("^(string_of_int (Fdinfo.int_of_fd f_file.f_descriptor))^")");
+
+	Printf.printf "%s - %s closed: %s (%d)\n"
+	  closing_date#get_str_locale
+	  f_file.f_unix_login
+	  f_file.f_name
+	  (Fdinfo.int_of_fd f_file.f_descriptor);
 
 	Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
 
-	(* update filesize in database if written 
+	(* update filesize in database if written
 	 * as filesize equaled None if created/written == true *)
 	let nfilesize =
 	  match written with
-	    | false -> in_progress.ip_common.c_filesize
+	    | false -> !n_in_prog.ip_common.c_filesize
 	    | true ->
 	      try
 		let size =
@@ -498,13 +507,13 @@ object(self)
 	(* update last_known_offset according to filesize and written *)
 	(* if file could not be read or does not exist anymore then filesize = None *)
 	let overriden_last_offset_opt =
-	  match in_progress.ip_common.c_last_known_offset with
+	  match !n_in_prog.ip_common.c_last_known_offset with
 	    | None -> None (* unlikely to happen as data are read during the file_open event *)
 	    | Some last_offset' ->
 	      match nfilesize with
 		| None ->
 		  (* best answer we have *)
-		  in_progress.ip_common.c_last_known_offset
+		  !n_in_prog.ip_common.c_last_known_offset
 
 		| Some nfilesize' ->
 
@@ -517,30 +526,41 @@ object(self)
 		  else if nfilesize' < last_offset' && not written then
 		    nfilesize
 
-		  else in_progress.ip_common.c_last_known_offset
+		  else !n_in_prog.ip_common.c_last_known_offset
 	in
+
+	n_in_prog :=
+ 	  { !n_in_prog with
+	    ip_common = {
+	      !n_in_prog.ip_common with
+		c_filesize = nfilesize ;
+		c_last_known_offset = overriden_last_offset_opt ;
+	    }
+	  };
 
 	begin match Config.cfg#is_sql_activated with
 	  | false -> ()
 	  | true ->
 	    let sql_report = {
-	      s_file = f_file ;
+	      sr_common = !n_in_prog.ip_common;
+	      sr_type = SQL_File_Closed ;
+(*	      s_file = f_file ;
 	      s_state = SQL_File_Closed ;
 	      s_filesize = nfilesize ;
 	      s_date = closing_date#get_str_locale ;
 	      s_first_offset = in_progress.ip_common.c_first_known_offset ;
 	      s_last_offset = overriden_last_offset_opt ;
 	      s_written = written ; (* better to use the written than created *)
-	    }
+*)	    }
 	    in
 	    ignore (Report.report#sql
-		      ~sql_obj_opt:in_progress.ip_sql_connection
+		      ~sql_obj_opt:!n_in_prog.ip_sql_connection
 		      sql_report)
 	end;
 
 	let tobemailed =
 	  {
-	    m_common = in_progress.ip_common;
+	    m_common = !n_in_prog.ip_common;
 	    m_filestate = File_Closed;
 	  }
 	in
@@ -561,7 +581,7 @@ object(self)
 		   can't find its father" name
 	in
 	Log.log (err, Error)
-	
+
       | Some father ->
 	self#add_watch
 	  (father.path^"/"^name)
@@ -578,19 +598,19 @@ object(self)
                    Move canceled" name
 	in
 	Log.log (report, Error)
-	
+
       | Some father ->
 	match self#_get_key (father.path^"/"^name) with
 	  | None ->
 	    Log.log ("Error. Move_from: get_key -> wd_key", Error)
-	    
-	  | Some wd_key ->						   
+
+	  | Some wd_key ->
 	    match self#_get_value wd_key with
 	      | None ->
 		Log.log ("Error: Move_from: get_value", Error)
-		
+
 	      | Some current ->
-	      
+
 		(* Get the list of ALL the children and descendants *)
 		let rec get_all_descendants l_children =
 		  List.fold_left (
@@ -604,7 +624,7 @@ object(self)
 		let children_and_descendants =
 		  get_all_descendants current.wd_children
 		in
-				       	
+
 		(* Remove the watch on the children and descendants *)
 		List.iter (
 		  fun wd_child ->
@@ -612,17 +632,17 @@ object(self)
 		      | None ->
 			Log.log ("Error. What_to_do(move_from): \
 				 Could not find a wd_child to delete", Error)
-			
-		      | Some child -> 
+
+		      | Some child ->
 			Log.log ("move_from of child : "^(child.path), Normal_Extra) ;
 			self#_del_watch wd_child
 		) children_and_descendants ;
-	      
+
 		Log.log (("move_from of "^name), Normal_Extra) ;
-	      
+
 		(* The children's watch has been deleted,
 		 * let's delete the real target *)
-		self#_del_watch wd_key  
+		self#_del_watch wd_key
 (* eo move_from, true *)
 
 
@@ -634,10 +654,10 @@ object(self)
 		   can't find its father. Move cancel" name
 	in
 	Log.log (report, Error)
-	
+
       | Some father ->
 	let path = (father.path)^"/"^name in
-      
+
 	let children =
 	  (* Exception raised if the list returned by Dirs.ls is empty.
 	   * This shouldn't happen because 'folder' should be at least returned
@@ -653,10 +673,10 @@ object(self)
 	    Log.log (error, Error);
 	    []
 	in
-      
+
 	(* Watch the new folder *)
 	self#add_watch path ~wd_father_opt:(Some wd) ~is_config_file:false ;
-      
+
 	(* Then the folder's children *)
 	self#add_watch_children children
 
@@ -668,10 +688,10 @@ object(self)
 		   watching it because I can't find its father" name
 	in
 	Log.log (err, Error)
-	
+
       | Some father ->
 	let path = (father.path^"/"^name) in
-      
+
 	match self#_get_key path with
 	  | None ->
 	    let err =
@@ -690,4 +710,3 @@ object(self)
 end;;
 
 let core = new core ;;
-

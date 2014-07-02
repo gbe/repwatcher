@@ -1,5 +1,6 @@
 open Types;;
 
+(*
 type sql_report_t = {
   s_file : f_file ;
   s_state : sql_type ;
@@ -8,4 +9,10 @@ type sql_report_t = {
   s_first_offset : int64 option ;
   s_last_offset : int64 option ;
   s_written : bool ;
+}
+*)
+
+type sql_report_t = {
+  sr_common : common_t ;
+  sr_type : sql_type ;
 }

@@ -19,11 +19,11 @@ object(self)
       let l = DBus.Message.get r in
       l
     in
-  
+
     let send_notif_msg =
       send_msg ~destination:notif_name ~path:notif_path ~intf:notif_interface
     in
-  
+
     let bus = DBus.Bus.get DBus.Bus.Session in
     let params = [
       DBus.String title; (* Name of the program which triggers the notification *)
@@ -34,14 +34,14 @@ object(self)
       DBus.Array (DBus.Strings []);
       DBus.Array (DBus.Dicts ((DBus.SigString, DBus.SigVariant), []));
       DBus.Int32 15000l; (* milliseconds the notification must be seen *)
-    ] in	
+    ] in
     ignore (send_notif_msg ~bus ~serv:"Notify" ~params)
 
 
   method private _new_notification file filestate =
     let filename_escaped = Txt_operations.escape_for_notify file.f_name in
     let conf = (Config.cfg)#get in
-	  
+
     if conf.c_notify.n_locally then begin
       let msg_state =
 	Txt_operations.string_of_filestate filestate
@@ -65,7 +65,7 @@ object(self)
       let dbus_notif =
 	match conf.c_notify.n_parent_folders with
 	  | None ->
-	    sprintf "<b>%s</b> %s\n%s" file.f_username msg_state filename_escaped 
+	    sprintf "<b>%s</b> %s\n%s" file.f_username msg_state filename_escaped
 
 	  | Some parent_folders ->
 	    sprintf "<b>%s</b> %s\n%s%s"
@@ -86,7 +86,7 @@ object(self)
 	    (New_notif ({file with f_name = filename_escaped}, filestate) )
 	    [Marshal.No_sharing]
 	in
-	    
+
 	(* Send in the pipe for the server to send to the clients *)
 	ignore ( Unix.write (Pipe.father2child#get_towrite) str_notif 0 (String.length str_notif) )
       with _ ->
@@ -96,7 +96,7 @@ object(self)
   method private _local_notification txt2benotified =
     let txt_escaped = Txt_operations.escape_for_notify txt2benotified in
     let conf = (Config.cfg)#get in
-    
+
     if conf.c_notify.n_locally then
       try
 	self#_dbus "nobody" "Repwatcher" txt_escaped
@@ -137,25 +137,30 @@ object(self)
       | false -> None
       | true ->
 
-	match sql_report.s_state with
+	match sql_report.sr_type with
 	  | SQL_File_Opened ->
 	    let sql = new Sqldb.sqldb in
 	    sql#file_opened
-	      sql_report.s_file
-	      sql_report.s_written
-	      sql_report.s_date
-	      sql_report.s_filesize;
+	      sql_report.sr_common.c_file
+	      sql_report.sr_common.c_written
+	      sql_report.sr_common.c_opening_date#get_str_locale
+	      sql_report.sr_common.c_filesize;
 	    Some sql
-	  
+
 	  | SQL_File_Closed ->
 	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
+		let closing_date_str =
+		  match sql_report.sr_common.c_closing_date with
+		  | None -> assert false
+		  | Some closing_date -> closing_date#get_str_locale
+		in
 		sql#file_closed
-		  sql_report.s_date
-		  sql_report.s_filesize
-		  sql_report.s_last_offset
-		  sql_report.s_written
+		  closing_date_str
+		  sql_report.sr_common.c_filesize
+		  sql_report.sr_common.c_last_known_offset
+		  sql_report.sr_common.c_written
 	    end;
 	    None
 
@@ -163,7 +168,7 @@ object(self)
 	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
-		sql#first_known_offset sql_report.s_first_offset
+		sql#first_known_offset sql_report.sr_common.c_first_known_offset
 	    end;
 	    None
 
@@ -171,7 +176,7 @@ object(self)
 	    begin match sql_obj_opt with
 	      | None -> assert false
 	      | Some sql ->
-		sql#last_known_offset sql_report.s_last_offset
+		sql#last_known_offset sql_report.sr_common.c_last_known_offset
 	    end;
 	    None
 

@@ -75,7 +75,7 @@ let is_file_being_written file in_progress =
 
 
 (* Add the offset_opt in the Hashtbl because of Open events in Core
- * update the first_known_offset if it is None
+ * update the first_known_offset and last_known_offset with the same value if first_known_offset is None
  * update the last_known_offset if first_known_offset is a Some
  *
  * Also reset the error_counter and set to true the offset_check_again as it
@@ -161,6 +161,9 @@ let loop_check () =
 	| Some _ ->
 	  let being_written = is_file_being_written file inprogress_ref in
 	  update_written being_written (wd, file) inprogress_ref;
+
+	  (* save the value to know later which can of sr_types must be passed in the SQL query *)
+	  let first_off_backup = !inprogress_ref.ip_common.c_first_known_offset in
 	  update_offsets_in_ht new_offset_opt (wd, file) inprogress_ref;
 
 	  match (Config.cfg)#is_sql_activated with
@@ -168,48 +171,30 @@ let loop_check () =
 	    | true ->
 
 	      (* If the file in progress was flagged as not created while it
-	       * is actually being written, then the 'created' flag in the RDBMS
+	       * is actually being written, then the 'written' flag in the RDBMS
 	       * must be turned on *)
 	      if !inprogress_ref.ip_common.c_written = false &&
 		being_written = true then begin
 		let sql_report_created =
 		  {
-		    s_file = file ;
-		    s_state = SQL_Switch_On_Created ;
-		    s_filesize = !inprogress_ref.ip_common.c_filesize ;
-		    s_date = !inprogress_ref.ip_common.c_opening_date#get_str_locale ;
-		    s_first_offset = None ; (* Not used thus None *)
-		    s_last_offset = None ; (* Not used thus None *)
-		    s_written = true ;
+		    sr_common = !inprogress_ref.ip_common ;
+		    sr_type = SQL_Switch_On_Created ;
 		  }
 		in
 		ignore (Report.report#sql
 			  ~sql_obj_opt:!inprogress_ref.ip_sql_connection
 			  sql_report_created)
-	      end;
+		end;
 
 	      let sql_report_offset =
 		{
-		  s_file = file ;
-		  s_state =
-
-		    (* Because the First_Known value in the RDBMS is NULL,
-		       instead of updating the Last Known value, this updates
-		       the SQL First Known field *)
-		    begin match !inprogress_ref.ip_common.c_first_known_offset with
-		      | None -> SQL_FK_Offset
-		      | Some _ -> SQL_LK_Offset
+		  sr_common = !inprogress_ref.ip_common ;
+		  sr_type =
+		    (* Update the first of last known offset field into RDBMS *)
+		    begin match first_off_backup with
+		    | None -> SQL_FK_Offset
+		    | Some _ -> SQL_LK_Offset
 		    end;
-		  s_filesize = !inprogress_ref.ip_common.c_filesize ;
-		  s_date = !inprogress_ref.ip_common.c_opening_date#get_str_locale ;
-		  s_first_offset =
-		    (* First offset not modified if already existing *)
-		    begin match !inprogress_ref.ip_common.c_first_known_offset with
-		    | None -> new_offset_opt ;
-		    | Some _ -> !inprogress_ref.ip_common.c_first_known_offset ;
-		    end;
-		  s_last_offset = new_offset_opt ;
-		  s_written = !inprogress_ref.ip_common.c_written ;
 		}
 	      in
 	      ignore (Report.report#sql
