@@ -526,28 +526,31 @@ object(self)
 	    }
 	  };
 
-	begin match Config.cfg#is_sql_activated with
-	  | false -> ()
-	  | true ->
-	    let sql_report = {
-	      sr_common = !n_in_prog.ip_common;
-	      sr_type = SQL_File_Closed ;
-	    }
-	    in
-	    ignore (Report.report#sql
-		      ~sql_obj_opt:!n_in_prog.ip_sql_connection
-		      sql_report)
-	end;
+	(* *** SQL *** *)
+	let sql_report = {
+	  sr_common = !n_in_prog.ip_common;
+	  sr_type = SQL_File_Closed ;
+	} in
+	ignore (Report.report#sql
+		  ~sql_obj_opt:!n_in_prog.ip_sql_connection
+		  sql_report);
+	(******************)
 
+
+	(* *** Emails *** *)
 	let tobemailed =
 	  {
 	    m_common = !n_in_prog.ip_common;
 	    m_filestate = File_Closed;
 	  }
 	in
+	Report.report#mail tobemailed;
+	(******************)
 
-	Report.report#notify (New_notif (f_file, File_Closed));
-	Report.report#mail tobemailed
+
+	(* *** Notifications *** *)
+	Report.report#notify (New_notif (f_file, File_Closed))
+	(******************)
     ) l_stop
 
 (* eo file_closed, false *)

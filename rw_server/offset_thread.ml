@@ -169,12 +169,12 @@ let loop_check () =
 	    | false -> ()
 	    | true ->
 
-	      (* If the file in progress was flagged as not created while it
+	      (* If the file in progress was flagged as not written while it
 	       * is actually being written, then the 'written' flag in the RDBMS
 	       * must be turned on *)
 	      if !inprogress_ref.ip_common.c_written = false &&
 		being_written = true then begin
-		let sql_report_created =
+		let sql_report_written =
 		  {
 		    sr_common = !inprogress_ref.ip_common ;
 		    sr_type = SQL_Switch_On_Created ;
@@ -182,7 +182,7 @@ let loop_check () =
 		in
 		ignore (Report.report#sql
 			  ~sql_obj_opt:!inprogress_ref.ip_sql_connection
-			  sql_report_created)
+			  sql_report_written)
 		end;
 
 	      let sql_report_offset =
