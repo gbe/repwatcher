@@ -535,6 +535,7 @@ object(self)
 	      !n_in_prog.ip_common with
 		c_filesize = nfilesize ;
 		c_last_known_offset = overriden_last_offset_opt ;
+		c_closing_date = Some closing_date ;
 	    }
 	  };
 
