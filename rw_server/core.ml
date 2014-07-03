@@ -358,16 +358,14 @@ object(self)
 	      let tobemailed =
 		{
 		  m_common = common;
-		  m_filestate = File_Opened;
+		  m_filestate =
+		    begin match written with
+		    | false ->  File_Opened
+		    | true -> File_Created
+		    end;
 		}
 	      in
-	      begin match written with
-		| false ->
-		  Report.report#mail tobemailed
-		| true ->
-		  Report.report#mail { tobemailed with
-		    m_filestate = File_Created }
-	      end;
+	      Report.report#mail tobemailed;
 	      (* ************** *)
 
 
@@ -377,18 +375,7 @@ object(self)
 		  {
 		    sr_common = common;
 		    sr_type = SQL_File_Opened;
-
-(*		    s_file = file ;
-		    s_state = SQL_File_Opened ;
-		    s_filesize = filesize_opt ;
-		    s_date = opening_date#get_str_locale ;
-		    (* Desactivate the first offset when opening_file,
-		     * useful when re-opening the file
-		     *)
-		    s_first_offset = None ;
-		    s_last_offset = None ;
-		    s_written = written ;
-*)		  }
+		  }
 		in
 		Report.report#sql sql_report
 	      in
@@ -545,14 +532,7 @@ object(self)
 	    let sql_report = {
 	      sr_common = !n_in_prog.ip_common;
 	      sr_type = SQL_File_Closed ;
-(*	      s_file = f_file ;
-	      s_state = SQL_File_Closed ;
-	      s_filesize = nfilesize ;
-	      s_date = closing_date#get_str_locale ;
-	      s_first_offset = in_progress.ip_common.c_first_known_offset ;
-	      s_last_offset = overriden_last_offset_opt ;
-	      s_written = written ; (* better to use the written than created *)
-*)	    }
+	    }
 	    in
 	    ignore (Report.report#sql
 		      ~sql_obj_opt:!n_in_prog.ip_sql_connection
