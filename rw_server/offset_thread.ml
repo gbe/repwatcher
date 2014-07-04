@@ -82,7 +82,7 @@ let is_file_being_written file in_progress =
  * is necessary to be true at this point since if it used to be at false,
  * the check has been performed above
  *)
-let update_offsets_in_ht new_offset_opt key in_progress =
+let update_ht_offsets new_offset_opt key in_progress =
   begin
     match !in_progress.ip_common.c_first_known_offset with
   | None ->
@@ -117,7 +117,7 @@ let update_offsets_in_ht new_offset_opt key in_progress =
 
 (* Written flag updated only if first_offset is unknown *)
 (* DO NOT REMEMBER EXACTLY WHY ONLY WHEN FIRST_OFF IS UNKNOWN *)
-let update_file_to_written key in_progress =
+let update_ht_file_to_written key in_progress =
   match !in_progress.ip_common.c_first_known_offset with
     | None ->
       in_progress :=
@@ -196,7 +196,7 @@ let loop_check () =
 	   * by below override (update_file_to_written) *)
 	  if !inprogress_ref.ip_common.c_written = false then begin
 	    if is_file_being_written file inprogress_ref then begin
-	      update_file_to_written (wd, file) inprogress_ref;
+	      update_ht_file_to_written (wd, file) inprogress_ref;
 	      update_sql_to_written inprogress_ref;
 	    end
 	  end;
@@ -204,7 +204,7 @@ let loop_check () =
 	  (* save the value for using it into update_sql, to know
 	   * which kind of sr_types must be passed to the SQL query *)
 	  let first_off_backup = !inprogress_ref.ip_common.c_first_known_offset in
-	  update_offsets_in_ht new_offset_opt (wd, file) inprogress_ref;
+	  update_ht_offsets new_offset_opt (wd, file) inprogress_ref;
 
 	  match (Config.cfg)#is_sql_activated with
 	  | false -> ()
