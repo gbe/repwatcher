@@ -7,38 +7,19 @@ open Unix
 open Files_progress
 
 
-(* Update the count errors or remove the entry in the ht
- * if too many errors *)
-let update_ht_offset_retrieval_errors (wd, file) in_progress =
-  (* dereference ip_offset_retrieval_errors *)
-  incr !in_progress.ip_offset_retrieval_errors;
 
-  (* if an offset couldn't be retrieved, then this key must
-   * be removed from the files in progress hashtable
-   * Removal is done at the second time so that time is given to a close event
-   * to be processed by core (concurrency between offset and core)
-   * The removal is actually done through the file_closed event which is forced here
-   *)
-  if !(!in_progress.ip_offset_retrieval_errors) < 2 then begin
-    Hashtbl.replace
-      Files_progress.ht
-      (wd, file)
-      !in_progress;
+let force_closing_event (wd, file) was_being_written =
 
-    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra) ;
-
-  end else begin
-    let event =
-      match !in_progress.ip_common.c_written with
-	| true ->
-	  (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
-	| false ->
-	  (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
-    in
-    Log.log (
-      ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
-    Events.what_to_do event
-  end
+  let closing_event =
+    match was_being_written with
+    | true ->
+      (wd, [Inotify.Close_write], Int32.of_int 0, Some file.f_name)
+    | false ->
+      (wd, [Inotify.Close_nowrite], Int32.of_int 0, Some file.f_name)
+  in
+  Log.log (
+    ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
+  Events.what_to_do closing_event
 ;;
 
 
@@ -82,9 +63,8 @@ let is_file_being_written file in_progress =
  * is necessary to be true at this point since if it used to be at false,
  * the check has been performed above
  *)
-let update_ht_offsets new_offset_opt key in_progress =
-  begin
-    match !in_progress.ip_common.c_first_known_offset with
+let update_inprogress_offsets new_offset_opt key in_progress =
+  match !in_progress.ip_common.c_first_known_offset with
   | None ->
     (* The last_known_offset is necessarily equal to the first_known_offset *)
     in_progress :=
@@ -106,33 +86,23 @@ let update_ht_offsets new_offset_opt key in_progress =
 	  !in_progress.ip_common with
 	    c_last_known_offset = new_offset_opt
 	}
-      };
-  end;
-
-  Hashtbl.replace
-    Files_progress.ht
-    key
-    !in_progress
+      }
 ;;
 
 (* Written flag updated only if first_offset is unknown *)
 (* DO NOT REMEMBER EXACTLY WHY ONLY WHEN FIRST_OFF IS UNKNOWN *)
-let update_ht_file_to_written key in_progress =
+let update_inprogress_file_to_written key in_progress =
   match !in_progress.ip_common.c_first_known_offset with
-    | None ->
-      in_progress :=
- 	{ !in_progress with
-	  ip_common = {
-	    !in_progress.ip_common with
-	      c_written = true ;
-	  }
-	};
-      Hashtbl.replace
-	Files_progress.ht
-	key
-	!in_progress
+  | None ->
+    in_progress :=
+      { !in_progress with
+	ip_common = {
+	  !in_progress.ip_common with
+	    c_written = true ;
+	}
+      };
 
-    | Some _ -> ()
+  | Some _ -> ()
 ;;
 
 (* If the file in progress was flagged as not written while it
@@ -177,23 +147,32 @@ let loop_check () =
 	Files.get_offset file.f_program_pid file.f_descriptor
       in
 
-      match new_offset_opt with
+      begin
+	match new_offset_opt with
 	| None ->
-	  (* Update the count errors or remove the entry in the ht
-	  * if too many errors *)
-	  update_ht_offset_retrieval_errors
-	    (wd, file)
-	    inprogress_ref
+
+	  (* It happens that the offset_thread loop runs before having gotten the closing event.
+	   * This gives 2 loops time to get the closing event properly.
+	   * If after 2 loops, the event is not gotten, then closing event is forced *)
+
+	  (* Dereference of ip_offset_retrieval_errors *)
+	  incr !inprogress_ref.ip_offset_retrieval_errors;
+
+	  if !(!inprogress_ref.ip_offset_retrieval_errors) < 2 then
+	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra)
+	  else
+	    force_closing_event (wd, file) !inprogress_ref.ip_common.c_written
+
 
 	| Some _ ->
-	  update_ht_offsets new_offset_opt (wd, file) inprogress_ref;
+	  update_inprogress_offsets new_offset_opt (wd, file) inprogress_ref;
 
 	  (* Perform the write checks only if false. True values were either
 	   * gotten from opening events or former false values overriden
-	   * by below override (update_file_to_written) *)
+	   * by below override (update_inprogress_file_to_written) *)
 	  if !inprogress_ref.ip_common.c_written = false then begin
 	    if is_file_being_written file inprogress_ref then begin
-	      update_ht_file_to_written (wd, file) inprogress_ref;
+	      update_inprogress_file_to_written (wd, file) inprogress_ref;
 	      update_sql_to_written inprogress_ref;
 	    end
 	  end;
@@ -205,6 +184,12 @@ let loop_check () =
 	    | None -> update_sql_offset inprogress_ref SQL_FK_Offset
 	    | Some _ -> update_sql_offset inprogress_ref SQL_LK_Offset
 	  end;
+      end;
+
+      Hashtbl.replace
+	Files_progress.ht
+	(wd, file)
+	!inprogress_ref
 
     ) Files_progress.ht ;
 
