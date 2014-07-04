@@ -150,18 +150,13 @@ let update_sql_to_written in_progress =
 	    written_report)
 ;;
 
-let update_sql in_progress first_off_backup =
+(* Update the first or last known offset field into RDBMS *)
+let update_sql_offset in_progress offset_type =
 
-  let sql_report_offset =
-    {
-      sr_common = !in_progress.ip_common ;
-      sr_type =
-	(* Update the first of last known offset field into RDBMS *)
-	begin match first_off_backup with
-	| None -> SQL_FK_Offset
-	| Some _ -> SQL_LK_Offset
-	end;
-    }
+  let sql_report_offset = {
+    sr_common = !in_progress.ip_common ;
+    sr_type = offset_type;
+  }
   in
   ignore (Report.report#sql
 	    ~sql_obj_opt:!in_progress.ip_sql_connection
@@ -191,6 +186,8 @@ let loop_check () =
 	    inprogress_ref
 
 	| Some _ ->
+	  update_ht_offsets new_offset_opt (wd, file) inprogress_ref;
+
 	  (* Perform the write checks only if false. True values were either
 	   * gotten from opening events or former false values overriden
 	   * by below override (update_file_to_written) *)
@@ -203,12 +200,11 @@ let loop_check () =
 
 	  (* save the value for using it into update_sql, to know
 	   * which kind of sr_types must be passed to the SQL query *)
-	  let first_off_backup = !inprogress_ref.ip_common.c_first_known_offset in
-	  update_ht_offsets new_offset_opt (wd, file) inprogress_ref;
-
-	  match (Config.cfg)#is_sql_activated with
-	  | false -> ()
-	  | true -> update_sql inprogress_ref first_off_backup
+	  if Config.cfg#is_sql_activated then begin
+	    match !inprogress_ref.ip_common.c_first_known_offset with
+	    | None -> update_sql_offset inprogress_ref SQL_FK_Offset
+	    | Some _ -> update_sql_offset inprogress_ref SQL_LK_Offset
+	  end;
 
     ) Files_progress.ht ;
 
