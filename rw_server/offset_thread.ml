@@ -133,6 +133,13 @@ let update_sql_offset in_progress offset_type =
 	    sql_report_offset)
 ;;
 
+(*let st iopt =
+  match iopt with
+  | None -> Int64.of_int (-1)
+  | Some i -> i
+;;
+*)
+
 let loop_check () =
 
   while true do
@@ -142,6 +149,11 @@ let loop_check () =
     Hashtbl.iter (fun (wd, file) in_progress' ->
 
       let inprogress_ref = ref in_progress' in
+
+(*      Printf.printf "START - First_off: %Ld\t\tLast_off: %Ld\n"
+	(st !inprogress_ref.ip_common.c_first_known_offset)
+	(st !inprogress_ref.ip_common.c_last_known_offset);
+*)
 
       let new_offset_opt =
 	Files.get_offset file.f_program_pid file.f_descriptor
@@ -177,14 +189,23 @@ let loop_check () =
 	    end
 	  end;
 
-	  (* save the value for using it into update_sql, to know
-	   * which kind of sr_types must be passed to the SQL query *)
+	  (* match on the old value to know
+	   * which kind of sr_types must be passed
+	   * to the SQL query *)
 	  if Config.cfg#is_sql_activated then begin
-	    match !inprogress_ref.ip_common.c_first_known_offset with
-	    | None -> update_sql_offset inprogress_ref SQL_FK_Offset
+	    match in_progress'.ip_common.c_first_known_offset with
+	    | None ->
+	      update_sql_offset inprogress_ref SQL_FK_Offset ;
+	      update_sql_offset inprogress_ref SQL_LK_Offset
 	    | Some _ -> update_sql_offset inprogress_ref SQL_LK_Offset
 	  end;
       end;
+
+(*
+      Printf.printf "END - First_off: %Ld\t\tLast_off: %Ld\n\n"
+	(st !inprogress_ref.ip_common.c_first_known_offset)
+	(st !inprogress_ref.ip_common.c_last_known_offset);
+*)
 
       Hashtbl.replace
 	Files_progress.ht
