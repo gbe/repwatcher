@@ -242,6 +242,6 @@ This is free software under the MIT license.\n\n";
 	    | Unix_error (_,"select",_) -> []
 	    | Unix_error (e, "read", _) -> []
 	in
-	List.iter Events.what_to_do event_l
+	List.iter EventsDispatcher.what_to_do event_l
       done;
 ;;

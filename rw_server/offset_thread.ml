@@ -19,7 +19,7 @@ let force_closing_event (wd, file) was_being_written =
   in
   Log.log (
     ("Offset. "^file.f_name^" gets a second and final warning. Force closing event"), Normal_Extra) ;
-  Events.what_to_do closing_event
+  EventsDispatcher.what_to_do closing_event
 ;;
 
 
