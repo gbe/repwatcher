@@ -32,10 +32,10 @@ let what_to_do event =
 	| Close_write, false -> FileEvents.file_closed ~written:true wd name
 	| Close_nowrite, false -> FileEvents.file_closed ~written:false wd name
 
-	| Create, true -> core#directory_created wd name
-	| Moved_from, true -> core#directory_moved_from wd name
-	| Moved_to, true -> core#directory_moved_to wd name
-	| Delete, true -> core#directory_deleted wd name
+	| Create, true -> DirectoryEvents.directory_created wd name
+	| Moved_from, true -> DirectoryEvents.directory_moved_from wd name
+	| Moved_to, true -> DirectoryEvents.directory_moved_to wd name
+	| Delete, true -> DirectoryEvents.directory_deleted wd name
 
 
         (* When IGNORED is triggered it means the wd
