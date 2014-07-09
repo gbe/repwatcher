@@ -9,26 +9,26 @@ let what_to_do event =
     match str_opt with
     | None -> "nothing"
     | Some x -> x
-  in  
-    
+  in
+
   let rec action event_type_list is_folder =
     match event_type_list with
     | [] -> ()
-    | event_type :: q -> 
-	  
+    | event_type :: q ->
+
       if core#get_debug_event &&
-	not (string_of_event event_type = "ACCESS") then
-	  Printf.printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
-	    (string_of_event event_type)
-	    (string_of_bool is_folder)
-	    name
-	    (int_of_wd wd);
-      
-      match event_type, is_folder with	
+	event_type <> Access then
+	Printf.printf "Event in progress: '%s', %s. Name: '%s'. wd: %d\n"
+	  (string_of_event event_type)
+	  (string_of_bool is_folder)
+	  name
+	  (int_of_wd wd);
+
+      match event_type, is_folder with
 	| Isdir, _ -> action q true
 
 	| Create, false -> core#file_created wd name
-	| Open, false -> core#file_opened wd name      					      
+	| Open, false -> core#file_opened wd name
 	| Close_write, false -> core#file_closed ~written:true wd name
 	| Close_nowrite, false -> core#file_closed ~written:false wd name
 
@@ -37,10 +37,10 @@ let what_to_do event =
 	| Moved_to, true -> core#directory_moved_to wd name
 	| Delete, true -> core#directory_deleted wd name
 
-	    
+
         (* When IGNORED is triggered it means the wd
 	 * is not watched anymore. Therefore, we need
-	 * to take this wd out of the Hashtbl *)		    
+	 * to take this wd out of the Hashtbl *)
 	| Ignored, _  -> ()
 
 	(* have to be there or they're triggered by the "I don't do" *)
@@ -53,7 +53,7 @@ let what_to_do event =
 	| _ ->
 	  Log.log ("I don't do: "^(string_of_event event_type)^", "
 		   ^(string_of_bool is_folder)^" yet.", Normal_Extra)
- 
+
   in
   action tel false;
   Pervasives.flush Pervasives.stdout
