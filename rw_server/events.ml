@@ -1,5 +1,5 @@
 open Inotify
-open Core
+open InotifyCaller
 open Types
 
 let what_to_do event =

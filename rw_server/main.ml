@@ -12,7 +12,7 @@ let config_file = ref "repwatcher.conf" ;;
 let is_sql_activated_and_working = ref false ;;
 
 let clean_exit () =
-  Unix.close Core.core#get_fd ;
+  Unix.close InotifyCaller.core#get_fd ;
 
    (* we need to set all the IN_PROGRESS accesses to zero.
    * This has been proven to be useful for outside apps *)
@@ -35,7 +35,7 @@ let clean_exit () =
 
 
 let change_main_process_identity () =
-  
+
   (* Drop privileges by changing the processus' identity
    * if its current id is root *)
   if Unix.geteuid () = 0 && Unix.getegid () = 0 then begin
@@ -49,7 +49,7 @@ let change_main_process_identity () =
       let passwd_entry = Unix.getpwnam Config.cfg#get_process_identity in
       initgroups Config.cfg#get_process_identity passwd_entry.pw_gid;
       setuid passwd_entry.pw_uid;
-      
+
     with
       | Process_identity_not_configured ->
 	let error =
@@ -82,7 +82,7 @@ let check_sql_connection () =
 
 
 (* Main function *)
-let _ =  
+let _ =
 
   Printf.printf "\nRepwatcher  Copyright (C) 2007-2014  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
@@ -90,12 +90,12 @@ This is free software under the MIT license.\n\n";
   Pervasives.flush Pervasives.stdout;
 
   Arg.parse
-    [ 
+    [
       "-f", Arg.String (fun path_conf ->
 	config_file := path_conf),
       ("\tConfiguration file path: /<some_path>/"^(!config_file));
     ]
-    (fun _ -> print_endline usage ; exit 1 ) usage;  
+    (fun _ -> print_endline usage ; exit 1 ) usage;
 
   (* at_exit needs to be after Arg.parse, otherwise there are problems to
    * display usage and the -help and --help options *)
@@ -139,7 +139,7 @@ This is free software under the MIT license.\n\n";
       end
     | false -> -1
   in
-  
+
   (* If the process has been forked *)
   match fd with
     | 0 ->
@@ -171,13 +171,13 @@ This is free software under the MIT license.\n\n";
 	(* if a connection to the SQL backend is not possible
 	 * then the program exits *)
 	check_sql_connection ();
-		
+
 	(* since the sql_connection tested above works
 	 * then sql is activated for the at_exit call *)
 	is_sql_activated_and_working := true;
 
 	let sql = new Sqldb.sqldb in
-		
+
 	(* if Sqldb.create_db goes wrong, the program exits *)
 	sql#create_db c_sql.sql_dbname ;
 
@@ -190,16 +190,16 @@ This is free software under the MIT license.\n\n";
 
       (* Check if a connection can be done with the SMTP server *)
       Config.cfg#check_smtp_server;
-     
+
       (* Start the pipes if the remote notification server is enabled *)
       if conf.c_notify.n_remotely then begin
 	Config.cfg#server_certs ;
 	ignore (Thread.create Pipe_from_server_thread.wait_pipe_from_child_process ())
-      end; 
-     
+      end;
+
       (* Watch the config *)
       (* Core.core#add_watch !config_file ~wd_father_opt:None ~is_config_file:true; *)
-      
+
       (* Filter the directories given in the config file with the ignored ones *)
       let (dirs, children) =
 	Dirs.filter_and_get_children
@@ -209,10 +209,10 @@ This is free software under the MIT license.\n\n";
 
       (* Watch the directories and their children *)
       List.iter (fun dir ->
-	Core.core#add_watch dir ~wd_father_opt:None ~is_config_file:false
+	InotifyCaller.core#add_watch dir ~wd_father_opt:None ~is_config_file:false
       ) dirs;
 
-      Core.core#add_watch_children children;
+      InotifyCaller.core#add_watch_children children;
 
       let notif_txt = "Repwatcher is watching for youuu ! :)" in
       print_endline notif_txt;
@@ -223,7 +223,7 @@ This is free software under the MIT license.\n\n";
       (* **************************** *)
       (* For interruptions *)
       let loop = ref true in
-	
+
       let handle_interrupt i =
 	loop := false
       in
@@ -233,13 +233,13 @@ This is free software under the MIT license.\n\n";
 
 
       while !loop do
-	let event_l = 
+	let event_l =
 	  try
-	    ignore (Unix.select [ Core.core#get_fd ] [] [] (-1.));
-	    Inotify.read Core.core#get_fd
+	    ignore (Unix.select [ InotifyCaller.core#get_fd ] [] [] (-1.));
+	    Inotify.read InotifyCaller.core#get_fd
 	  with
 	    (* triggered when ctrl+c is pressed *)
-	    | Unix_error (_,"select",_) -> [] 
+	    | Unix_error (_,"select",_) -> []
 	    | Unix_error (e, "read", _) -> []
 	in
 	List.iter Events.what_to_do event_l
