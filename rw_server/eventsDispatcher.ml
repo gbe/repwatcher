@@ -27,10 +27,10 @@ let what_to_do event =
       match event_type, is_folder with
 	| Isdir, _ -> action q true
 
-	| Create, false -> core#file_created wd name
-	| Open, false -> core#file_opened wd name
-	| Close_write, false -> core#file_closed ~written:true wd name
-	| Close_nowrite, false -> core#file_closed ~written:false wd name
+	| Create, false -> FileEvents.file_created wd name
+	| Open, false -> FileEvents.file_opened wd name
+	| Close_write, false -> FileEvents.file_closed ~written:true wd name
+	| Close_nowrite, false -> FileEvents.file_closed ~written:false wd name
 
 	| Create, true -> core#directory_created wd name
 	| Moved_from, true -> core#directory_moved_from wd name

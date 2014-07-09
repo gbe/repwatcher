@@ -34,14 +34,14 @@ object(self)
     with Found wd -> Some wd
 
 
-(* Look in the hashtable if the value exists -> bool *)
+  (* Look in the hashtable if the value exists -> bool *)
   method private _is_value path_target =
     match (self#_get_key path_target) with
       | None -> false
       | Some _ -> true
 
-
-  method private _get_value wd =
+  (* TODO:remove _ if public *)
+  method _get_value wd =
     try Some (Hashtbl.find ht_iwatched wd)
     with Not_found -> None
 
@@ -139,8 +139,8 @@ object(self)
     ) ht_iwatched;
     Pervasives.flush Pervasives.stdout
 
-
-  method private _print_file file =
+  (* TODO: remove _ if public *)
+  method  _print_file file =
     Printf.printf
     "Name: %s\n\
      Path: %s\n\
@@ -287,273 +287,6 @@ object(self)
 	      r_add_watch_children q
     in
     r_add_watch_children l_children
-
-
-  method file_opened ?(written=false) wd name =
-    match self#_get_value wd with
-      | None ->
-	let err =
-	  sprintf "%s was opened but its wd could not be found\n" name
-	in
-	Log.log (err, Error)
-
-      | Some father ->
-
-	if debug_event then
-	  Printf.printf "[II] Folder: %s\n" father.path;
-
-	let files = Files.get father.path name in
-
-	Mutex.lock Files_progress.mutex_ht ;
-
-	List.iter (fun (file, filesize) ->
-
-	  match Hashtbl.mem Files_progress.ht (wd, file) with
-	    | true -> ()
-	    | false ->
-	      if debug_event then
-		self#_print_file file;
-
-	      let opening_date = new Date.date in
-
-	      let has_what =
-		match written with
-		  | false -> " has opened: "
-		  | true  -> " has created: "
-	      in
-
-	      print_endline
-	      (opening_date#get_str_locale^" - "^file.f_unix_login^has_what^file.f_name);
-
-	      Log.log (file.f_unix_login^has_what^file.f_name, Normal);
-
-	      (* *** Notifications *** *)
-	      begin match written with
-		| false ->
-		  Report.report#notify (New_notif (file, File_Opened))
-		| true ->
-		  Report.report#notify (New_notif (file, File_Created))
-	      end;
-	      (* ********************* *)
-
-
-	      (* The filesize must be overriden as unknown if the file is being created (written) *)
-	      let filesize_opt =
-		match written with
-		  | true -> None
-		  | false -> Some filesize
-	      in
-
-	      let common = {
-		c_file = file ;
-		c_filesize = filesize_opt ;
-		c_first_known_offset = None ;
-		c_last_known_offset = None ;
-		c_opening_date = opening_date ;
-		c_closing_date = None ;
-		c_written = written ;
-	      } in
-
-	      (* *** Emails *** *)
-	      let tobemailed =
-		{
-		  m_common = common;
-		  m_filestate =
-		    begin match written with
-		    | false ->  File_Opened
-		    | true -> File_Created
-		    end;
-		}
-	      in
-	      Report.report#mail tobemailed;
-	      (* ************** *)
-
-
-	      (* *** SQL *** *)
-	      let sql_obj_opt =
-		let sql_report =
-		  {
-		    sr_common = common;
-		    sr_type = SQL_File_Opened;
-		  }
-		in
-		Report.report#sql sql_report
-	      in
-	      (* *********** *)
-
-	      let in_progress = {
-		ip_common = common ;
-		ip_filesize_checked_again = false ;
-		ip_offset_retrieval_errors = ref 0 ;
-		ip_sql_connection = sql_obj_opt ;
-	      }
-	      in
-
-	      Hashtbl.add Files_progress.ht
-		(wd, file) in_progress
-
-	) files ;
-
-	Mutex.unlock Files_progress.mutex_ht ;
-
-(* eo Open, false *)
-
-
-  method file_created wd name =
-    self#file_opened ~written:true wd name
-
-  method file_closed ?(written=false) wd name =
-
-    if debug_event then begin
-      match self#_get_value wd with
-	| None ->
-	  let err =
-	    sprintf "%s has been closed (nowrite) \
-		      but I can't report it because I cannot find \
-		      its wd info" name
-	  in
-	  Log.log (err, Error)
-
-	| Some folder ->
-	  let path_quoted = Filename.quote folder.path in
-	  Printf.printf "[II] Folder: %s\n" path_quoted ;
-    end;
-
-    Mutex.lock Files_progress.mutex_ht ;
-
-    (* Return the list of the files which stopped being accessed *)
-    let l_stop =
-      Hashtbl.fold (
-	fun (wd2, f_file) values l_stop' ->
-
-	  (* Return new infos on a specific fdnum.
-	   * If the process is already closed, a Sys_error is triggered
-	   * by Fdinfo.get_fds
-	   *)
-	  let fdinprogress =
-	    try
-	      Some (List.find (fun (fd, fdval) ->
-		fd = f_file.f_descriptor
-	      ) (Fdinfo.get_fds f_file.f_program_pid))
-	    with _ -> None
-	  in
-
-	  match fdinprogress with
-	    | None -> ((wd2, f_file), values) :: l_stop'
-	    | Some (_, fdval) ->
-
-	      try
-		(* if it's a real path then true
-		 * otherwise it's something like pipe:[160367] *)
-		match Sys.file_exists fdval with
-		  | false -> ((wd2, f_file), values) :: l_stop'
-		  | true -> l_stop'
-	      with
-		| _ -> ((wd2, f_file), values) :: l_stop'
-      ) Files_progress.ht []
-    in
-
-    Mutex.unlock Files_progress.mutex_ht ;
-
-    List.iter (
-      fun ((wd2, f_file), in_progress_old) ->
-
-	Mutex.lock Files_progress.mutex_ht ;
-	Hashtbl.remove Files_progress.ht (wd2, f_file);
-	Mutex.unlock Files_progress.mutex_ht ;
-
-	let n_in_prog = ref in_progress_old in
-
-	let closing_date = new Date.date in
-
-	Printf.printf "%s - %s closed: %s (%d)\n"
-	  closing_date#get_str_locale
-	  f_file.f_unix_login
-	  f_file.f_name
-	  (Fdinfo.int_of_fd f_file.f_descriptor);
-
-	Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
-
-	(* update filesize in database if written
-	 * as filesize equaled None if created/written == true *)
-	let nfilesize =
-	  match written with
-	    | false -> !n_in_prog.ip_common.c_filesize
-	    | true ->
-	      try
-		let size =
-		  (Unix.stat (f_file.f_path^f_file.f_name)).st_size
-		in
-		Some (Int64.of_int size)
-	      with Unix_error (err_code, funct_name, fullpath) ->
-		Log.log
-		  ("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
-		None
-	in
-
-	(* update last_known_offset according to filesize and written *)
-	(* if file could not be read or does not exist anymore then filesize = None *)
-	let overriden_last_offset_opt =
-	  match !n_in_prog.ip_common.c_last_known_offset with
-	    | None -> None (* unlikely to happen as data are read during the file_open event *)
-	    | Some last_offset' ->
-	      match nfilesize with
-		| None ->
-		  (* best answer we have *)
-		  !n_in_prog.ip_common.c_last_known_offset
-
-		| Some nfilesize' ->
-
-		  (* fix the offset to be equal to filesize
-		   * when creating the file *)
-		  if nfilesize' > last_offset' && written then
-		    nfilesize
-
-		  (* Sometimes, it happens that the offset is bigger than the filesize *)
-		  else if nfilesize' < last_offset' && not written then
-		    nfilesize
-
-		  else !n_in_prog.ip_common.c_last_known_offset
-	in
-
-	n_in_prog :=
- 	  { !n_in_prog with
-	    ip_common = {
-	      !n_in_prog.ip_common with
-		c_filesize = nfilesize ;
-		c_last_known_offset = overriden_last_offset_opt ;
-		c_closing_date = Some closing_date ;
-	    }
-	  };
-
-	(* *** SQL *** *)
-	let sql_report = {
-	  sr_common = !n_in_prog.ip_common;
-	  sr_type = SQL_File_Closed ;
-	} in
-	ignore (Report.report#sql
-		  ~sql_obj_opt:!n_in_prog.ip_sql_connection
-		  sql_report);
-	(******************)
-
-
-	(* *** Emails *** *)
-	let tobemailed =
-	  {
-	    m_common = !n_in_prog.ip_common;
-	    m_filestate = File_Closed;
-	  }
-	in
-	Report.report#mail tobemailed;
-	(******************)
-
-
-	(* *** Notifications *** *)
-	Report.report#notify (New_notif (f_file, File_Closed))
-	(******************)
-    ) l_stop
-
-(* eo file_closed, false *)
 
 
   method directory_created wd name =
