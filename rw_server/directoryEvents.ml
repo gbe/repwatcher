@@ -2,7 +2,6 @@ open Printf
 open Inotify
 open Unix
 open Types
-open Types_conf
 open InotifyCaller
 open Report
 open Sql_report
