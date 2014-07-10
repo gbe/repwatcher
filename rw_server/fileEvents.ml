@@ -174,6 +174,45 @@ let create_stop_files_list () =
   ) Files_progress.ht []
 ;;
 
+let override_filesize n_in_prog f_file written =
+  match written with
+  | false -> !n_in_prog.ip_common.c_filesize
+  | true ->
+    try
+      let size =
+	(Unix.stat (f_file.f_path^f_file.f_name)).st_size
+      in
+      Some (Int64.of_int size)
+    with Unix_error (err_code, funct_name, fullpath) ->
+      Log.log
+	("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
+      None
+;;
+
+let override_last_offset nfilesize n_in_prog written =
+
+  match !n_in_prog.ip_common.c_last_known_offset with
+  | None -> None (* unlikely to happen as data are read during the file_open event *)
+  | Some last_offset' ->
+    match nfilesize with
+    | None ->
+      (* best answer we have *)
+      !n_in_prog.ip_common.c_last_known_offset
+
+    | Some nfilesize' ->
+
+      (* fix the offset to be equal to filesize
+       * when creating the file *)
+      if nfilesize' > last_offset' && written then
+	nfilesize
+
+      (* Sometimes, it happens that the offset is bigger than the filesize *)
+      else if nfilesize' < last_offset' && not written then
+	nfilesize
+
+      else !n_in_prog.ip_common.c_last_known_offset
+;;
+
 let file_closed ?(written=false) wd name =
 
   if InotifyCaller.core#get_debug_event then begin
@@ -215,46 +254,12 @@ let file_closed ?(written=false) wd name =
       Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
 
       (* update filesize in database if written
-       * as filesize equaled None if created/written == true *)
-      let nfilesize =
-	match written with
-	  | false -> !n_in_prog.ip_common.c_filesize
-	  | true ->
-	    try
-	      let size =
-		(Unix.stat (f_file.f_path^f_file.f_name)).st_size
-	      in
-	      Some (Int64.of_int size)
-	    with Unix_error (err_code, funct_name, fullpath) ->
-	      Log.log
-		("In "^funct_name^" about "^fullpath^": "^(error_message err_code), Error);
-	      None
-      in
+       * as filesize equaled None if written == true *)
+      let nfilesize = override_filesize n_in_prog f_file written in
 
       (* update last_known_offset according to filesize and written *)
       (* if file could not be read or does not exist anymore then filesize = None *)
-      let overriden_last_offset_opt =
-	match !n_in_prog.ip_common.c_last_known_offset with
-	| None -> None (* unlikely to happen as data are read during the file_open event *)
-	| Some last_offset' ->
-	  match nfilesize with
-	  | None ->
-	    (* best answer we have *)
-	    !n_in_prog.ip_common.c_last_known_offset
-
-	  | Some nfilesize' ->
-
-	    (* fix the offset to be equal to filesize
-	     * when creating the file *)
-	    if nfilesize' > last_offset' && written then
-	      nfilesize
-
-	    (* Sometimes, it happens that the offset is bigger than the filesize *)
-	    else if nfilesize' < last_offset' && not written then
-	      nfilesize
-
-	    else !n_in_prog.ip_common.c_last_known_offset
-      in
+      let overriden_last_offset_opt = override_last_offset nfilesize n_in_prog written in
 
       n_in_prog :=
  	{ !n_in_prog with
