@@ -158,7 +158,7 @@ object(self)
       (Fdinfo.int_of_fd file.f_descriptor)
 
 
-  method add_watch path2watch ~wd_father_opt ~is_config_file =
+  method add_watch ?(is_config_file=false) ~wd_father_opt path2watch =
 
     (* Check if the folder is not already watched *)
     if self#_is_value path2watch then
@@ -284,7 +284,7 @@ object(self)
 	      r_add_watch_children remaining
 
 	    | Some wd_father ->
-	      self#add_watch folder ~wd_father_opt:(Some wd_father) ~is_config_file:false ;
+	      self#add_watch folder ~wd_father_opt:(Some wd_father) ;
 	      r_add_watch_children q
     in
     r_add_watch_children l_children

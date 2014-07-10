@@ -198,7 +198,10 @@ This is free software under the MIT license.\n\n";
       end;
 
       (* Watch the config *)
-      (* Core.core#add_watch !config_file ~wd_father_opt:None ~is_config_file:true; *)
+      (* Core.core#add_watch
+	 !config_file
+	 ~wd_father_opt:None
+	 ~is_config_file:true; *)
 
       (* Filter the directories given in the config file with the ignored ones *)
       let (dirs, children) =
@@ -209,7 +212,9 @@ This is free software under the MIT license.\n\n";
 
       (* Watch the directories and their children *)
       List.iter (fun dir ->
-	InotifyCaller.core#add_watch dir ~wd_father_opt:None ~is_config_file:false
+	InotifyCaller.core#add_watch
+	  dir
+	  ~wd_father_opt:None
       ) dirs;
 
       InotifyCaller.core#add_watch_children children;

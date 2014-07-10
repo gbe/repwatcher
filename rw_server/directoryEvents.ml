@@ -22,7 +22,6 @@ let directory_created wd name =
     InotifyCaller.core#add_watch
       (father.path^"/"^name)
       ~wd_father_opt:(Some wd)
-      ~is_config_file:false
 ;;
 
 
@@ -114,8 +113,7 @@ let directory_moved_to wd name =
     (* Watch the new folder *)
     InotifyCaller.core#add_watch
       path
-      ~wd_father_opt:(Some wd)
-      ~is_config_file:false ;
+      ~wd_father_opt:(Some wd);
 
     (* Then the folder's children *)
     InotifyCaller.core#add_watch_children children
