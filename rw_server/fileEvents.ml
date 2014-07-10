@@ -24,6 +24,84 @@ let print_file file =
 ;;
 
 
+let open_report_mail common written =
+  Report.report#mail
+    {
+      m_common = common;
+      m_filestate =
+	match written with
+	| false -> File_Opened
+	| true -> File_Created
+    }
+;;
+
+
+(* open_report_sql returns an Sql Obj option *)
+let open_report_sql common =
+  Report.report#sql
+    {
+      sr_common = common;
+      sr_type = SQL_File_Opened;
+    }
+;;
+
+
+let open_report_notify file written =
+  let file_t =
+    match written with
+    | false -> File_Opened
+    | true -> File_Created
+  in
+  Report.report#notify (New_notif (file, file_t))
+;;
+
+
+let open_report wd written (file, filesize) =
+
+  if InotifyCaller.core#get_debug_event then
+    print_file file;
+
+  let has_what =
+    match written with
+    | false -> " has opened: "
+    | true  -> " has created: "
+  in
+
+  let opening_date = new Date.date in
+
+  print_endline
+    (opening_date#get_str_locale^" - "^file.f_unix_login^has_what^file.f_name);
+
+  Log.log (file.f_unix_login^has_what^file.f_name, Normal);
+
+  let common = {
+    c_file = file ;
+    c_filesize =
+      begin match written with
+      | true -> None (* The filesize must be overriden as unknown (thus None) if the file is being written *)
+      | false -> Some filesize
+      end;
+    c_first_known_offset = None ;
+    c_last_known_offset = None ;
+    c_opening_date = opening_date ;
+    c_closing_date = None ;
+    c_written = written ;
+  } in
+
+  open_report_notify file written;
+  open_report_mail common written;
+  let sql_obj_opt = open_report_sql common in
+
+  (* in_progress to add into Hashtbl Files_progress *)
+  {
+    ip_common = common ;
+    ip_filesize_checked_again = false ;
+    ip_offset_retrieval_errors = ref 0 ;
+    ip_sql_connection = sql_obj_opt ;
+  }
+;;
+
+
 let file_opened ?(written=false) wd name =
     match InotifyCaller.core#_get_value wd with
       | None ->
@@ -42,91 +120,15 @@ let file_opened ?(written=false) wd name =
 	Mutex.lock Files_progress.mutex_ht ;
 
 	List.iter (fun (file, filesize) ->
-
 	  match Hashtbl.mem Files_progress.ht (wd, file) with
-	    | true -> ()
-	    | false ->
-	      if InotifyCaller.core#get_debug_event then
-		print_file file;
-
-	      let opening_date = new Date.date in
-
-	      let has_what =
-		match written with
-		  | false -> " has opened: "
-		  | true  -> " has created: "
-	      in
-
-	      print_endline
-	      (opening_date#get_str_locale^" - "^file.f_unix_login^has_what^file.f_name);
-
-	      Log.log (file.f_unix_login^has_what^file.f_name, Normal);
-
-	      (* *** Notifications *** *)
-	      begin match written with
-		| false ->
-		  Report.report#notify (New_notif (file, File_Opened))
-		| true ->
-		  Report.report#notify (New_notif (file, File_Created))
-	      end;
-	      (* ********************* *)
-
-
-	      (* The filesize must be overriden as unknown if the file is being created (written) *)
-	      let filesize_opt =
-		match written with
-		  | true -> None
-		  | false -> Some filesize
-	      in
-
-	      let common = {
-		c_file = file ;
-		c_filesize = filesize_opt ;
-		c_first_known_offset = None ;
-		c_last_known_offset = None ;
-		c_opening_date = opening_date ;
-		c_closing_date = None ;
-		c_written = written ;
-	      } in
-
-	      (* *** Emails *** *)
-	      let tobemailed =
-		{
-		  m_common = common;
-		  m_filestate =
-		    begin match written with
-		    | false ->  File_Opened
-		    | true -> File_Created
-		    end;
-		}
-	      in
-	      Report.report#mail tobemailed;
-	      (* ************** *)
-
-
-	      (* *** SQL *** *)
-	      let sql_obj_opt =
-		let sql_report =
-		  {
-		    sr_common = common;
-		    sr_type = SQL_File_Opened;
-		  }
-		in
-		Report.report#sql sql_report
-	      in
-	      (* *********** *)
-
-	      let in_progress = {
-		ip_common = common ;
-		ip_filesize_checked_again = false ;
-		ip_offset_retrieval_errors = ref 0 ;
-		ip_sql_connection = sql_obj_opt ;
-	      }
-	      in
-
-	      Hashtbl.add Files_progress.ht
-		(wd, file) in_progress
-
+	  | true -> ()
+	  | false ->
+	    let in_progress =
+	      open_report wd written (file, filesize)
+	    in
+	    Hashtbl.add Files_progress.ht
+	      (wd, file)
+	      in_progress
 	) files ;
 
 	Mutex.unlock Files_progress.mutex_ht
