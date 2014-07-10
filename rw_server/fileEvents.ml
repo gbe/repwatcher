@@ -160,23 +160,23 @@ let create_stop_files_list () =
       in
 
       match fdinprogress with
-      | None -> ((wd2, f_file), values) :: l_stop'
+      | None -> ((wd2, f_file), ref values) :: l_stop'
       | Some (_, fdval) ->
 
 	try
 	  (* if it's a real path then true
 	   * otherwise it's something like pipe:[160367] *)
 	  match Sys.file_exists fdval with
-	  | false -> ((wd2, f_file), values) :: l_stop'
+	  | false -> ((wd2, f_file), ref values) :: l_stop'
 	  | true -> l_stop'
 	with
-	| _ -> ((wd2, f_file), values) :: l_stop'
+	| _ -> ((wd2, f_file), ref values) :: l_stop'
   ) Files_progress.ht []
 ;;
 
-let override_filesize n_in_prog f_file written =
+let override_filesize in_progress f_file written =
   match written with
-  | false -> !n_in_prog.ip_common.c_filesize
+  | false -> !in_progress.ip_common.c_filesize
   | true ->
     try
       let size =
@@ -189,15 +189,15 @@ let override_filesize n_in_prog f_file written =
       None
 ;;
 
-let override_last_offset nfilesize n_in_prog written =
+let override_last_offset nfilesize in_progress written =
 
-  match !n_in_prog.ip_common.c_last_known_offset with
+  match !in_progress.ip_common.c_last_known_offset with
   | None -> None (* unlikely to happen as data are read during the file_open event *)
   | Some last_offset' ->
     match nfilesize with
     | None ->
       (* best answer we have *)
-      !n_in_prog.ip_common.c_last_known_offset
+      !in_progress.ip_common.c_last_known_offset
 
     | Some nfilesize' ->
 
@@ -210,7 +210,7 @@ let override_last_offset nfilesize n_in_prog written =
       else if nfilesize' < last_offset' && not written then
 	nfilesize
 
-      else !n_in_prog.ip_common.c_last_known_offset
+      else !in_progress.ip_common.c_last_known_offset
 ;;
 
 let file_closed ?(written=false) wd name =
@@ -235,13 +235,11 @@ let file_closed ?(written=false) wd name =
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
-    fun ((wd2, f_file), in_progress_old) ->
+    fun ((wd2, f_file), in_progress) ->
 
       Mutex.lock Files_progress.mutex_ht ;
       Hashtbl.remove Files_progress.ht (wd2, f_file);
       Mutex.unlock Files_progress.mutex_ht ;
-
-      let n_in_prog = ref in_progress_old in
 
       let closing_date = new Date.date in
 
@@ -255,16 +253,16 @@ let file_closed ?(written=false) wd name =
 
       (* update filesize in database if written
        * as filesize equaled None if written == true *)
-      let nfilesize = override_filesize n_in_prog f_file written in
+      let nfilesize = override_filesize in_progress f_file written in
 
       (* update last_known_offset according to filesize and written *)
       (* if file could not be read or does not exist anymore then filesize = None *)
-      let overriden_last_offset_opt = override_last_offset nfilesize n_in_prog written in
+      let overriden_last_offset_opt = override_last_offset nfilesize in_progress written in
 
-      n_in_prog :=
- 	{ !n_in_prog with
+      in_progress :=
+ 	{ !in_progress with
 	  ip_common = {
-	    !n_in_prog.ip_common with
+	    !in_progress.ip_common with
 	      c_filesize = nfilesize ;
 	      c_last_known_offset = overriden_last_offset_opt ;
 	      c_closing_date = Some closing_date ;
@@ -273,11 +271,11 @@ let file_closed ?(written=false) wd name =
 
       (* *** SQL *** *)
       let sql_report = {
-	sr_common = !n_in_prog.ip_common;
+	sr_common = !in_progress.ip_common;
 	sr_type = SQL_File_Closed ;
       } in
       ignore (Report.report#sql
-		~sql_obj_opt:!n_in_prog.ip_sql_connection
+		~sql_obj_opt:!in_progress.ip_sql_connection
 		sql_report);
       (******************)
 
@@ -285,7 +283,7 @@ let file_closed ?(written=false) wd name =
       (* *** Emails *** *)
       let tobemailed =
 	{
-	  m_common = !n_in_prog.ip_common;
+	  m_common = !in_progress.ip_common;
 	  m_filestate = File_Closed;
 	}
       in
