@@ -140,6 +140,7 @@ object(self)
     ) ht_iwatched;
     Pervasives.flush Pervasives.stdout
 
+
   (* TODO: remove _ if public *)
   method  _print_file file =
     Printf.printf
@@ -192,22 +193,13 @@ object(self)
 	  (* if the wd has a father, the entry in the hashtable is different *)
 	  (match wd_father_opt with
 	    | None ->
-	      if is_config_file then
-		Hashtbl.add ht_iwatched wd
-		  {
-		    conf = true ;
-		    path = path2watch ;
-		    wd_father = None ;
-		    wd_children = []
-		  }
-	      else
-		Hashtbl.add ht_iwatched wd
-		  {
-		    conf = false ;
-		    path = path2watch ;
-		    wd_father = None ;
-		    wd_children = []
-		  }
+	      Hashtbl.add ht_iwatched wd
+		{
+		  conf = is_config_file ;
+		  path = path2watch ;
+		  wd_father = None ;
+		  wd_children = []
+		}
 
 	    | Some wd_father ->
 	      Hashtbl.add ht_iwatched wd
