@@ -141,24 +141,6 @@ object(self)
     Pervasives.flush Pervasives.stdout
 
 
-  (* TODO: remove _ if public *)
-  method  _print_file file =
-    Printf.printf
-    "Name: %s\n\
-     Path: %s\n\
-     Login: %s\n\
-     Username: %s\n\
-     Program: %s (pid: %d)\n\
-     Descr: %d\n\n"
-      file.f_name
-      file.f_path
-      file.f_unix_login
-      file.f_username
-      file.f_program
-      (Fdinfo.int_of_pid file.f_program_pid)
-      (Fdinfo.int_of_fd file.f_descriptor)
-
-
   method add_watch ?(is_config_file=false) ~wd_father_opt path2watch =
 
     (* Check if the folder is not already watched *)

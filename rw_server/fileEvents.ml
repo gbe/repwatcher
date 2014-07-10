@@ -6,6 +6,24 @@ open Report
 open Sql_report
 open Files_progress
 
+let print_file file =
+  Printf.printf
+    "Name: %s\n\
+     Path: %s\n\
+     Login: %s\n\
+     Username: %s\n\
+     Program: %s (pid: %d)\n\
+     Descr: %d\n\n"
+      file.f_name
+      file.f_path
+      file.f_unix_login
+      file.f_username
+      file.f_program
+      (Fdinfo.int_of_pid file.f_program_pid)
+      (Fdinfo.int_of_fd file.f_descriptor)
+;;
+
+
 let file_opened ?(written=false) wd name =
     match InotifyCaller.core#_get_value wd with
       | None ->
@@ -29,7 +47,7 @@ let file_opened ?(written=false) wd name =
 	    | true -> ()
 	    | false ->
 	      if InotifyCaller.core#get_debug_event then
-		InotifyCaller.core#_print_file file;
+		print_file file;
 
 	      let opening_date = new Date.date in
 
