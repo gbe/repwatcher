@@ -140,6 +140,40 @@ let file_created wd name =
   file_opened ~written:true wd name
 ;;
 
+
+
+(* Return the list of the files which stopped being accessed *)
+let create_stop_files_list () =
+  Hashtbl.fold (
+    fun (wd2, f_file) values l_stop' ->
+
+      (* Return new infos on a specific fdnum.
+       * If the process is already closed, a Sys_error is triggered
+       * by Fdinfo.get_fds
+       *)
+      let fdinprogress =
+	try
+	  Some (List.find (fun (fd, fdval) ->
+	    fd = f_file.f_descriptor
+	  ) (Fdinfo.get_fds f_file.f_program_pid))
+	with _ -> None
+      in
+
+      match fdinprogress with
+      | None -> ((wd2, f_file), values) :: l_stop'
+      | Some (_, fdval) ->
+
+	try
+	  (* if it's a real path then true
+	   * otherwise it's something like pipe:[160367] *)
+	  match Sys.file_exists fdval with
+	  | false -> ((wd2, f_file), values) :: l_stop'
+	  | true -> l_stop'
+	with
+	| _ -> ((wd2, f_file), values) :: l_stop'
+  ) Files_progress.ht []
+;;
+
 let file_closed ?(written=false) wd name =
 
   if InotifyCaller.core#get_debug_event then begin
@@ -158,39 +192,7 @@ let file_closed ?(written=false) wd name =
   end;
 
   Mutex.lock Files_progress.mutex_ht ;
-
-  (* Return the list of the files which stopped being accessed *)
-  let l_stop =
-    Hashtbl.fold (
-      fun (wd2, f_file) values l_stop' ->
-
-	(* Return new infos on a specific fdnum.
-	 * If the process is already closed, a Sys_error is triggered
-	 * by Fdinfo.get_fds
-	 *)
-	let fdinprogress =
-	  try
-	    Some (List.find (fun (fd, fdval) ->
-	      fd = f_file.f_descriptor
-	    ) (Fdinfo.get_fds f_file.f_program_pid))
-	  with _ -> None
-	in
-
-	match fdinprogress with
-	| None -> ((wd2, f_file), values) :: l_stop'
-	| Some (_, fdval) ->
-
-	  try
-	    (* if it's a real path then true
-	     * otherwise it's something like pipe:[160367] *)
-	    match Sys.file_exists fdval with
-	    | false -> ((wd2, f_file), values) :: l_stop'
-	    | true -> l_stop'
-	  with
-	  | _ -> ((wd2, f_file), values) :: l_stop'
-    ) Files_progress.ht []
-  in
-
+  let l_stop = create_stop_files_list () in
   Mutex.unlock Files_progress.mutex_ht ;
 
   List.iter (
