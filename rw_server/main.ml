@@ -149,9 +149,13 @@ This is free software under the MIT license.\n\n";
 	(* Start the remote notification server *)
 	match conf.c_server with
 	  | None -> assert false
-	  | Some server ->
+	  | Some server_params ->
 	    Log.log ("Start remote notifications server", Normal_Extra) ;
-	    Ssl_server.run Pipe.father2child#get_toread server
+	    let ssl = new Ssl_server.ssl_server
+	      server_params
+	      Pipe.father2child#get_toread
+	    in
+	    ssl#run
       end
 
     | _ ->
