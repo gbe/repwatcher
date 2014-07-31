@@ -153,7 +153,6 @@ This is free software under the MIT license.\n\n";
 	    Log.log ("Start remote notifications server", Normal_Extra) ;
 	    let ssl = new Ssl_server.ssl_server
 	      server_params
-	      Pipe.father2child#get_toread
 	    in
 	    ssl#run
       end

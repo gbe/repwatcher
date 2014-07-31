@@ -3,9 +3,21 @@ open Types
 open Types_conf
 open Printf
 
+let pipe_waits_for_notifications clients_handle () =
+  let bufsize = 2048 in
+  let buf = String.create bufsize in
 
+  while true do
+    let recv = Unix.read Pipe.father2child#get_toread buf 0 bufsize in
+    if recv > 0 then begin
+      let data = String.sub buf 0 recv in
+      let notif = (Marshal.from_string data 0 : Types.notification) in
+      clients_handle#notify_all_clients (Notification notif)
+    end
+  done
+;;
 
-class ssl_server params tor =
+class ssl_server params =
   (*
    * Probably because of marshalling, com type is 'a.
    * This caused some problems discovered at run time.
@@ -197,21 +209,6 @@ object(self)
 	prerr_endline error
     done
 
-
-  method pipe_waits_for_notifications () =
-    let bufsize = 2048 in
-    let buf = String.create bufsize in
-
-    while true do
-      let recv = Unix.read tor buf 0 bufsize in
-      if recv > 0 then begin
-	let data = String.sub buf 0 recv in
-	let notif = (Marshal.from_string data 0 : Types.notification) in
-	clients_handle#notify_all_clients (Notification notif)
-      end
-    done
-
-
   method run =
     let ctx = self#initialize_ssl_ctx in
 
@@ -227,9 +224,8 @@ object(self)
 
     self#initialize_network_socket ;
     at_exit self#clear_exit;
-    self#waiting_for_clients ctx;
-    ignore (Thread.create self#pipe_waits_for_notifications ());
+    ignore (Thread.create (pipe_waits_for_notifications clients_handle) ());
     print_endline "Waiting for connections...";
-
+    self#waiting_for_clients ctx
 
 end;;

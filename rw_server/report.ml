@@ -50,13 +50,13 @@ object(self)
       (* Return the n last folders *)
       let rec n_last_elements l n =
 	match l with
-	  | [] -> "./"
-	  | [t] -> t^"/"
-	  | t::q ->
-	    if List.length q < n then
-	      t^"/"^(n_last_elements q n)
-	    else
-	      n_last_elements q n
+	| [] -> "./"
+	| [t] -> t^"/"
+	| t::q ->
+	  if List.length q < n then
+	    t^"/"^(n_last_elements q n)
+	  else
+	    n_last_elements q n
       in
 
       let r = Str.regexp "/" in
@@ -64,15 +64,15 @@ object(self)
 
       let dbus_notif =
 	match conf.c_notify.n_parent_folders with
-	  | None ->
-	    sprintf "<b>%s</b> %s\n%s" file.f_username msg_state filename_escaped
+	| None ->
+	  sprintf "<b>%s</b> %s\n%s" file.f_username msg_state filename_escaped
 
-	  | Some parent_folders ->
-	    sprintf "<b>%s</b> %s\n%s%s"
-	      file.f_username
-	      msg_state
-	      (n_last_elements l_folders parent_folders)
-	      filename_escaped
+	| Some parent_folders ->
+	  sprintf "<b>%s</b> %s\n%s%s"
+	    file.f_username
+	    msg_state
+	    (n_last_elements l_folders parent_folders)
+	    filename_escaped
       in
       try
 	self#_dbus "nobody" "Repwatcher" dbus_notif
@@ -86,9 +86,8 @@ object(self)
 	    (New_notif ({file with f_name = filename_escaped}, filestate) )
 	    [Marshal.No_sharing]
 	in
-
 	(* Send in the pipe for the server to send to the clients *)
-	ignore ( Unix.write (Pipe.father2child#get_towrite) str_notif 0 (String.length str_notif) )
+	ignore ( Unix.write (Pipe.father2child#get_towrite) str_notif 0 (String.length str_notif) );
       with _ ->
 	Log.log ("An error occured trying to send in the pipe the notification", Error)
 
@@ -103,12 +102,12 @@ object(self)
       with _ -> Log.log ("An error occured with dBus", Error)
 
 
-  method private _send_notification2ssl_process l_current =
+  method private _send_old_notifications2ssl_process l_current =
     (* Txt_operations.escape_for_notify has already been done on f_name *)
+
     let str_current =
       Marshal.to_string (Old_notif l_current) [Marshal.No_sharing]
     in
-
     (* send through the pipe to be processed by the server *)
     ignore (Unix.write
 	      (Pipe.father2child#get_towrite)
@@ -126,7 +125,7 @@ object(self)
 	self#_local_notification txt2benotified
 
       | Old_notif l_current ->
-	self#_send_notification2ssl_process l_current
+	self#_send_old_notifications2ssl_process l_current
 
 
   method sql
