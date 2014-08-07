@@ -13,10 +13,18 @@ type f_file = {
 
 type file_state = File_Created | File_Opened | File_Closed
 
+type utc = Utc of string
+
+type old_notif_t = {
+  on_file : f_file ;
+  on_opening_date_utc : utc
+}
+
 type notification =
   | New_notif of f_file * file_state
-  | Old_notif of (f_file * Date.date) list
+  | Old_notif of old_notif_t list
   | Local_notif of string
+
 
 type com_server2clients =
   | Notification of notification

@@ -32,15 +32,21 @@ type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
+type utc = Utc of string
+
+type old_notif_t = {
+  on_file : f_file ;
+  on_opening_date_utc : utc
+}
 
 type notification =
   | New_notif of f_file * file_state
-  | Old_notif of (f_file * Date.date) list
+  | Old_notif of old_notif_t list
   | Local_notif of string
 
 
 type sql_type =
-  | SQL_File_Opened 
+  | SQL_File_Opened
   | SQL_File_Closed
   | SQL_FK_Offset (* First Known *)
   | SQL_LK_Offset (* Last Known *)

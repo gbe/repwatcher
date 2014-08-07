@@ -18,7 +18,7 @@ let parse_config file =
     Unix.access file [F_OK ; R_OK];
 
     Config.parse file
-    
+
   with Unix_error (error,_,file) ->
     let err = Printf.sprintf "%s: %s" file (error_message error) in
     failwith err
@@ -27,9 +27,9 @@ let parse_config file =
 
 let _ =
 
-  
+
   let usage = "usage: rw_client host [-p port] [-f Configuration file path] [-n Folders_nb_for_notifications]" in
-  
+
   Printf.printf "\nRepwatcher  Copyright (C) 2007-2014  Grégory Bellier
 This program comes with ABSOLUTELY NO WARRANTY.
 This is free software under the MIT license.\n\n";
@@ -49,7 +49,7 @@ This is free software under the MIT license.\n\n";
      ), "\tFolders_Number_For_Notifications";
     ]
     (fun s -> host := s) usage;
-  
+
   if !host = "" then (Printf.printf "%s\n\n" usage; exit 1);
 
   (* print and log if others have read permission on file *)
@@ -62,7 +62,7 @@ This is free software under the MIT license.\n\n";
 	prerr_endline warning
       end
   in
-  
+
   (* Does the file exist and can it be read ? *)
   let exists_and_can_be_read file =
     try
@@ -80,14 +80,14 @@ This is free software under the MIT license.\n\n";
 
   (* check on CA *)
   exists_and_can_be_read certs.c_ca_path;
-  
+
   (* check on cert *)
   exists_and_can_be_read certs.c_client_cert_path;
 
   (* checks on the key *)
   exists_and_can_be_read certs.c_client_key_path;
   check_rights certs.c_client_key_path ;
- 
+
 
   Ssl_threads.init ();
   Ssl.init ();
@@ -100,12 +100,12 @@ This is free software under the MIT license.\n\n";
      | Not_found -> failwith "Host not found"
     )
   in
-  
+
   let sockaddr = ADDR_INET(he.h_addr_list.(0), !port) in
   let loop = ref true in
   let bufsize = 1024 in
   let buf = String.create bufsize in
-  
+
   let s_ssl =
     let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
 
@@ -121,14 +121,14 @@ This is free software under the MIT license.\n\n";
 	Ssl.use_certificate ctx certs.c_client_cert_path certs.c_client_key_path
       with Ssl.Private_key_error -> failwith "Error with the private key, please check the password"
     end;
-    
+
     Ssl.set_verify ctx [Ssl.Verify_peer] (Some Ssl.client_verify_callback);
-   
+
     begin try
       Ssl.load_verify_locations ctx certs.c_ca_path (Filename.dirname certs.c_ca_path)
     with Invalid_argument e -> failwith ("Error_load_verify_locations: "^e)
     end;
-    
+
   (*
    * Extracted from the SSL_CTX_set_verify man page
    * The depth count is "level 0:peer
@@ -150,7 +150,7 @@ This is free software under the MIT license.\n\n";
       failwith (Ssl.get_error_string ())
   end;
 
-  let handle_interrupt i =       
+  let handle_interrupt i =
     begin try
       Ssl.output_string s_ssl "rw_client_exit"
     with Ssl.Write_error _ -> failwith "Failed to send the closing msg to server"
@@ -159,7 +159,7 @@ This is free software under the MIT license.\n\n";
     Ssl.shutdown_connection s_ssl;
     exit 0
   in
-      
+
   ignore (Sys.set_signal Sys.sigterm (Sys.Signal_handle handle_interrupt));
   ignore (Sys.set_signal Sys.sigint (Sys.Signal_handle handle_interrupt));
 
@@ -174,7 +174,7 @@ This is free software under the MIT license.\n\n";
 	else
 	  n_last_elements q
   in
-  
+
   let regexp_slash = Str.regexp "/" in
   let regexp_space = Str.regexp "[' ']" in
   let regexp_ddot = Str.regexp "[':']" in
@@ -182,14 +182,14 @@ This is free software under the MIT license.\n\n";
   begin try
     while !loop do
       let data_recv = Ssl.read s_ssl buf 0 bufsize in
-      
+
       if data_recv > 0 then
 	let data = String.sub buf 0 data_recv in
 	let com = (Marshal.from_string data 0 : com_server2clients) in
-	
+
 	match com with
 	| RW_server_exited -> loop := false
-	| RW_server_con_ok nb_parent_folders_from_server -> 
+	| RW_server_con_ok nb_parent_folders_from_server ->
 	    begin
 	      match !nb_parent_folders with
 		| -1 -> (* Otherwise, we take the server's choice *)
@@ -199,28 +199,28 @@ This is free software under the MIT license.\n\n";
 		      | Some nb -> nb
 		    end
 		| _ -> () (* It has been set by the client on the command line. *)
-	      
+
 	    end;
 	    begin try
 	      dbus "nobody" "Repwatcher" ("Successfully connected to "^(!host))
 	    with _ -> prerr_endline "An error occured with dBus"
 	    end
-	      
+
 	| Notification notif ->
 	    begin
 	      match notif with
 	      (* Local_notifs can only be done server-side *)
 	      | Local_notif _ -> assert false
 
-	      | New_notif (file, filestate) -> 
-		  
+	      | New_notif (file, filestate) ->
+
 		  let msg_state =
 		    match filestate with
 		    | File_Created -> "has created"
 		    | File_Opened -> "has opened"
 		    | File_Closed -> "closed"
 		  in
-		  
+
 		  Printf.printf "New notification received: '%s' %s '%s'\n" file.f_username msg_state file.f_name;
 		  Pervasives.flush Pervasives.stdout;
 
@@ -239,13 +239,18 @@ This is free software under the MIT license.\n\n";
 
 	      | Old_notif dls_l ->
 
-		  List.iter (
-		  fun (file, date) ->
-		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n" date#get_str_locale file.f_username file.f_name;
+		List.iter (
+		  fun old_notif ->
+		    let file = old_notif.on_file in
+		    let opening_date = match old_notif.on_opening_date_utc with Utc d -> d in
+		    Printf.printf "Old notification received: At %s, '%s' opened '%s'\n"
+		      opening_date
+		      file.f_username
+		      file.f_name;
 		    Pervasives.flush Pervasives.stdout;
-		    
-		    let h_m_s = List.hd (List.tl (Str.split regexp_space date#get_str_locale)) in
-		    let h_m = 
+
+		    let h_m_s = List.hd (List.tl (Str.split regexp_space opening_date)) in
+		    let h_m =
 		      let hms_l = Str.split regexp_ddot h_m_s in
 		      (List.nth hms_l 0)^":"^(List.nth hms_l 1)
 		    in
@@ -263,11 +268,11 @@ This is free software under the MIT license.\n\n";
 		    end
 
 		 ) dls_l
-	    end		
+	    end
     done
   with Ssl.Read_error _ -> ()
   end;
-  
+
   Ssl.shutdown s_ssl;
 
   begin try
@@ -275,5 +280,5 @@ This is free software under the MIT license.\n\n";
   with _ -> prerr_endline "An error occured with dBus"
   end;
 
-  exit 0	   
+  exit 0
 ;;
