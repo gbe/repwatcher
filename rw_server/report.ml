@@ -102,10 +102,10 @@ object(self)
       with _ -> Log.log ("An error occured with dBus", Error)
 
 
-  method private _send_old_notifications2ssl_process old_notif_current_l =
+  method private _send_old_notifications2ssl_process current_accesses_l =
     (* Txt_operations.escape_for_notify has already been done on f_name *)
     let str_current =
-	Marshal.to_string old_notif_current_l [Marshal.No_sharing]
+	Marshal.to_string current_accesses_l [Marshal.No_sharing]
     in
     (* send through the pipe to be processed by the server *)
     ignore (Unix.write

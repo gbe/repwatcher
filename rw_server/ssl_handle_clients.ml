@@ -15,14 +15,14 @@ object(self)
   method client_quit sock_cli =
     Mutex.lock m ;
     let (l_clients_left, l_client) =
-      List.partition (fun client ->
+      List.partition (fun (client, _) ->
 	client#get_ssl_s != sock_cli
       ) connected_clients
     in
     connected_clients <- l_clients_left ;
     Mutex.unlock m ;
 
-    let client = List.hd l_client in
+    let (client, _) = List.hd l_client in
     let log_msg = sprintf
       "%s has quit (%s)"
       client#get_common_name
@@ -36,12 +36,25 @@ object(self)
   method disconnect_all_clients =
     Mutex.lock m ;
     (* Close the clients' sockets *)
-    List.iter (fun client ->
+    List.iter (fun (client, _) ->
       Ssl.flush client#get_ssl_s ;
       Ssl.shutdown client#get_ssl_s
     ) connected_clients;
+    Mutex.unlock m
 
-    Mutex.unlock m ;
+
+  method notify_new_clients_with_current_accesses com =
+    Mutex.lock m;
+    let updated_connected_clients =
+      List.fold_left (fun acc (client, has_already_received_current_accesses) ->
+	if has_already_received_current_accesses = false then
+	  self#notify client com ;
+
+	(client, true) :: acc
+      ) [] connected_clients
+    in
+    connected_clients <- updated_connected_clients;
+    Mutex.unlock m
 
   method notify (client : Ssl_connected_client.ssl_connected_client) com =
     (* Resend the data already serialized to the clients *)
@@ -56,7 +69,7 @@ object(self)
 
   method notify_all_clients com =
     Mutex.lock m;
-    List.iter (fun client -> self#notify client com) connected_clients;
+    List.iter (fun (client, _) -> self#notify client com) connected_clients;
     Mutex.unlock m
 
 
@@ -74,7 +87,10 @@ object(self)
     tellserver (Types.Log (new_client_txt, Normal)) ;
 
     Mutex.lock m ;
-    connected_clients <- client :: connected_clients;
+    (* the 'false' here is to keep in memory
+     * that the new client has not received the
+     * currents accesses yet *)
+    connected_clients <- (client, false) :: connected_clients;
     Mutex.unlock m ;
 
     (* To be moved from there *)
@@ -89,7 +105,6 @@ object(self)
     (* Ask father's process for the current accesses
      * to send them to the new client *)
     tellserver Ask_current_accesses;
-
     let loop = ref true in
 
     try

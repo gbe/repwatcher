@@ -12,7 +12,13 @@ let pipe_waits_for_notifications clients_handle () =
     if recv > 0 then begin
       let data = String.sub buf 0 recv in
       let notif = (Marshal.from_string data 0 : Types.notification) in
-      clients_handle#notify_all_clients (Notification notif)
+      match notif with
+      | Local_notif _ -> assert false
+
+      | Old_notif current_l ->
+	clients_handle#notify_new_clients_with_current_accesses (Notification notif)
+
+      | New_notif _ -> clients_handle#notify_all_clients (Notification notif)
     end
   done
 ;;
@@ -24,7 +30,11 @@ class ssl_server params =
    * It's better to fix the type so the compiler can check if everything is ok.
    *)
   let tellserver (com : com_net2main) =
-    let str_com = Marshal.to_string com [Marshal.No_sharing] in
+    let str_com =
+      try
+	Marshal.to_string com [Marshal.No_sharing]
+      with _ -> assert false
+    in
     ignore (Unix.write (Pipe.child2father#get_towrite) str_com 0 (String.length str_com))
   in
 

@@ -2,6 +2,9 @@ open Types;;
 open Report;;
 open Files_progress;;
 
+
+(* This code runs in the father process *)
+(* Listen for commands sent from the SSL process *)
 let wait_pipe_from_child_process () =
   let bufsize = 1024 in
   let buf = String.create bufsize in
@@ -11,7 +14,10 @@ let wait_pipe_from_child_process () =
 
       if recv > 0 then begin
 	let data = String.sub buf 0 recv in
-	let com = (Marshal.from_string data 0 : Types.com_net2main) in
+	let com = try
+		    (Marshal.from_string data 0 : Types.com_net2main)
+	  with _ -> assert false
+	in
 	match com with
 	| Ask_current_accesses ->
 	  Mutex.lock Files_progress.mutex_ht ;
