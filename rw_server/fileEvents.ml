@@ -103,7 +103,7 @@ let open_report wd written (file, filesize) =
 
 
 let file_opened ?(written=false) wd name =
-    match InotifyCaller.core#_get_value wd with
+    match InotifyCaller.core#get_value wd with
       | None ->
 	let err =
 	  sprintf "%s was opened but its wd could not be found\n" name
@@ -216,7 +216,7 @@ let override_last_offset nfilesize in_progress written =
 let file_closed ?(written=false) wd name =
 
   if InotifyCaller.core#get_debug_event then begin
-    match InotifyCaller.core#_get_value wd with
+    match InotifyCaller.core#get_value wd with
     | None ->
       let err =
 	sprintf "%s has been closed (nowrite) \

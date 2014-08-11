@@ -23,8 +23,7 @@ object(self)
   val fd = Inotify.init ()
   val ht_iwatched = Hashtbl.create 4001
 
-  (* TODO: remove _ if public *)
-  method _get_key path_target =
+  method get_key path_target =
     try
       Hashtbl.iter (
 	fun wd fi ->
@@ -36,12 +35,11 @@ object(self)
 
   (* Look in the hashtable if the value exists -> bool *)
   method private _is_value path_target =
-    match (self#_get_key path_target) with
+    match (self#get_key path_target) with
       | None -> false
       | Some _ -> true
 
-  (* TODO:remove _ if public *)
-  method _get_value wd =
+  method get_value wd =
     try Some (Hashtbl.find ht_iwatched wd)
     with Not_found -> None
 
@@ -52,13 +50,12 @@ object(self)
     (* in this case, if the config file's wd can not be found,
        we just return false. It should not be a big deal
     *)
-    match self#_get_value wd with
+    match self#get_value wd with
       | None      -> false
       | Some info -> info.conf
 
 
-  (* TODO: remove _ if public *)
-  method _del_watch wd =
+  method del_watch wd =
 
     if debug_event then begin
       printf "To be deleted: %d\n" (int_of_wd wd);
@@ -70,7 +67,7 @@ object(self)
       try
 	(* Get wd's father so we can delete wd
 	 * from its father's children list *)
-	match self#_get_value wd with
+	match self#get_value wd with
 	  | None ->
 	  (* Due to Hashtbl.mem, this error shouldn't happened *)
 	    Log.log ("Error: del_watch. Couldn't find the folder's value in the Hashtbl", Error)
@@ -88,7 +85,7 @@ object(self)
 
 	      (* Delete one child from the father's list *)
 	      let del_child wd_father wd_child =
-		match self#_get_value wd_father with
+		match self#get_value wd_father with
 		  | None ->
 		    Log.log ("Error: del_watch. \
 				 Could not find the folder's father to delete", Error)
@@ -193,7 +190,7 @@ object(self)
 		};
 	      (* Update a father's wd list with the new child *)
 	      let add_child wd_father wd_child =
-		match self#_get_value wd_father with
+		match self#get_value wd_father with
 		  | None ->
 		    Log.log ("Exception triggered in add_watch. Unknown wd", Error)
 
@@ -238,7 +235,7 @@ object(self)
 	| folder :: q ->
 	  let father_path = Filename.dirname folder in
 
-	  match self#_get_key father_path with
+	  match self#get_key father_path with
 	    | None ->
 	      let error =
 		sprintf "Oops. %s couldn't be found in the Hashtbl. \
