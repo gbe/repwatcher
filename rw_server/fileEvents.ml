@@ -24,12 +24,12 @@ let print_file file =
 ;;
 
 
-let open_report_mail common written =
+let open_report_mail common =
   Report.report#mail
     {
       m_common = common;
       m_filestate =
-	match written with
+	match common.c_written with
 	| false -> File_Opened
 	| true -> File_Created
     }
@@ -89,7 +89,7 @@ let open_report wd written (file, filesize) =
   } in
 
   open_report_notify file written;
-  open_report_mail common written;
+  open_report_mail common;
   let sql_obj_opt = open_report_sql common in
 
   (* in_progress to add into Hashtbl Files_progress *)
