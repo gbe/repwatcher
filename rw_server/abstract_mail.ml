@@ -20,7 +20,7 @@ object(self)
       | None -> assert false
       | Some b -> b
 
-  method private init_variables =
+  method private _init_variables =
     let m = self#_strip_option m_opt in
 
     let (first, last, fsize) =

@@ -9,7 +9,7 @@ object(self)
 
   initializer
     m_opt <- Some m;
-    self#init_variables
+    self#_init_variables
 
 
   method set_subject =
