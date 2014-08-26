@@ -9,15 +9,17 @@ object(self)
 
   initializer
     m_opt <- Some m;
-    self#_init_variables
+    self#_init_variables;
+    self#_set_subject;
+    self#_set_body;
 
 
-  method set_subject =
+  method private _set_subject =
     let file = m.m_common.c_file in
     subject <- file.f_username^" "^filestate^" "^file.f_name
 
 
-  method set_body =
+  method private _set_body =
     self#_path; self#_tab; self#_tab; self#_path_val;
     self#_LF;
 
@@ -61,10 +63,7 @@ let send mail =
 
   try
     let e_conf = (Config.cfg)#get_email in
-
     let email = new email mail in
-    email#set_subject;
-    email#set_body;
 
     (***** Let's log it *****)
     List.iter (fun recipient ->
