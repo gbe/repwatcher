@@ -1,5 +1,7 @@
+open Netsendmail
 open Types
 open Types_date
+open Types_conf
 
 class virtual abstract_mail =
 object(self)
@@ -166,5 +168,20 @@ object(self)
 	self#_app txt
 
       | _ -> ()
+
+
+  method send email_conf =
+    let m = self#_strip_option m_opt in
+    let file = m.m_common.c_file in
+
+    (***** Let's log it *****)
+    List.iter (fun recipient ->
+      let txt2log = "Sending email to "^recipient^" about "^file.f_username^" who "^filestate^" "^file.f_name in
+
+      Log.log (txt2log, Normal)
+    ) email_conf.e_recipients;
+    (************************)
+
+    Sendmail.sendmail email_conf subject body ()
 
 end;;

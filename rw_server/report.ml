@@ -191,14 +191,15 @@ object(self)
 
     if Config.cfg#is_email_activated then
       let email_conf = Config.cfg#get_email in
+      let email = new Mail.email tobemailed in
       match tobemailed.m_filestate with
-	| (File_Opened | File_Created) ->
-	  if email_conf.e_open then
-	    Mail.send tobemailed
+      | (File_Opened | File_Created) ->
+	if email_conf.e_open then
+	  email#send email_conf
 
-	| File_Closed ->
-	  if email_conf.e_close then
-	    Mail.send tobemailed
+      | File_Closed ->
+	if email_conf.e_close then
+	  email#send email_conf
 end ;;
 
 let report = new report;;

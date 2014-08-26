@@ -1,6 +1,4 @@
-open Netsendmail
 open Types
-open Types_conf
 
 class email m =
 object(self)
@@ -50,36 +48,4 @@ object(self)
       self#_transfer_val
     end
 
-  method get_body = body
-  method get_subject = subject
-  method get_filestate = filestate
-
 end;;
-
-
-let send mail =
-
-  let file = mail.m_common.c_file in
-
-  try
-    let e_conf = (Config.cfg)#get_email in
-    let email = new email mail in
-
-    (***** Let's log it *****)
-    List.iter (fun recipient ->
-      let txt2log = "Sending email to "^recipient^" about "^file.f_username^" who "^email#get_filestate^" "^file.f_name in
-
-      Log.log (txt2log, Normal)
-    ) e_conf.e_recipients;
-  (************************)
-
-
-    Sendmail.sendmail e_conf email#get_subject email#get_body ()
-
-  (* Should not happen as it is filtered in report.ml *)
-  with Config.Email_not_configured ->
-    Log.log
-      ("Tried to prepare an email while the emails are disabled",
-       Error);
-    assert false
-;;
