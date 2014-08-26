@@ -111,7 +111,7 @@ class smtp_client hostname port =
     method ehlo =
       self#smtp_cmd ("EHLO " ^ (Unix.gethostname ()))
 
-    method starttsl =
+    method starttls =
       self#smtp_cmd "STARTTLS";
         let ssl_context = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
         let s = match self#get_channel with
@@ -171,7 +171,7 @@ let sendmail conf_e subject body ?(attachment) () =
       client#ehlo;
       if e_smtp.sm_ssl then
 	begin
-	  client#starttsl;
+	  client#starttls;
 	  client#ehlo;
 	  match e_smtp.sm_credentials with
 	    | None -> ()
