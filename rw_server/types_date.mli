@@ -6,3 +6,5 @@ type diff_t = {
   minutes: int;
   seconds: int;
 }
+
+type utc = Utc of string

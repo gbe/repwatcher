@@ -1,7 +1,7 @@
 open Types;;
+open Types_date;;
 open Report;;
 open Files_progress;;
-
 
 (* This code runs in the father process *)
 (* Listen for commands sent from the SSL process *)

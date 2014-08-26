@@ -32,11 +32,10 @@ type log_level = | Normal
 		 | Normal_Extra
 		 | Error
 
-type utc = Utc of string
 
 type old_notif_t = {
   on_file : f_file ;
-  on_opening_date_utc : utc
+  on_opening_date_utc : Types_date.utc
 }
 
 type notification =
