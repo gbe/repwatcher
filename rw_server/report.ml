@@ -191,7 +191,7 @@ object(self)
 
     if Config.cfg#is_email_activated then
       let email_conf = Config.cfg#get_email in
-      let email = new Mail.email tobemailed in
+      let email = new InstantMail.email tobemailed in
       match tobemailed.m_filestate with
       | (File_Opened | File_Created) ->
 	if email_conf.e_open then
