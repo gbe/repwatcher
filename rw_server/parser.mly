@@ -25,7 +25,7 @@ let check_authorized_chars istr =
 ;;
 
 %}
-  
+
 
 %token EQUAL
 %token PVIRGULE
@@ -52,11 +52,12 @@ let check_authorized_chars istr =
 %token SERVER_PROCESS_CHROOT
 %token EMAIL_OPEN
 %token EMAIL_CLOSE
+%token EMAIL_BUFFER_FREQUENCY
 %token EMAIL_SENDER_NAME
 %token EMAIL_SENDER_ADDRESS
 %token EMAIL_RECIPIENTS
 %token SMTP_HOST
-%token SMTP_PORT 
+%token SMTP_PORT
 %token SMTP_USERNAME
 %token SMTP_PASSWD
 %token SMTP_SSL
@@ -66,13 +67,11 @@ let check_authorized_chars istr =
 %token EOF
 
 
-  
-/* Point d'entrée de la grammaire */
+
 %start configuration
-  
-/* Type des valeurs retournées par l'analyseur syntaxique */
+
 %type <Types_conf.configuration> configuration
-  
+
 %%
 
 
@@ -101,13 +100,13 @@ watch:
       {{
        w_directories = $3;
        w_ignore_directories = $6;
-       w_ignore_users = [];      	
-      }}	   	   
+       w_ignore_users = [];
+      }}
 | DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_plus_list
       {{
        w_directories = $3;
        w_ignore_directories = [];
-       w_ignore_users = $6;      	
+       w_ignore_users = $6;
       }}
 | DIRECTORIES EQUAL txt_plus_list IGNORE_DIRECTORIES EQUAL txt_plus_list IGNORE_USERS EQUAL txt_plus_list
       {{
@@ -201,7 +200,7 @@ notify:
 server:
 /*  If there is None here, there is a reduce/reduce conflict
     due to s_certs which can be also None.
-    
+
     2 possible ways in case of a None :
     notify -> serv -> s_certs
     which could also be interpreted as
@@ -263,29 +262,52 @@ s_chroot:
 
 email:
 | { None }
-| EMAIL_OPEN EQUAL true_or_false
-  EMAIL_CLOSE EQUAL true_or_false
+| email_instant
+  email_buffer
   EMAIL_SENDER_NAME EQUAL txt_plus
   EMAIL_SENDER_ADDRESS EQUAL txt_plus
   EMAIL_RECIPIENTS EQUAL txt_plus_list
   smtp
     {
-	(* check_recipients *)
-      if List.length $15 == 0 then
+      (* check_recipients *)
+      if List.length $11 == 0 then
 	raise Parse_error
       else
-      
-	match $3 || $6 with
+	begin
+	  let (email_open, email_close) = $1 in
+	  match email_open || email_close || (not ($2 = None)) with
 	  | false -> None
 	  | true ->
 	    Some {
-	      e_open = $3;
-	      e_close = $6;
-	      e_sender_name = $9;
-	      e_sender_address = $12;
-	      e_recipients = $15;
-	      e_smtp = $16
+	      e_open = email_open;
+	      e_close = email_close;
+	      e_buffer = $2;
+	      e_sender_name = $5;
+	      e_sender_address = $8;
+	      e_recipients = $11;
+	      e_smtp = $12;
 	    }
+	end
+    }
+;
+
+email_instant:
+| { (false, false) }
+| EMAIL_OPEN EQUAL true_or_false
+  EMAIL_CLOSE EQUAL true_or_false
+  {
+    ($3, $6)
+  }
+;
+
+email_buffer:
+| { None }
+| EMAIL_BUFFER_FREQUENCY EQUAL uint_not_null
+    {
+      (* 5 minutes minimum for the buffer *)
+      if $3 < 300 then
+	raise Parse_error
+      else Some $3
     }
 ;
 

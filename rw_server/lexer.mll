@@ -1,11 +1,11 @@
 {
   open Lexing
   open Parser
-   
+
   exception Lexing_error of string
   let newline lexbuf =
     let pos = lexbuf.lex_curr_p in
-    lexbuf.lex_curr_p <- 
+    lexbuf.lex_curr_p <-
       { pos with pos_lnum = pos.pos_lnum + 1; pos_bol = pos.pos_cnum }
 }
 
@@ -44,6 +44,7 @@ rule nexttoken = parse
   | "server_process_chroot"            { SERVER_PROCESS_CHROOT }
   | "email_open"                       { EMAIL_OPEN }
   | "email_close"                      { EMAIL_CLOSE }
+  | "email_buffer_frequency"           { EMAIL_BUFFER_FREQUENCY }
   | "email_sender_name"                { EMAIL_SENDER_NAME }
   | "email_sender_address"             { EMAIL_SENDER_ADDRESS }
   | "email_recipients"                 { EMAIL_RECIPIENTS }

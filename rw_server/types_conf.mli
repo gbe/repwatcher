@@ -1,6 +1,6 @@
 type watch = {
     w_directories        : string list   ;
-    w_ignore_directories : string list   ; 
+    w_ignore_directories : string list   ;
     w_ignore_users       : string list   ;
 }
 
@@ -45,7 +45,7 @@ type log_verbosity =
 
 type smtp_credentials = {
   cred_username : string;
-  cred_passwd : string  
+  cred_passwd : string
 }
 
 type smtp = {
@@ -58,6 +58,7 @@ type smtp = {
 type email = {
     e_open : bool;
     e_close : bool;
+    e_buffer : int option;
     e_sender_name : string;
     e_sender_address : string;
     e_recipients : string list;
