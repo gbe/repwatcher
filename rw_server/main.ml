@@ -194,6 +194,10 @@ This is free software under the MIT license.\n\n";
       (* Check if a connection can be done with the SMTP server *)
       Config.cfg#check_smtp_server;
 
+      if Config.cfg#is_buffer_email_activated then
+	ignore (Thread.create (BufferMail_thread.bMail#start_running) ());
+      (* ****************************************************** *)
+
       (* Start the pipes if the remote notification server is enabled *)
       if conf.c_notify.n_remotely then begin
 	Config.cfg#server_certs ;

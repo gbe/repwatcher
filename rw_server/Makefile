@@ -1,4 +1,4 @@
-CMX = lexer.cmx parser.cmx date.cmx log.cmx config.cmx txt_operations.cmx abstract_sql.cmx postgresqldb.cmx mysqldb.cmx sqldb.cmx pipe.cmx sendmail.cmx abstract_mail.cmx instantMail.cmx report.cmx files_progress.cmx ssl_connected_client.cmx ssl_handle_clients.cmx ssl_server.cmx dirs.cmx files.cmx inotifyCaller.cmx fileEvents.cmx directoryEvents.cmx eventsDispatcher.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
+CMX = lexer.cmx parser.cmx date.cmx log.cmx config.cmx txt_operations.cmx abstract_sql.cmx postgresqldb.cmx mysqldb.cmx sqldb.cmx pipe.cmx sendmail.cmx abstract_mail.cmx instantMail.cmx bufferMail_thread.cmx report.cmx files_progress.cmx ssl_connected_client.cmx ssl_handle_clients.cmx ssl_server.cmx dirs.cmx files.cmx inotifyCaller.cmx fileEvents.cmx directoryEvents.cmx eventsDispatcher.cmx offset_thread.cmx pipe_from_server_thread.cmx main.cmx
 GENERATED = lexer.ml parser.ml parser.mli
 BIN = rw_server
 PACKAGES = str,mysql,postgresql,bigarray,ssl,inotify,fdinfo,threads,smtp,syslog,dbus,calendar
