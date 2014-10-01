@@ -6,6 +6,7 @@ open Unix
 
 exception Config_error ;;
 exception Email_not_configured ;;
+exception Email_buffer_not_configured ;;
 exception Process_identity_not_configured ;;
 exception SQL_not_configured ;;
 
@@ -59,7 +60,7 @@ object(self)
     begin try
       conf <- Some (Parser.configuration Lexer.nexttoken lb)
     with
-      | Lexer.Lexing_error s -> 
+      | Lexer.Lexing_error s ->
 	self#_localization (lexeme_start_p lb, lexeme_end_p lb) cfg_file;
 	eprintf "lexical error in the configuration file %s: %s\n@." cfg_file s;
 	exit 1
@@ -71,11 +72,16 @@ object(self)
 
     close_in c;
 
+  method get_email_buffer =
+    match (self#get_email).e_buffer with
+    | None -> raise Email_buffer_not_configured
+    | Some buffer -> buffer
+
 
   method get_email =
     let c =
       try
-	(self#get).c_email 
+	(self#get).c_email
       with Config_error ->
 	let err = "Cannot retrieve email configuration since the config file has not been parsed" in
 	Log.log (err, Error);
@@ -85,11 +91,21 @@ object(self)
       | None -> raise Email_not_configured
       | Some email_conf -> email_conf
 
-  method is_email_activated =
-   try
-     ignore (self#get_email);
-     true
-   with Email_not_configured -> false
+
+  method is_buffer_email_activated =
+    try
+      let e_conf = self#get_email in
+      match e_conf.e_buffer with
+      | None -> false
+      | Some _ -> true
+    with Email_not_configured -> false
+
+
+  method is_instant_email_activated =
+    try
+      let e_conf = self#get_email in
+      e_conf.e_open || e_conf.e_close
+    with Email_not_configured -> false
 
 
   method set_email_disabled =
@@ -171,7 +187,7 @@ object(self)
      - exist, can be read and rights: key
      - chroot folder
      - server process identity
-     
+
      - if the smtp server can be reached
   *)
 
@@ -223,7 +239,7 @@ object(self)
       let err =
 	"Warning: "^file^" is readable by the group 'other'. \
          You should changed this to prevent passwords/private key leakage"
-      in 
+      in
       Log.log (err, Error)
 
 
@@ -233,14 +249,14 @@ object(self)
       | Some server ->
 	match server.s_certs with
 	  | None -> assert false
-	  | Some certs -> 
+	  | Some certs ->
 
 	    (* Does the file exist and can it be read ? *)
 	    let can_be_accessed file_dir rights =
 	      try
 		(* Checks if the file exists and if the process can read it *)
 		Unix.access file_dir rights ;
-		
+
 	      with Unix_error (error,_,file_dir') ->
 		let err = Printf.sprintf "%s: %s" file_dir' (error_message error) in
 		Log.log (err, Error) ;
@@ -297,7 +313,7 @@ object(self)
               h.Unix.h_addr_list.(0)
 	  end
 	in
-    
+
 	let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
 	Unix.connect s (Unix.ADDR_INET((resolve host), port));
 	Unix.close s
@@ -305,10 +321,10 @@ object(self)
 	(* sending of emails disabled *)
 	self#set_email_disabled;
 
-	let err = 
+	let err =
 	  "Err: while checking if repwatcher could \
 connect to "^host^", an error occured. Sending of emails is disabled"
-	in 
+	in
 	Log.log (err, Error)
     with
       | Email_not_configured ->
@@ -316,5 +332,5 @@ connect to "^host^", an error occured. Sending of emails is disabled"
 
 
 end ;;
-		  
+
 let cfg = new config ;;

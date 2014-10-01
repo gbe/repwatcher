@@ -189,7 +189,7 @@ object(self)
 
   method mail tobemailed =
 
-    if Config.cfg#is_email_activated then
+    if Config.cfg#is_instant_email_activated then
       let email_conf = Config.cfg#get_email in
       let email = new InstantMail.email tobemailed in
       match tobemailed.m_filestate with
