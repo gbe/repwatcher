@@ -145,17 +145,12 @@ let file_created wd name =
 (* Return the list of the files which stopped being accessed *)
 let create_stop_files_list () =
 
-  let skip_because_buffered values =
-    Config.cfg#is_buffer_email_activated &&
-      not (values.ip_common.c_closing_date = None)
-  in
-
   Hashtbl.fold (
     fun (wd2, f_file) values l_stop' ->
 
       (* File not to be put in the stop list as it is
        * already closed and the buffer email is on *)
-      if skip_because_buffered values then
+      if Common.skip_because_buffered values then
 	l_stop'
 
       (* File to stop and to remove from the hashtable *)

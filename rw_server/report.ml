@@ -39,12 +39,12 @@ object(self)
 
 
   method private _new_notification file filestate =
-    let filename_escaped = Txt_operations.escape_for_notify file.f_name in
+    let filename_escaped = Common.escape_for_notify file.f_name in
     let conf = (Config.cfg)#get in
 
     if conf.c_notify.n_locally then begin
       let msg_state =
-	Txt_operations.string_of_filestate filestate
+	Common.string_of_filestate filestate
       in
 
       (* Return the n last folders *)
@@ -93,7 +93,7 @@ object(self)
 
 
   method private _local_notification txt2benotified =
-    let txt_escaped = Txt_operations.escape_for_notify txt2benotified in
+    let txt_escaped = Common.escape_for_notify txt2benotified in
     let conf = (Config.cfg)#get in
 
     if conf.c_notify.n_locally then
@@ -103,7 +103,7 @@ object(self)
 
 
   method private _send_old_notifications2ssl_process current_accesses_l =
-    (* Txt_operations.escape_for_notify has already been done on f_name *)
+    (* Common.escape_for_notify has already been done on f_name *)
     let str_current =
 	Marshal.to_string current_accesses_l [Marshal.No_sharing]
     in

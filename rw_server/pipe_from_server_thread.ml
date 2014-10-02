@@ -27,7 +27,7 @@ let wait_pipe_from_child_process () =
 		{
 		  on_file =
 		    { file with
-		      f_name = (Txt_operations.escape_for_notify file.f_name)
+		      f_name = (Common.escape_for_notify file.f_name)
 		    };
 		  on_opening_date_utc = Utc in_progress.ip_common.c_opening_date#get_str_utc
 		})

@@ -50,7 +50,7 @@ object(self)
     first_off_str <- first;
     last_off_str <- last;
     filesize_str <- fsize;
-    filestate <- Txt_operations.string_of_filestate m.m_filestate
+    filestate <- Common.string_of_filestate m.m_filestate
 
 
   (* append to body *)

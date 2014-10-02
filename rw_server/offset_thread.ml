@@ -183,33 +183,37 @@ let loop_check () =
 
     Hashtbl.iter (fun (wd, file) in_progress' ->
 
-      let inprogress_ref = ref in_progress' in
+      if Common.skip_because_buffered in_progress' = false then
+	begin
 
-(*      Printf.printf "START - First_off: %Ld\t\tLast_off: %Ld\n"
+	  let inprogress_ref = ref in_progress' in
+
+      (*      Printf.printf "START - First_off: %Ld\t\tLast_off: %Ld\n"
+	      (st !inprogress_ref.ip_common.c_first_known_offset)
+	      (st !inprogress_ref.ip_common.c_last_known_offset);
+      *)
+
+	  let new_offset_opt =
+	    Files.get_offset file.f_program_pid file.f_descriptor
+	  in
+
+	  begin
+	    match new_offset_opt with
+	    | None -> could_not_get_offset (wd, file) inprogress_ref
+	    | Some _ -> could_get_offset (wd, file) inprogress_ref new_offset_opt
+	  end;
+
+      (*
+	Printf.printf "END - First_off: %Ld\t\tLast_off: %Ld\n\n"
 	(st !inprogress_ref.ip_common.c_first_known_offset)
 	(st !inprogress_ref.ip_common.c_last_known_offset);
-*)
+      *)
 
-      let new_offset_opt =
-	Files.get_offset file.f_program_pid file.f_descriptor
-      in
-
-      begin
-	match new_offset_opt with
-	| None -> could_not_get_offset (wd, file) inprogress_ref
-	| Some _ -> could_get_offset (wd, file) inprogress_ref new_offset_opt
-      end;
-
-(*
-  Printf.printf "END - First_off: %Ld\t\tLast_off: %Ld\n\n"
-  (st !inprogress_ref.ip_common.c_first_known_offset)
-  (st !inprogress_ref.ip_common.c_last_known_offset);
-*)
-
-      Hashtbl.replace
-	Files_progress.ht
-	(wd, file)
-	!inprogress_ref
+	  Hashtbl.replace
+	    Files_progress.ht
+	    (wd, file)
+	    !inprogress_ref
+	end
 
     ) Files_progress.ht ;
 

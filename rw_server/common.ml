@@ -1,5 +1,6 @@
 open Unix
 open Types
+open Files_progress
 
 let l_encoded_chars =
 (* &amp; needs to be the first one in the list.
@@ -9,7 +10,7 @@ let l_encoded_chars =
 		 (">", "&gt;")   ;
 		 ("<", "&lt;")   ;
 		 ("'", "&apos;") ;
-		 ((Char.escaped '"'), "&quot;")		 
+		 ((Char.escaped '"'), "&quot;")
 	       ]
   in
   List.map (fun (char, char_encoded) ->
@@ -29,4 +30,9 @@ let string_of_filestate filestate =
     | File_Created -> "has created"
     | File_Opened  -> "has opened"
     | File_Closed  -> "closed"
+;;
+
+let skip_because_buffered in_progress =
+  Config.cfg#is_buffer_email_activated &&
+    not (in_progress.ip_common.c_closing_date = None)
 ;;
