@@ -144,33 +144,49 @@ let file_created wd name =
 
 (* Return the list of the files which stopped being accessed *)
 let create_stop_files_list () =
+
+  let skip_because_buffered values =
+    Config.cfg#is_buffer_email_activated &&
+      not (values.ip_common.c_closing_date = None)
+  in
+
   Hashtbl.fold (
     fun (wd2, f_file) values l_stop' ->
 
-      (* Return new infos on a specific fdnum.
-       * If the process is already closed, a Sys_error is triggered
-       * by Fdinfo.get_fds
-       *)
-      let fdinprogress =
-	try
-	  Some (List.find (fun (fd, fdval) ->
-	    fd = f_file.f_descriptor
-	  ) (Fdinfo.get_fds f_file.f_program_pid))
-	with _ -> None
-      in
+      (* File not to be put in the stop list as it is
+       * already closed and the buffer email is on *)
+      if skip_because_buffered values then
+	l_stop'
 
-      match fdinprogress with
-      | None -> ((wd2, f_file), ref values) :: l_stop'
-      | Some (_, fdval) ->
+      (* File to stop and to remove from the hashtable *)
+      else
+	begin
 
-	try
-	  (* if it's a real path then true
-	   * otherwise it's something like pipe:[160367] *)
-	  match Sys.file_exists fdval with
-	  | false -> ((wd2, f_file), ref values) :: l_stop'
-	  | true -> l_stop'
-	with
-	| _ -> ((wd2, f_file), ref values) :: l_stop'
+	  (* Return new infos on a specific fdnum.
+	   * If the process is already closed, a Sys_error is triggered
+	   * by Fdinfo.get_fds
+	   *)
+	  let fdinprogress =
+	    try
+	      Some (List.find (fun (fd, fdval) ->
+		fd = f_file.f_descriptor
+	      ) (Fdinfo.get_fds f_file.f_program_pid))
+	    with _ -> None
+	  in
+
+	  match fdinprogress with
+	  | None -> ((wd2, f_file), ref values) :: l_stop'
+	  | Some (_, fdval) ->
+
+	    try
+	      (* if it's a real path then true
+	       * otherwise it's something like pipe:[160367] *)
+	      match Sys.file_exists fdval with
+	      | false -> ((wd2, f_file), ref values) :: l_stop'
+	      | true -> l_stop'
+	    with
+	    | _ -> ((wd2, f_file), ref values) :: l_stop'
+	end
   ) Files_progress.ht []
 ;;
 
@@ -220,8 +236,8 @@ let file_closed ?(written=false) wd name =
     | None ->
       let err =
 	sprintf "%s has been closed (nowrite) \
-		 but I can't report it because I cannot find \
-		 its wd info" name
+		 but I can't report it because \
+		 I cannot find its wd info" name
       in
       Log.log (err, Error)
 
@@ -257,7 +273,9 @@ let file_closed ?(written=false) wd name =
 
       (* update last_known_offset according to filesize and written *)
       (* if file could not be read or does not exist anymore then filesize = None *)
-      let overriden_last_offset_opt = override_last_offset nfilesize in_progress written in
+      let overriden_last_offset_opt =
+	override_last_offset nfilesize in_progress written
+      in
 
       in_progress :=
  	{ !in_progress with
