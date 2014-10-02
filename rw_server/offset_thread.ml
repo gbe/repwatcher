@@ -133,12 +133,47 @@ let update_sql_offset in_progress offset_type =
 	    sql_report_offset)
 ;;
 
-(*let st iopt =
-  match iopt with
-  | None -> Int64.of_int (-1)
-  | Some i -> i
+
+let could_not_get_offset (wd, file) in_progress =
+  (* It happens that the offset_thread loop runs before having gotten the closing event.
+   * This gives 2 loops time to get the closing event properly.
+   * If after 2 loops, the event is not gotten, then closing event is forced *)
+
+  (* Dereference of ip_offset_retrieval_errors *)
+  incr !in_progress.ip_offset_retrieval_errors;
+
+  if !(!in_progress.ip_offset_retrieval_errors) < 2 then
+    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra)
+  else
+    force_closing_event (wd, file) !in_progress.ip_common.c_written
 ;;
-*)
+
+
+let could_get_offset (wd, file) in_progress new_offset_opt =
+  update_inprogress_offsets new_offset_opt (wd, file) in_progress;
+
+  (* Perform the write checks only if false. True values were either
+   * gotten from opening events or former false values overriden
+   * by below override (update_inprogress_file_to_written) *)
+  if !in_progress.ip_common.c_written = false then begin
+    if is_file_being_written file in_progress then begin
+      update_inprogress_file_to_written (wd, file) in_progress;
+      update_sql_to_written in_progress;
+    end
+  end;
+
+  (* match on the old value to know
+   * which kind of sr_types must be passed
+   * to the SQL query *)
+  if Config.cfg#is_sql_activated then begin
+    match (!in_progress).ip_common.c_first_known_offset with
+    | None ->
+      update_sql_offset in_progress SQL_FK_Offset ;
+      update_sql_offset in_progress SQL_LK_Offset
+    | Some _ -> update_sql_offset in_progress SQL_LK_Offset
+  end
+;;
+
 
 let loop_check () =
 
@@ -161,50 +196,14 @@ let loop_check () =
 
       begin
 	match new_offset_opt with
-	| None ->
-
-	  (* It happens that the offset_thread loop runs before having gotten the closing event.
-	   * This gives 2 loops time to get the closing event properly.
-	   * If after 2 loops, the event is not gotten, then closing event is forced *)
-
-	  (* Dereference of ip_offset_retrieval_errors *)
-	  incr !inprogress_ref.ip_offset_retrieval_errors;
-
-	  if !(!inprogress_ref.ip_offset_retrieval_errors) < 2 then
-	    Log.log (("Offset. "^file.f_name^" gets a first warning."), Normal_Extra)
-	  else
-	    force_closing_event (wd, file) !inprogress_ref.ip_common.c_written
-
-
-	| Some _ ->
-	  update_inprogress_offsets new_offset_opt (wd, file) inprogress_ref;
-
-	  (* Perform the write checks only if false. True values were either
-	   * gotten from opening events or former false values overriden
-	   * by below override (update_inprogress_file_to_written) *)
-	  if !inprogress_ref.ip_common.c_written = false then begin
-	    if is_file_being_written file inprogress_ref then begin
-	      update_inprogress_file_to_written (wd, file) inprogress_ref;
-	      update_sql_to_written inprogress_ref;
-	    end
-	  end;
-
-	  (* match on the old value to know
-	   * which kind of sr_types must be passed
-	   * to the SQL query *)
-	  if Config.cfg#is_sql_activated then begin
-	    match in_progress'.ip_common.c_first_known_offset with
-	    | None ->
-	      update_sql_offset inprogress_ref SQL_FK_Offset ;
-	      update_sql_offset inprogress_ref SQL_LK_Offset
-	    | Some _ -> update_sql_offset inprogress_ref SQL_LK_Offset
-	  end;
+	| None -> could_not_get_offset (wd, file) inprogress_ref
+	| Some _ -> could_get_offset (wd, file) inprogress_ref new_offset_opt
       end;
 
 (*
-      Printf.printf "END - First_off: %Ld\t\tLast_off: %Ld\n\n"
-	(st !inprogress_ref.ip_common.c_first_known_offset)
-	(st !inprogress_ref.ip_common.c_last_known_offset);
+  Printf.printf "END - First_off: %Ld\t\tLast_off: %Ld\n\n"
+  (st !inprogress_ref.ip_common.c_first_known_offset)
+  (st !inprogress_ref.ip_common.c_last_known_offset);
 *)
 
       Hashtbl.replace
