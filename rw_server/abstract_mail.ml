@@ -16,6 +16,9 @@ object(self)
   val mutable filestate = ""
   val mutable m_opt = None
 
+  method virtual private _set_subject : unit -> unit
+  method virtual private _set_body : unit -> unit
+
   method private _strip_option : 'a. 'a option -> 'a =
     fun arg ->
       match arg with

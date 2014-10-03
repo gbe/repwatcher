@@ -12,6 +12,9 @@ class bufferMail =
 object(self)
   inherit Abstract_mail.abstract_mail
 
+  method private _set_subject () = ()
+  method private _set_body () = ()
+
   method start_running () =
     let waiting_time =
       float_of_int Config.cfg#get_email_buffer

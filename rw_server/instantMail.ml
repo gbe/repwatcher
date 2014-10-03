@@ -8,16 +8,16 @@ object(self)
   initializer
     m_opt <- Some m;
     self#_init_variables;
-    self#_set_subject;
-    self#_set_body;
+    self#_set_subject ();
+    self#_set_body ();
 
 
-  method private _set_subject =
+  method private _set_subject () =
     let file = m.m_common.c_file in
     subject <- file.f_username^" "^filestate^" "^file.f_name
 
 
-  method private _set_body =
+  method private _set_body () =
     self#_path; self#_tab; self#_tab; self#_path_val;
     self#_LF;
 
