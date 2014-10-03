@@ -7,7 +7,7 @@ object(self)
 
   initializer
     m_opt <- Some m;
-    self#_init_variables;
+    self#_load_variables;
     self#_set_subject ();
     self#_set_body ();
 
