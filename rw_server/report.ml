@@ -195,11 +195,11 @@ object(self)
       match tobemailed.m_filestate with
       | (File_Opened | File_Created) ->
 	if email_conf.e_open then
-	  email#send email_conf
+	  email#send
 
       | File_Closed ->
 	if email_conf.e_close then
-	  email#send email_conf
+	  email#send
 end ;;
 
 let report = new report;;
