@@ -148,40 +148,30 @@ let create_stop_files_list () =
   Hashtbl.fold (
     fun (wd2, f_file) values l_stop' ->
 
-      (* File not to be put in the stop list as it is
-       * already closed and the buffer email is on *)
-      if Common.skip_because_buffered values then
-	l_stop'
+      (* Return new infos on a specific fdnum.
+       * If the process is already closed, a Sys_error is triggered
+       * by Fdinfo.get_fds
+       *)
+      let fdinprogress =
+	try
+	  Some (List.find (fun (fd, fdval) ->
+	    fd = f_file.f_descriptor
+	  ) (Fdinfo.get_fds f_file.f_program_pid))
+	with _ -> None
+      in
 
-      (* File to stop and to remove from the hashtable *)
-      else
-	begin
+      match fdinprogress with
+      | None -> ((wd2, f_file), ref values) :: l_stop'
+      | Some (_, fdval) ->
 
-	  (* Return new infos on a specific fdnum.
-	   * If the process is already closed, a Sys_error is triggered
-	   * by Fdinfo.get_fds
-	   *)
-	  let fdinprogress =
-	    try
-	      Some (List.find (fun (fd, fdval) ->
-		fd = f_file.f_descriptor
-	      ) (Fdinfo.get_fds f_file.f_program_pid))
-	    with _ -> None
-	  in
-
-	  match fdinprogress with
-	  | None -> ((wd2, f_file), ref values) :: l_stop'
-	  | Some (_, fdval) ->
-
-	    try
-	      (* if it's a real path then true
-	       * otherwise it's something like pipe:[160367] *)
-	      match Sys.file_exists fdval with
-	      | false -> ((wd2, f_file), ref values) :: l_stop'
-	      | true -> l_stop'
-	    with
-	    | _ -> ((wd2, f_file), ref values) :: l_stop'
-	end
+	try
+	  (* if it's a real path then true
+	   * otherwise it's something like pipe:[160367] *)
+	  match Sys.file_exists fdval with
+	  | false -> ((wd2, f_file), ref values) :: l_stop'
+	  | true -> l_stop'
+	with
+	| _ -> ((wd2, f_file), ref values) :: l_stop'
   ) Files_progress.ht []
 ;;
 
@@ -248,10 +238,6 @@ let file_closed ?(written=false) wd name =
   List.iter (
     fun ((wd2, f_file), in_progress) ->
 
-      Mutex.lock Files_progress.mutex_ht ;
-      Hashtbl.remove Files_progress.ht (wd2, f_file);
-      Mutex.unlock Files_progress.mutex_ht ;
-
       let closing_date = new Date.date in
 
       Printf.printf "%s - %s closed: %s (%d)\n"
@@ -281,6 +267,15 @@ let file_closed ?(written=false) wd name =
 	      c_closing_date = Some closing_date ;
 	  }
 	};
+
+      Mutex.lock Files_progress.mutex_ht ;
+      if Common.skip_because_buffered (!in_progress) then begin
+	print_endline "l_stop SKIPPED";
+	Hashtbl.replace Files_progress.ht (wd2, f_file) !in_progress;
+      end
+      else
+	Hashtbl.remove Files_progress.ht (wd2, f_file);
+      Mutex.unlock Files_progress.mutex_ht ;
 
       (* *** SQL *** *)
       let sql_report = {

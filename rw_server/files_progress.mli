@@ -7,3 +7,4 @@ type in_progress_t = {
 
 val mutex_ht : Mutex.t
 val ht : (Inotify.wd * Types.f_file, in_progress_t) Hashtbl.t
+val remove_closed_files : unit -> unit

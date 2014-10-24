@@ -29,8 +29,11 @@ let create_message conf_e subject body attachment =
                         ["filename", Filename.basename f |> Mimestring.mk_param])
                       (new Netmime.file_mime_body f) ] in
 
-    Netsendmail.compose ~from_addr:(conf_e.e_sender_name, conf_e.e_sender_address)
-      ~in_charset:`Enc_utf8 ~out_charset:`Enc_utf8
+    Netsendmail.compose
+      ~from_addr:(conf_e.e_sender_name, conf_e.e_sender_address)
+      ~in_charset:`Enc_utf8
+      ~out_charset:`Enc_utf8
+      ~content_type:("text/html", [])
       ~to_addrs:recipients ~subject:subject ~attachments:attachments body |>
         Netmime.write_mime_message (new Netchannels.output_buffer b);
         Buffer.contents b
@@ -130,7 +133,7 @@ class smtp_client hostname port =
     method mail addr = self#smtp_cmd (Printf.sprintf "MAIL FROM:<%s>" addr)
 
     method rcpt addr = self#smtp_cmd (Printf.sprintf "RCPT TO:<%s>" addr)
-    
+
     method data email_string =
       self#smtp_cmd "DATA";
       email_string |>

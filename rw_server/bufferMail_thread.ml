@@ -14,6 +14,9 @@ object(self)
   inherit Abstract_mail.abstract_mail
 
   method private _set_html_headers =
+    (* Clear the body content since a new mail is building*)
+    body <- "";
+
     let headers = "<html><title>Repwatcher Events</title>" in
     self#_app headers
 
@@ -23,15 +26,47 @@ object(self)
   method private _set_subject () =
     subject <- Printf.sprintf "Repwatcher - events buffer"
 
+  method private _add_column text =
+    self#_app ("<td>"^text^"</td>")
+
+  method private _add_table_header =
+    self#_app "<tr>";
+    List.iter
+      self#_add_column
+      ["Username";
+       "Path";
+       "Filename";
+       "Filesize";
+       "Opening date";
+       "Closing date"
+      ];
+    self#_app "</tr>"
+
+
   method private _add_row (wd, file) ip =
-    let txt =
-      Printf.sprintf "<tr><td>%s</td><td>%s</td></tr>" file.f_path file.f_name
-    in
-    self#_app txt
+    self#_app "<tr>";
+    List.iter
+      self#_add_column
+      [file.f_username;
+       file.f_path;
+       file.f_name;
+       (match ip.ip_common.c_filesize with
+       | None -> assert false
+       | Some filesize -> Int64.to_string filesize);
+       ip.ip_common.c_opening_date#get_str_locale;
+       (match ip.ip_common.c_closing_date with
+       | None -> ""
+       | Some date -> date#get_str_locale)
+      ];
+    self#_app "</tr>";
+
 
   method private _set_body () =
-    self#_app "<body><table>";
-    Hashtbl.iter self#_add_row Files_progress.ht;
+    self#_app "<body><table border=2>";
+    self#_add_table_header;
+    Hashtbl.iter (fun key in_progress ->
+      self#_add_row key in_progress
+    ) Files_progress.ht;
     self#_app "</table></body>"
 
   method start_running () =
@@ -42,15 +77,19 @@ object(self)
     while true do
 (*      Thread.delay waiting_time ; *)
       Thread.delay 10.0;
-      print_endline "Buffer mail hello";
-      Pervasives.flush Pervasives.stdout;
-      self#_set_subject ();
-      self#_set_html_headers;
-      self#_set_body ();
-      self#_set_html_footer;
-      print_endline ("Subject: "^subject);
-      print_endline ("Body: "^body);
-      self#send;
+      if Hashtbl.length Files_progress.ht > 0 then
+	begin
+	  Log.log ("Buffer mail hello", Normal_Extra);
+	  Pervasives.flush Pervasives.stdout;
+	  self#_set_subject ();
+	  self#_set_html_headers;
+	  self#_set_body ();
+	  self#_set_html_footer;
+	  print_endline ("Subject: "^subject);
+	  print_endline ("Body: "^body);
+	  self#send;
+	  Files_progress.remove_closed_files ();
+	end
     done
 
 end;;
