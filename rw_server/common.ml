@@ -31,8 +31,3 @@ let string_of_filestate filestate =
     | File_Opened  -> "has opened"
     | File_Closed  -> "closed"
 ;;
-
-let skip_because_buffered in_progress =
-  Config.cfg#is_buffer_email_activated &&
-    not (in_progress.ip_common.c_closing_date = None)
-;;

@@ -126,7 +126,7 @@ let file_opened ?(written=false) wd name =
 	    let in_progress =
 	      open_report wd written (file, filesize)
 	    in
-	    Hashtbl.add Files_progress.ht
+	    Files_progress.htadd
 	      (wd, file)
 	      in_progress
 	) files ;
@@ -240,14 +240,6 @@ let file_closed ?(written=false) wd name =
 
       let closing_date = new Date.date in
 
-      Printf.printf "%s - %s closed: %s (%d)\n"
-	closing_date#get_str_locale
-	f_file.f_unix_login
-	f_file.f_name
-	(Fdinfo.int_of_fd f_file.f_descriptor);
-
-      Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
-
       (* update filesize in database if written
        * as filesize equaled None if written == true *)
       let nfilesize = override_filesize in_progress f_file written in
@@ -269,12 +261,15 @@ let file_closed ?(written=false) wd name =
 	};
 
       Mutex.lock Files_progress.mutex_ht ;
-      if Common.skip_because_buffered (!in_progress) then begin
-	print_endline "l_stop SKIPPED";
-	Hashtbl.replace Files_progress.ht (wd2, f_file) !in_progress;
-      end
-      else
-	Hashtbl.remove Files_progress.ht (wd2, f_file);
+      Printf.printf "%s - %s closed: %s (%d)\n"
+	closing_date#get_str_locale
+	f_file.f_unix_login
+	f_file.f_name
+	(Fdinfo.int_of_fd f_file.f_descriptor);
+
+      Log.log (f_file.f_unix_login^" closed: "^f_file.f_name, Normal) ;
+      Files_progress.htremove (wd2, f_file) !in_progress;
+
       Mutex.unlock Files_progress.mutex_ht ;
 
       (* *** SQL *** *)
