@@ -86,37 +86,12 @@ object(self)
 
   method private _duration = self#_app "Duration:"
   method private _duration_val =
-    let closing_date = self#_strip_option m.m_common.c_closing_date in
-    let duration = closing_date#get_diff m.m_common.c_opening_date in
-
-
-    (* Add the plural to txt and return the result
-     *
-     * Do not return anything if value is 0
-     * unless print_anyway is true *)
-    let plural ?(print_anyway=false) txt value =
-      let singular = Printf.sprintf "%d %s" value txt in
-      if value == 1 then
-	singular^" "
-      else if value >= 2 then
-	singular^"s "
-      else
-	begin
-	  if print_anyway then
-	    singular^" "
-	  else ""
-	end
+    let duration =
+      self#_abs_duration_val
+	m.m_common.c_closing_date
+	m.m_common.c_opening_date
     in
-
-    (* Not appended if equals to 0 *)
-    self#_app (plural "year" duration.years);
-    self#_app (plural "month" duration.months);
-    self#_app (plural "day" duration.days);
-    self#_app (plural "hour" duration.hours);
-    (* ************************** *)
-
-    self#_app (plural ~print_anyway:true "minute" duration.minutes);
-    self#_app (plural ~print_anyway:true "second" duration.seconds);
+    self#_app duration
 
 
   method private _progression = self#_app "Progression:"
