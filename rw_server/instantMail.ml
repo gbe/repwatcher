@@ -61,6 +61,9 @@ object(self)
   method private _path_val =
     self#_app m.m_common.c_file.f_path
 
+
+  method private _filename = self#_app "Filename:"
+
   method private _filename_val =
     self#_app m.m_common.c_file.f_name
 
@@ -162,6 +165,9 @@ object(self)
 
   method private _set_body () =
     self#_path; self#_tab; self#_tab; self#_path_val;
+    self#_LF;
+
+    self#_filename; self#_tab; self#_tab; self#_filename_val;
     self#_LF;
 
     self#_program; self#_tab; self#_program_val;
