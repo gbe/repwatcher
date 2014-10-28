@@ -12,7 +12,7 @@ type socket =
   | SSL_socket of Ssl.socket
 
 
-let create_message conf_e subject body attachment =
+let create_message html conf_e subject body attachment =
   (* This avoids to ask for the recipients's real name in the config file *)
   let recipients =
     List.map (fun address ->
@@ -22,21 +22,28 @@ let create_message conf_e subject body attachment =
   let b = Buffer.create 1024 in
   let attachments =
     match attachment with
-      | None -> []
-      | Some f -> [ Netsendmail.wrap_attachment
-                      ~content_type:("application/octet-stream", [])
-                      ~content_disposition:("attachment",
-                        ["filename", Filename.basename f |> Mimestring.mk_param])
-                      (new Netmime.file_mime_body f) ] in
+    | None -> []
+    | Some f -> [ Netsendmail.wrap_attachment
+                    ~content_type:("application/octet-stream", [])
+                    ~content_disposition:("attachment",
+		    ["filename", Filename.basename f |> Mimestring.mk_param])
+                    (new Netmime.file_mime_body f) ]
+  in
 
-    Netsendmail.compose
-      ~from_addr:(conf_e.e_sender_name, conf_e.e_sender_address)
-      ~in_charset:`Enc_utf8
-      ~out_charset:`Enc_utf8
-      ~content_type:("text/html", [])
-      ~to_addrs:recipients ~subject:subject ~attachments:attachments body |>
+  Netsendmail.compose
+    ~from_addr:(conf_e.e_sender_name, conf_e.e_sender_address)
+    ~in_charset:`Enc_utf8
+    ~out_charset:`Enc_utf8
+    ~content_type:(
+      match html with
+      | false -> ("text/plain", [])
+      | true -> ("text/html", [])
+    )
+    ~to_addrs:recipients
+    ~subject:subject
+    ~attachments:attachments body |>
         Netmime.write_mime_message (new Netchannels.output_buffer b);
-        Buffer.contents b
+  Buffer.contents b
 
 let resolve name =
   try Unix.inet_addr_of_string name
@@ -155,7 +162,7 @@ class smtp_client hostname port =
 
   end
 
-let sendmail conf_e subject body ?(attachment) () =
+let sendmail html conf_e subject body ?(attachment) () =
 
   let e_smtp = conf_e.e_smtp in
 
@@ -166,7 +173,7 @@ let sendmail conf_e subject body ?(attachment) () =
     end
   ;
 
-  let email_as_string = create_message conf_e subject body attachment in
+  let email_as_string = create_message html conf_e subject body attachment in
 
   let client = new smtp_client e_smtp.sm_host e_smtp.sm_port in
     try

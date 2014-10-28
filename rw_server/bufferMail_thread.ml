@@ -116,20 +116,17 @@ tbody tr:nth-child(odd) {
     in
 
     while true do
-(*      Thread.delay waiting_time ; *)
-      Thread.delay 30.0;
+      Thread.delay waiting_time ;
+
       if Hashtbl.length Files_progress.htbuffer > 0 then
 	begin
-	  Log.log ("Buffer mail hello", Normal_Extra);
-
 	  self#_set_subject ();
 	  self#_set_html_headers;
 	  self#_set_css;
 	  self#_set_body ();
 	  self#_set_html_footer;
-	  print_endline ("Subject: "^subject);
-	  print_endline ("Body: "^body);
-	  self#send;
+
+	  self#send ~html:true ();
 	  Files_progress.remove_closed_files ();
 	end
     done

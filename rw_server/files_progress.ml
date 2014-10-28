@@ -30,10 +30,18 @@ let remove_closed_files () =
   Printf.printf "HT size avant: %d\n" (Hashtbl.length htbuffer);
   Pervasives.flush Pervasives.stdout;
 
-  Hashtbl.iter (fun key in_progress ->
+  Hashtbl.iter (fun (wd, file) in_progress ->
     match in_progress.ip_common.c_closing_date with
     | None -> ()
-    | Some _ -> Hashtbl.remove htbuffer key
+    | Some _ ->
+      Hashtbl.remove htbuffer (wd, file);
+      let txt =
+	Printf.sprintf
+	  "Removed %s accessed by %s from buffered emails"
+	  file.f_name
+	  file.f_unix_login
+      in
+      Log.log (txt, Normal_Extra);
   ) htbuffer;
 
   Printf.printf "HT size apres: %d\n" (Hashtbl.length htbuffer);

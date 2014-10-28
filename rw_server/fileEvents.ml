@@ -242,12 +242,20 @@ let file_closed ?(written=false) wd name =
 
       (* update filesize in database if written
        * as filesize equaled None if written == true *)
-      let nfilesize = override_filesize in_progress f_file written in
+      let nfilesize =
+	override_filesize
+	  in_progress
+	  f_file
+	  written
+      in
 
       (* update last_known_offset according to filesize and written *)
       (* if file could not be read or does not exist anymore then filesize = None *)
       let overriden_last_offset_opt =
-	override_last_offset nfilesize in_progress written
+	override_last_offset
+	  nfilesize
+	  in_progress
+	  written
       in
 
       in_progress :=
