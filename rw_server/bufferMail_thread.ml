@@ -2,12 +2,6 @@ open Types
 open Types_conf
 open Files_progress
 
-(* In the last 30 minutes...
-
-   File1_name has been opened.
-   File2_name has been opened and closed.
-
-*)
 
 class bufferMail =
 object(self)
@@ -16,7 +10,7 @@ object(self)
   method private _action_to_string written close_date =
     match (written, close_date) with
     | (false, None) -> "has accessed"
-    | (false, Some _) -> "accessed"
+    | (false, Some _) -> "closed"
     | (true, None) -> "is creating"
     | (true, Some _) -> "created"
 
@@ -81,18 +75,17 @@ tbody tr:nth-child(odd) {
 	~theader:true
 	colName)
       ["Username";
+       "Program";
        "Action";
        "Path";
        "Filename";
-       "Program";
        "Filesize";
-       "First Known Offset";
-       "Last Known Offset";
+       "Data transferred";
+       "Transfer rate";
+       "Overall progression";
        "Opening date";
        "Closing date";
        "Duration";
-       "Progression";
-       "Sum up";
       ];
     self#_app "</tr></thead>"
 
@@ -100,36 +93,56 @@ tbody tr:nth-child(odd) {
   method private _add_row (wd, file) ip =
     let c = ip.ip_common in
 
-    let offset_to_string offset_opt =
-      match offset_opt with
-      | None -> ""
-      | Some offset -> Int64.to_string offset
+    let (first_known_offset_str,
+	 last_known_offset_str,
+	 filesize_str,
+	 progression) =
+      self#_load_variables
+	c.c_first_known_offset
+	c.c_last_known_offset
+	c.c_filesize
     in
+
+    let (data_transferred_column, transfer_rate_column) =
+      try
+	let (data_transferred_MB, percentage_transferred, transfer_rate) =
+	  self#_compute_transfer_rate ip.ip_common
+	in
+
+	let dt_col =
+	  Printf.sprintf "%.02f MB<br />(%.02f%c of the file)"
+	    data_transferred_MB
+	    percentage_transferred
+	    '%'
+	in
+	let tr_col =
+	  Printf.sprintf "%.02f KB/s" transfer_rate
+	in
+	(dt_col, tr_col)
+      with
+	Abstract_mail.Not_enough_known_offsets -> ("", "")
+    in
+
 
     self#_app "<tr>";
 
     List.iter
       self#_add_column
-      [file.f_username;
-       self#_action_to_string c.c_written c.c_closing_date;
-       file.f_path;
-       file.f_name;
-       file.f_program;
-       (match c.c_filesize with
-       | None -> assert false
-       | Some filesize -> Int64.to_string filesize);
-       offset_to_string c.c_first_known_offset;
-       offset_to_string c.c_last_known_offset;
-       c.c_opening_date#get_str_locale;
-       (match c.c_closing_date with
-       | None -> ""
-       | Some date -> date#get_str_locale);
-       self#_abs_duration_val c.c_closing_date c.c_opening_date;
-       "";
-       "";
-      (*       "Progression"; *)
-      (*        "Sum up"; *)
-
+      [
+	file.f_username;
+	file.f_program;
+	self#_action_to_string c.c_written c.c_closing_date;
+	file.f_path;
+	file.f_name;
+	filesize_str;
+	data_transferred_column;
+	transfer_rate_column;
+	self#_string_from_progression progression;
+	c.c_opening_date#get_str_locale;
+	(match c.c_closing_date with
+	| None -> ""
+	| Some date -> date#get_str_locale);
+	self#_abs_duration_val c.c_closing_date c.c_opening_date;
       ];
     self#_app "</tr>";
 

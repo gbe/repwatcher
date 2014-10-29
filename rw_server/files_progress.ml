@@ -23,7 +23,8 @@ let htremove key in_progress =
 ;;
 
 let htreplace key newvalue =
-  Hashtbl.replace ht key newvalue
+  Hashtbl.replace ht key newvalue;
+  Hashtbl.replace htbuffer key newvalue;
 ;;
 
 let remove_closed_files () =

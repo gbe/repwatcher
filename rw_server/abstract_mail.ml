@@ -3,6 +3,8 @@ open Types
 open Types_conf
 open Types_date
 
+exception Not_enough_known_offsets
+
 class virtual abstract_mail =
 object(self)
 
@@ -21,6 +23,39 @@ object(self)
 
   (* append to body *)
   method private _app v = body <- body^v
+
+
+  method private _load_variables
+    first_known_offset_opt
+    last_known_offset_opt
+    filesize_opt =
+
+    let progression = ref (-1.) in
+
+    let (first, last, fsize) =
+      match (first_known_offset_opt, last_known_offset_opt, filesize_opt) with
+
+      (* If first_offset is known, last_offset is a None as well.
+       * To avoid writing the unnecessary cases, I put a _ *)
+      | (None, _, None) -> ("Unknown", "Unknown", "Unknown")
+
+      | (None, _, Some filesize) -> ("Unknown", "Unknown", Int64.to_string filesize)
+
+      (* Last_known_offset cannot be a None if First_known_offset is not *)
+      | (Some first_offset, None, _) -> assert false
+
+      | (Some first_offset, Some last_offset, None) ->
+	(Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
+
+      | (Some first_offset, Some last_offset, Some filesize) ->
+	let last_offset_float = Int64.to_float last_offset in
+	let filesize_float = Int64.to_float filesize in
+
+	progression := last_offset_float /. filesize_float *. 100. ;
+	(Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
+    in
+    (first, last, fsize, !progression)
+
 
   method private _abs_duration_val enddate startdate =
     let enddate_o =
@@ -62,6 +97,38 @@ object(self)
     str_duration := !str_duration^(plural ~print_anyway:true "second" duration.seconds);
     !str_duration
 
+
+  method private _string_from_progression progression =
+    if progression <= 0. then
+      "Unknown"
+    else
+      Printf.sprintf "%.02f%c" progression '%'
+
+
+  method private _compute_transfer_rate common =
+
+    match (common.c_first_known_offset, common.c_last_known_offset) with
+    | Some first, Some last ->
+
+      (* If the file is still opened, creates a new date *)
+      let date =
+	match common.c_closing_date with
+	| None -> new Date.date
+	| Some closing_date -> closing_date
+      in
+
+      let data_transferred = Int64.to_float (Int64.sub last first) in
+      (* 1MB = 1048576 = 1024 * 1024 *)
+      let data_transferred_MB = data_transferred /. 1048576. in
+      let filesize = Int64.to_float (self#_strip_option common.c_filesize) in
+      let percentage_transferred = data_transferred /. filesize *. 100. in
+      let transfer_rate =
+	data_transferred /. (date#get_diff_sec common.c_opening_date) /. 1024.
+      in
+
+      (data_transferred_MB, percentage_transferred, transfer_rate)
+
+    | _ -> raise Not_enough_known_offsets
 
   method send ?(html=false) () =
     let email_conf = Config.cfg#get_email in

@@ -9,44 +9,23 @@ object(self)
   val mutable last_off_str = ""
   val mutable filesize_str = ""
   val mutable progression = -1.
-  val mutable filestate = ""
+  val filestate = Common.string_of_filestate m.m_filestate
 
 
   initializer
-    self#_load_variables;
-    self#_set_subject ();
-    self#_set_body ();
+  let (first, last, fsize, progressionret) =
+    self#_load_variables
+      m.m_common.c_first_known_offset
+      m.m_common.c_last_known_offset
+      m.m_common.c_filesize
+  in
+  first_off_str <- first;
+  last_off_str <- last;
+  filesize_str <- fsize;
+  progression <- progressionret;
 
-  method private _load_variables =
-
-    let (first, last, fsize) =
-      match (m.m_common.c_first_known_offset, m.m_common.c_last_known_offset, m.m_common.c_filesize) with
-
-      (* If first_offset is known, last_offset is a None as well.
-       * To avoid writing the unnecessary cases, I put a _ *)
-      | (None, _, None) -> ("Unknown", "Unknown", "Unknown")
-
-      | (None, _, Some filesize) -> ("Unknown", "Unknown", Int64.to_string filesize)
-
-      (* Last_known_offset cannot be a None if First_known_offset is not*)
-      | (Some first_offset, None, _) -> assert false
-
-      | (Some first_offset, Some last_offset, None) ->
-	(Int64.to_string first_offset, Int64.to_string last_offset, "Unknown")
-
-      | (Some first_offset, Some last_offset, Some filesize) ->
-	let last_offset_float = Int64.to_float last_offset in
-	let filesize_float = Int64.to_float filesize in
-
-	progression <- last_offset_float /. filesize_float *. 100. ;
-	(Int64.to_string first_offset, Int64.to_string last_offset, Int64.to_string filesize)
-    in
-    first_off_str <- first;
-    last_off_str <- last;
-    filesize_str <- fsize;
-    filestate <- Common.string_of_filestate m.m_filestate
-
-
+  self#_set_subject ();
+  self#_set_body ();
 
 
   method private _tab = self#_app "\t"
@@ -95,42 +74,30 @@ object(self)
 
 
   method private _progression = self#_app "Progression:"
-  method private _progression_val =
-    if progression <= 0. then
-      self#_app "N/A"
-    else
-      self#_app (Printf.sprintf "%.02f%c" progression '%')
-
+  method private _progression_val progression =
+    let progression_str = self#_string_from_progression progression in
+    self#_app progression_str
 
   method private _size = self#_app "Size:"
   method private _size_val = self#_app filesize_str
 
+
   method private _transfer_val =
+    try
+      let (data_transferred_MB, percentage_transferred, transfer_rate) =
+	self#_compute_transfer_rate m.m_common
+      in
+      let txt =
+	Printf.sprintf
+	  "%.02f MB transferred (%.02f%c of the file) @ %.02f KB/s"
+	  data_transferred_MB
+	  percentage_transferred
+	  '%'
+	  transfer_rate
+      in
+      self#_app txt
+    with Abstract_mail.Not_enough_known_offsets -> self#_app ""
 
-    (* Bandwidth computation added to string *)
-    match (m.m_common.c_first_known_offset, m.m_common.c_last_known_offset) with
-      | Some first, Some last ->
-	let closing_date = self#_strip_option m.m_common.c_closing_date in
-
-	let data_transferred = Int64.to_float (Int64.sub last first) in
-	(* 1MB = 1048576 = 1024 * 1024 *)
-	let data_transferred_MB = data_transferred /. 1048576. in
-	let percentage_transferred = data_transferred /. (float_of_string filesize_str) *. 100. in
-	let transfer_rate =
-	  data_transferred /. (closing_date#get_diff_sec m.m_common.c_opening_date) /. 1024.
-	in
-
-	let txt =
-	  Printf.sprintf
-	    "%.02f MB transferred (%.02f%c of the file) @ %.02f KB/s"
-	    data_transferred_MB
-	    percentage_transferred
-	    '%'
-	    transfer_rate
-	in
-	self#_app txt
-
-      | _ -> ()
 
 
   method private _set_subject () =
@@ -165,7 +132,7 @@ object(self)
       self#_duration; self#_tab; self#_duration_val;
       self#_LF;
 
-      self#_progression; self#_tab; self#_progression_val;
+      self#_progression; self#_tab; self#_progression_val progression;
       self#_LF;
 
       self#_size; self#_tab; self#_size_val;
