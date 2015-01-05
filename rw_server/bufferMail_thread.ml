@@ -17,14 +17,14 @@ object(self)
   method private _set_html_headers =
     let headers = "<html><head><title>Repwatcher Events</title>" in
 
-    (* Clear the body content since a new mail is building*)
+    (* Clear the body content since a new mail is being created *)
     body <- headers
 
   method private _set_html_footer =
     self#_app "</html>"
 
   method private _set_subject () =
-    subject <- Printf.sprintf "Repwatcher - events buffer"
+    subject <- "Repwatcher events"
 
   method private _set_css =
     let css ="<style>
@@ -156,14 +156,14 @@ tbody tr:nth-child(odd) {
     ) Files_progress.htbuffer;
     self#_app "</tbody></table></body>"
 
+
   method start_running () =
     let waiting_time =
       float_of_int Config.cfg#get_email_buffer
     in
 
     while true do
-     (* Thread.delay waiting_time ; *)
-      Thread.delay 30.0 ;
+      Thread.delay waiting_time ;
 
       if Hashtbl.length Files_progress.htbuffer > 0 then
 	begin
