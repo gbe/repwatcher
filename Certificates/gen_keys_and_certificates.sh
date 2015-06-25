@@ -3,6 +3,9 @@
 #set -x
 #set -e
 
+CA_PATH="CA"
+SERVER_PATH="server"
+CLIENT_PATH="client"
 
 function underline {
 
@@ -16,17 +19,17 @@ function create_ca_key {
 	clear &&
 	echo    "1/8 Create the CA key" &&
 	echo -e "---------------------\n" &&
-	openssl genrsa -aes256 4096 > CA/CA.key
+	openssl genrsa -aes256 4096 > $CA_PATH/CA.key
 }
 
 function create_ca_cert {
 	clear &&	
-	echo    "2/8 Create the CA cert from the CA key" &&
-	echo -e "--------------------------------------\n" &&
+	echo    "2/8 Generate CA certificate" &&
+	echo -e "---------------------------\n" &&
 	echo "How many days should this certificate be valid ?" &&
 	echo -n "Number of days: " &&
 	read cert_days &&
-	openssl req -new -x509 -days $cert_days -key CA/CA.key > CA/CA.crt
+	openssl req -new -x509 -days $cert_days -key $CA_PATH/CA.key > $CA_PATH/CA.crt
 }
 
 function create_key {
@@ -43,10 +46,10 @@ function create_key {
 # arg1 = key (in)
 # arg2 = cert.csr (out)
 # arg3 = 2/8 (feedback)
-function request_signed_cert {
+function create_certificate_signing_request {
 	# No clear here so as to see that the key
 	# has been created for the server/client
-	TXT="$3 Fill in the informations to request a signed certificate for $2"
+	TXT="$3 Fill in the informations to create a certificate signing request for $2"
 	echo $TXT &&
 	underline "$TXT" &&
 
@@ -64,8 +67,8 @@ function sign_cert {
 	read cert_days &&
 
 	certsigned_out=${1:0:$((${#1}-4))}
-	openssl x509 -req -in $1 -out $certsigned_out.crt -CA CA/CA.crt\
-	-CAkey CA/CA.key -CAcreateserial -CAserial CA.srl -days $cert_days
+	openssl x509 -req -in $1 -out $certsigned_out.crt -CA $CA_PATH/CA.crt\
+	-CAkey $CA_PATH/CA.key -CAcreateserial -CAserial CA.srl -days $cert_days
 }
 
 function failure {
@@ -92,22 +95,22 @@ function exit_or_continue {
 	esac
 }
 
-if [ ! -d "CA" ]; then
-	mkdir CA
+if [ ! -d "$CA_PATH" ]; then
+	mkdir $CA_PATH
 else
-	exit_or_continue "CA" && rm -f CA/*
+	exit_or_continue "CA" && rm -f $CA_PATH/*
 fi
 
-if [ ! -d "server" ]; then
-	mkdir server
+if [ ! -d "$SERVER_PATH" ]; then
+	mkdir $SERVER_PATH
 else
-	exit_or_continue "server" && rm -f server/*
+	exit_or_continue "server" && rm -f $SERVER_PATH/*
 fi
 
-if [ ! -d "client" ]; then
-	mkdir client
+if [ ! -d "$CLIENT_PATH" ]; then
+	mkdir $CLIENT_PATH
 else
-	exit_or_continue "client" && rm -f client/*
+	exit_or_continue "client" && rm -f $CLIENT_PATH/*
 fi
 
 
@@ -116,6 +119,7 @@ fi
 # CA
 ###############################################
 create_ca_key || failure "CA key not created";
+chmod 400 $CA_PATH/*.key
 create_ca_cert || failure "CA cert not created";
 ###############################################
 
@@ -124,11 +128,11 @@ create_ca_cert || failure "CA cert not created";
 ###############################################
 # Server
 ###############################################
-create_key server/rw_serv.key 3/8 || failure "Could not create the server's key";
+create_key $SERVER_PATH/rw_serv.key 3/8 || failure "Could not create the server's key";
+chmod 400 $SERVER_PATH/*.key
+create_certificate_signing_request $SERVER_PATH/rw_serv.key $SERVER_PATH/rw_serv.csr 4/8 || failure "Could not create a certificate signing request";
 
-request_signed_cert server/rw_serv.key server/rw_serv.csr 4/8 || failure "Couldn't request a signed certificate";
-
-sign_cert server/rw_serv.csr 5/8 && rm -f CA.srl server/rw_serv.csr || failure "CA couldn't sign server certificate";
+sign_cert $SERVER_PATH/rw_serv.csr 5/8 && rm -f CA.srl $SERVER_PATH/rw_serv.csr || failure "CA could not sign server certificate request";
 
 echo -e "\n==> Server certificate ready."
 ###############################################
@@ -138,11 +142,11 @@ echo -e "\n==> Server certificate ready."
 ###############################################
 # Client
 ###############################################
-create_key client/rw_client.key 6/8 || failure "Could not create the client's key";
+create_key $CLIENT_PATH/rw_client.key 6/8 || failure "Could not create the client's key";
+chmod 400 $CLIENT_PATH/*.key
+create_certificate_signing_request $CLIENT_PATH/rw_client.key $CLIENT_PATH/rw_client.csr 7/8 || failure "Could not request a signed certificate";
 
-request_signed_cert client/rw_client.key client/rw_client.csr 7/8 || failure "Couldn't request a signed certificate";
-
-sign_cert client/rw_client.csr 8/8 && rm -f CA.srl client/rw_client.csr || failure "CA couldn't sign client certificate";
+sign_cert $CLIENT_PATH/rw_client.csr 8/8 && rm -f CA.srl $CLIENT_PATH/rw_client.csr || failure "CA could not sign client certificate request";
 
 echo -e "\n==> Client certificate ready.\n";
 ###############################################
