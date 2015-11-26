@@ -196,8 +196,18 @@ let loop_check () =
 
       begin
 	match new_offset_opt with
+	(* Hashtbl.remove will occur if offset not retrieved twice *)
 	| None -> could_not_get_offset (wd, file) inprogress_ref
-	| Some _ -> could_get_offset (wd, file) inprogress_ref new_offset_opt
+	| Some _ ->
+	  could_get_offset (wd, file) inprogress_ref new_offset_opt;
+	  (* Replace must be done exclusively if an offset could be retrieved.
+	   * Otherwise, the hashtbl key gets removed when the closing event
+	   * is forced and then reinserted again by the replace.
+	   * According to the documentation:
+	   * "If x is unbound in tbl, a binding of x to y is added to tbl." *)
+	  Files_progress.htreplace
+	    (wd, file)
+	    !inprogress_ref
       end;
 
       (*
@@ -205,10 +215,6 @@ let loop_check () =
 	(st !inprogress_ref.ip_common.c_first_known_offset)
 	(st !inprogress_ref.ip_common.c_last_known_offset);
       *)
-
-      Files_progress.htreplace
-	(wd, file)
-	!inprogress_ref
 
     ) Files_progress.ht ;
 
